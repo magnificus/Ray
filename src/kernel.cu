@@ -48,14 +48,13 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh)
 
 	int out = 0;
 
-	int distToMid = (powf(x-(imgw/2), 2) + powf(y-(imgh/2), 2));
+	int distToMid = (powf(x - (imgw / 2), 2) + powf(y - (imgh / 2), 2));
 
-	if (distToMid < powf((imgw / 4),2)) {
+	if (distToMid < powf((imgw / 4), 2)) {
 		out = 255;
 	}
-
 	//uchar4 c4 = make_uchar4((x & 0x20) ? 100 : 0, 0, (y & 0x20) ? 100 : 0, 0);
-	g_odata[y*imgw + x] = rgbToInt(out, out, out);
+	g_odata[y * imgw + x] = out << 16 | out << 8 | out;// rgbToInt(out, out, out);
 }
 
 extern "C" void

@@ -31,8 +31,8 @@ using namespace std;
 
 // GLFW
 GLFWwindow* window;
-int WIDTH = 1920;
-int HEIGHT = 1080;
+int WIDTH = 1024;
+int HEIGHT = 1024;
 
 // OpenGL
 GLuint VBO, VAO, EBO;
@@ -107,7 +107,7 @@ void createGLTextureForCUDA(GLuint* gl_tex, cudaGraphicsResource** cuda_tex, uns
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	// Specify 2D texture
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI_EXT, size_x, size_y, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI_EXT, size_x, size_y, 0, GL_RGB_INTEGER_EXT, GL_UNSIGNED_BYTE, NULL);
 	// Register this texture with CUDA
 	checkCudaErrors(cudaGraphicsGLRegisterImage(cuda_tex, *gl_tex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
 	SDK_CHECK_ERROR_GL();
@@ -145,7 +145,7 @@ bool initGL(){
 void initCUDABuffers()
 {
 	// set up vertex data parameters
-	num_texels = WIDTH * WIDTH;
+	num_texels = WIDTH * HEIGHT;
 	num_values = num_texels * 4;
 	size_tex_data = sizeof(GLubyte) * num_values;
 	// We don't want to use cudaMallocManaged here - since we definitely want
@@ -159,10 +159,10 @@ bool initGLFW(){
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	window = glfwCreateWindow(WIDTH, WIDTH, "SimpleCUDA2GL Modern OpenGL", NULL, NULL);
+	window = glfwCreateWindow(WIDTH, WIDTH, "Raytracer", NULL, NULL);
 	if (!window){ glfwTerminate(); exit(EXIT_FAILURE); }
 	glfwMakeContextCurrent(window);
-	glfwSwapInterval(1);
+	glfwSwapInterval(0);
 	glfwSetKeyCallback(window, keyboardfunc);
 	return true;
 }
@@ -172,7 +172,7 @@ void generateCUDAImage()
 	// calculate grid size
 	dim3 block(16, 16, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
-	launch_cudaRender(grid, block, 0, (unsigned int *) cuda_dev_render_buffer, WIDTH, HEIGHT); // launch with 0 additional shared memory allocated
+	launch_cudaRender(grid, block, 100, (unsigned int *) cuda_dev_render_buffer, WIDTH, HEIGHT); // launch with 0 additional shared memory allocated
 
 	// We want to copy cuda_dev_render_buffer data to the texture
 	// Map buffer objects to get CUDA device pointers
@@ -181,34 +181,46 @@ void generateCUDAImage()
 	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0));
 
 	int num_texels = WIDTH * HEIGHT;
-	int num_values = num_texels * 4;
+	int num_values = num_texels * 3;
 	int size_tex_data = sizeof(GLubyte) * num_values;
 	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
 }
 
+//void display(void) {
+//	generateCUDAImage();
+//	glfwPollEvents();
+//	// Clear the color buffer
+//	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+//	glClear(GL_COLOR_BUFFER_BIT);
+//
+//	glActiveTexture(GL_TEXTURE0);
+//	glBindTexture(GL_TEXTURE_2D, opengl_tex_cuda);
+//
+//	shdrawtex.use(); // we gonna use this compiled GLSL program
+//	glUniform1i(glGetUniformLocation(shdrawtex.program, "tex"), 0);
+//
+//	glBindVertexArray(VAO); // binding VAO automatically binds EBO
+//		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+//	glBindVertexArray(0); // unbind VAO
+//
+//	SDK_CHECK_ERROR_GL();
+//	
+//	// Swap the screen buffers
+//	glfwSwapBuffers(window);
+//}
+
+
 void display(void) {
+	glClear(GL_COLOR_BUFFER_BIT);
 	generateCUDAImage();
 	glfwPollEvents();
-	// Clear the color buffer
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, opengl_tex_cuda);
-
-	shdrawtex.use(); // we gonna use this compiled GLSL program
-	glUniform1i(glGetUniformLocation(shdrawtex.program, "tex"), 0);
-
-	glBindVertexArray(VAO); // binding VAO automatically binds EBO
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0); // unbind VAO
-
-	SDK_CHECK_ERROR_GL();
-	
 	// Swap the screen buffers
 	glfwSwapBuffers(window);
 }
+
+
 
 int main(int argc, char *argv[]) {
 	initGLFW();
@@ -255,12 +267,38 @@ int main(int argc, char *argv[]) {
 	// Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 	// A VAO stores the glBindBuffer calls when the target is GL_ELEMENT_ARRAY_BUFFER. 
 	// This also means it stores its unbind calls so make sure you don't unbind the element array buffer before unbinding your VAO, otherwise it doesn't have an EBO configured.
+	auto lastTime = std::chrono::system_clock::now();
+	int frameNum = 0;
+	// Some computation here
+
+
+	glBindVertexArray(VAO); // binding VAO automatically binds EBO
+	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, opengl_tex_cuda);
+
+	shdrawtex.use(); // we gonna use this compiled GLSL program
+	glUniform1i(glGetUniformLocation(shdrawtex.program, "tex"), 0);
+	SDK_CHECK_ERROR_GL();
+
 
 	while (!glfwWindowShouldClose(window))
 	{
 		display();
-		glfwWaitEvents();
+		//glfwWaitEvents();
+		if (frameNum++ % 1000 == 0) {
+			// show fps every 1000 frames
+			auto currTime = std::chrono::system_clock::now();
+			std::chrono::duration<double> elapsed_seconds = currTime - lastTime;
+
+			std::cout << "fps: " << (1000 / elapsed_seconds.count()) << "\n";
+			lastTime = currTime;
+		}
 	}
+	glBindVertexArray(0); // unbind VAO
+
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
