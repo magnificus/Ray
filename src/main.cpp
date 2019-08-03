@@ -24,7 +24,7 @@
 
 #include <iostream>
 #include <chrono>
-#include <ctime>    
+#include <ctime>
 
 
 using namespace std;
@@ -46,7 +46,7 @@ struct cudaGraphicsResource* cuda_tex_resource;
 GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
 extern "C" void
 // Forward declaration of CUDA render
-launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh);
+launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh, float currTime);
 
 // CUDA
 size_t size_tex_data;
@@ -167,12 +167,20 @@ bool initGLFW(){
 	return true;
 }
 
-void generateCUDAImage()
+void generateCUDAImage(std::chrono::duration<double> duration)
 {
 	// calculate grid size
 	dim3 block(16, 16, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
-	launch_cudaRender(grid, block, 100, (unsigned int *) cuda_dev_render_buffer, WIDTH, HEIGHT); // launch with 0 additional shared memory allocated
+
+
+	const auto p1 = std::chrono::system_clock::now();
+	const auto p2 = p1 - std::chrono::hours(24);
+
+	//int time = std::chrono::duration_cast<std::chrono::milliseconds>(
+	//	p2.time_since_epoch()).count();
+
+	launch_cudaRender(grid, block, 0, (unsigned int *) cuda_dev_render_buffer, WIDTH, HEIGHT, duration.count()); // launch with 0 additional shared memory allocated
 
 	// We want to copy cuda_dev_render_buffer data to the texture
 	// Map buffer objects to get CUDA device pointers
@@ -181,10 +189,13 @@ void generateCUDAImage()
 	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0));
 
 	int num_texels = WIDTH * HEIGHT;
-	int num_values = num_texels * 3;
+	int num_values = num_texels * 4;
 	int size_tex_data = sizeof(GLubyte) * num_values;
 	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
+
+	cudaDeviceSynchronize();
+
 }
 
 //void display(void) {
@@ -211,16 +222,14 @@ void generateCUDAImage()
 //}
 
 
-void display(void) {
+void display(std::chrono::duration<double> duration) {
 	glClear(GL_COLOR_BUFFER_BIT);
-	generateCUDAImage();
+	generateCUDAImage(duration);
 	glfwPollEvents();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	// Swap the screen buffers
 	glfwSwapBuffers(window);
 }
-
-
 
 int main(int argc, char *argv[]) {
 	initGLFW();
@@ -267,7 +276,8 @@ int main(int argc, char *argv[]) {
 	// Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 	// A VAO stores the glBindBuffer calls when the target is GL_ELEMENT_ARRAY_BUFFER. 
 	// This also means it stores its unbind calls so make sure you don't unbind the element array buffer before unbinding your VAO, otherwise it doesn't have an EBO configured.
-	auto lastTime = std::chrono::system_clock::now();
+	auto firstTime = std::chrono::system_clock::now();
+	auto lastTime = firstTime;
 	int frameNum = 0;
 	// Some computation here
 
@@ -286,16 +296,17 @@ int main(int argc, char *argv[]) {
 
 	while (!glfwWindowShouldClose(window))
 	{
-		display();
+		auto currTime = std::chrono::system_clock::now();
+		auto totalTime = currTime - firstTime;
+		display(totalTime);
 		//glfwWaitEvents();
 		if (frameNum++ % 1000 == 0) {
-			// show fps every 1000 frames
-			auto currTime = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds = currTime - lastTime;
+			// show fps every 1000 frames
 
-			std::cout << "fps: " << (1000 / elapsed_seconds.count()) << "\n";
-			lastTime = currTime;
+			std::cout << "fps: " << (1 / elapsed_seconds.count()) << "\n";
 		}
+		lastTime = currTime;
 	}
 	glBindVertexArray(0); // unbind VAO
 
