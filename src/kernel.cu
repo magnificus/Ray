@@ -62,7 +62,7 @@ inline __device__ float3 inverse(float3 v)
 
 inline __device__ float3 normalize(float3 v)
 {
-	float invLen = 1.0f / length(v);// sqrtf(dot(v, v));
+	float invLen = /*1.0f / length(v);*/ 1/sqrtf(dot(v, v));
 	return invLen * v;
 }
 
@@ -190,23 +190,26 @@ __device__ float3 refract(const float3& I, const float3& N, const float& ior)
 	else { float temp = etai; etai = etat; etat = temp; n = inverse(N); }
 	float eta = etai / etat;
 	float k = 1 - eta * eta * (1 - cosi * cosi);
-	return k < 0 ? make_float3(0,0,0) : eta * I + (eta * cosi - sqrtf(k)) * n;
+	return eta * I + (eta * cosi - sqrtf(k)) * n;
 }
 
-__device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth, const float &currTime, const objectInfo objects[], int numObjects) {
+__device__ float3 reflect(const float3& I, const float3& N)
+{
+	return I - 2 * dot(I, N) * N;
+}
+
+__device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth, const float &currTime, objectInfo objects[], int numObjects) {
 	if (remainingDepth <= 0) {
 		return make_float3(0,0,0);
 	}
 
 	float closestDist = 1000000;
-	float3 nextDir;
-	float3 nextPos;
 	float3 normal;
 	int closestObjectIndex = -1;
 
 	//for (int j = 0; j < 100; j++) {
 		for (int i = 0; i < numObjects; i++) {
-			objectInfo curr = objects[i];
+			const objectInfo& curr = objects[i];
 			float currDist;
 
 			switch (curr.s) {
@@ -216,10 +219,7 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 					closestDist = currDist;
 					closestObjectIndex = i;
 
-					float3 diffAngle = inverse(p1->normal) - inverse(currRayDir);
-					nextDir = normalize(inverse(p1->normal) + diffAngle);
 					normal = p1->normal;
-					nextPos = currRayPos + currDist * currRayDir + 0.001 * nextDir;
 				}
 
 				break;
@@ -230,11 +230,8 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 					closestDist = currDist;
 					closestObjectIndex = i;
 
-					nextPos = currRayPos + currDist * currRayDir;
+					float3 nextPos = currRayPos + currDist * currRayDir;
 					normal = normalize(nextPos - s1->pos);
-					float3 diffAngle = normal - inverse(currRayDir);
-					nextDir = normalize(normal + diffAngle);
-					nextPos = nextPos + 0.001 * normal;
 
 				}
 				break;
@@ -250,16 +247,33 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 		objectInfo currObject = objects[closestObjectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
+		float3 nextPos = currRayPos + closestDist * currRayDir;
+
+		float extraReflection = 0;
 		if (currObject.refractivity > 0.) {
-			float3 refractedDir = refract(currRayDir, normal, currObject.refractiveIndex);
-			refracted = trace(nextPos+0.002*refractedDir, refractedDir, remainingDepth - 1, currTime, objects, numObjects);
+			float kr;
+			bool outside = dot(currRayDir, normal) < 0;
+			fresnel(currRayDir, normal, outside? currObject.refractiveIndex : 1 / currObject.refractiveIndex, kr);
+			float3 bias = 0.001 * normal;
+
+
+			if (kr < 1) {
+				float3 refractionDirection = normalize(refract(currRayDir, normal, currObject.refractiveIndex));
+				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
+				refracted = currObject.refractivity *(1-kr)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, currTime, objects, numObjects);
+				//if (!outside) {
+				//	refracted = make_float3(0, 1, 0);//return make_float3(0, 1, 0);
+				//}
+			}
+			extraReflection = min(1.,kr) * currObject.refractivity;
 
 		}
-		if (currObject.reflectivity > 0.) {
-			reflected = currObject.reflectivity * trace(nextPos, nextDir, remainingDepth - 1, currTime, objects, numObjects);
+		if (currObject.reflectivity + extraReflection > 0.) {
+			float3 reflectDir = reflect(currRayDir, normal);
+			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + 0.01*reflectDir, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
 		}
-		float3 color = (1 - currObject.reflectivity - currObject.refractivity) * currObject.color;
-		return 10 * (1 / powf(length(nextPos), 1)) * (color + reflected + refracted);
+		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity) * currObject.color;
+		return 10 * (1 / powf(length(nextPos), 1)) * color + reflected + refracted;
 	}
 
 }
@@ -280,8 +294,8 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 	int x = blockIdx.x*bw + tx;
 	int y = blockIdx.y*bh + ty;
 
-	float sizeNearPlane = 1;
-	float sizeFarPlane = 2.0;
+	float sizeNearPlane = 6;
+	float sizeFarPlane = 8;
 	float distBetweenPlanes = 1.0;
 
 
@@ -292,27 +306,27 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 	float3 secondPlanePos = sizeFarPlane * distFromCenter;
 	secondPlanePos.z = -distBetweenPlanes;
 
-	firstPlanePos = make_float3(0, 0, 0);
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 	//int out = 0;
 
 
 	sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
-	sphereInfo s2 = make_sphereInfo(make_float3(-8, -4, -10), 4);
-	sphereInfo s3 = make_sphereInfo(make_float3(5, 3, -20), 5);
+	sphereInfo s2 = make_sphereInfo(make_float3(-8, -4, -15), 4);
+	sphereInfo s3 = make_sphereInfo(make_float3(2, 3, -40), 6);
+	sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.4)*10 + 2, 0,  cos(currTime*0.4) * 5 - 10), 3);
 	planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
 	planeInfo p2 = make_planeInfo(make_float3(0, 10.0, 0), make_float3(0, 1, 0));
 
-	objectInfo objects[4];
-	objects[0] = make_objectInfo(sphere, &s1, 0.0, make_float3(1, 0, 0),1.0,1.5);
+	objectInfo objects[6];
+	objects[0] = make_objectInfo(sphere, &s1, 0.0, make_float3(1, 0, 0),0,0);
 	objects[1] = make_objectInfo(sphere, &s2, 0.1, make_float3(0, 1, 0),0.5,1.5);
 	objects[2] = make_objectInfo(plane, &p1, 0.2, make_float3(0, 1, 1),0,0);
 	objects[3] = make_objectInfo(sphere, &s3, 0.7, make_float3(1, 1, 1), 0,0);
-	objects[4] = make_objectInfo(plane, &p2, 0.5, make_float3(1, 1, 1), 0,0);
+	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
+	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 0, 0), 1.0,1.5);
 
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 6, currTime, objects, 5);
-
+	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, objects, 6);
 
 
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);

@@ -149,6 +149,9 @@ void initCUDABuffers()
 	num_values = num_texels * 4;
 	size_tex_data = sizeof(GLubyte) * num_values;
 	// We don't want to use cudaMallocManaged here - since we definitely want
+	cudaError_t stat;
+	size_t myStackSize = 8196;
+	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 }
 
@@ -170,7 +173,7 @@ bool initGLFW(){
 void generateCUDAImage(std::chrono::duration<double> duration)
 {
 	// calculate grid size
-	dim3 block(16, 16, 1);
+	dim3 block(8, 8, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 
