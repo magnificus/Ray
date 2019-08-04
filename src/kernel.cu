@@ -1,120 +1,13 @@
-#include "cuda_runtime.h"
-#include "vector_functions.h"
-#include "common_functions.h"
-#include "math_functions.h"
-#include <stdlib.h>
-#include <stdio.h>
+#pragma once
 #include "rayHelpers.cu"
 
-cudaError_t cuda();
 
+
+cudaError_t cuda();
 __global__ void kernel(){
   
 }
 
-// clamp x to range [a, b]
-__device__ float clamp(float x, float a, float b)
-{
-	return max(a, min(b, x));
-}
-
-// convert floating point rgb color to 8-bit integer
-__device__ int rgbToInt(float r, float g, float b)
-{
-	r = clamp(r, 0.0f, 255.0f);
-	g = clamp(g, 0.0f, 255.0f);
-	b = clamp(b, 0.0f, 255.0f);
-	return (int(b) << 16) | (int(g) << 8) | int(r);
-}
-
-__device__ float3 operator+(const float3& a, const float3& b) {
-	return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
-}
-
-__device__ float3 operator*(const float3& a, const float3& b) {
-	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
-}
-
-
-__device__ float3 operator*(const float& a, const float3& b) {
-	return make_float3(a * b.x, a * b.y, a * b.z);
-}
-
-__device__ float3 operator-(const float3& a, const float3& b) {
-	return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
-}
-
-inline __device__  float dot(float3 v1, float3 v2)
-{
-	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-}
-inline __device__ float length(float3 v)
-{
-	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
-
-inline __device__ float3 inverse(float3 v)
-{
-	return make_float3(-v.x, -v.y, -v.z);
-}
-
-
-inline __device__ float3 normalize(float3 v)
-{
-	float invLen = /*1.0f / length(v);*/ 1/sqrtf(dot(v, v));
-	return invLen * v;
-}
-
-
-struct sphereInfo {
-	float3 pos;
-	float rad;
-	float rad2;
-};
-
-__device__ sphereInfo make_sphereInfo(float3 pos, float rad) {
-	sphereInfo s;
-	s.pos = pos;
-	s.rad = rad;
-	s.rad2 = rad * rad;
-	return s;
-}
-
-
-struct planeInfo {
-	float3 point;
-	float3 normal;
-};
-
-__device__ planeInfo make_planeInfo(float3 point, float3 normal) {
-	planeInfo p;
-	p.point = point;
-	p.normal = normal;
-	return p;
-}
-
-enum shape{sphere, plane};
-
-struct objectInfo {
-	shape s;
-	void* shapeData;
-	float reflectivity;
-	float refractivity;
-	float refractiveIndex;
-	float3 color;
-};
-
-__device__ objectInfo make_objectInfo(shape s, void* shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex) {
-	objectInfo o;
-	o.s = s;
-	o.shapeData = shapeData;
-	o.reflectivity = reflectivity;
-	o.color = color;
-	o.refractivity = refractivity;
-	o.refractiveIndex = refractiveIndex;
-	return o;
-}
 
 
 __device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const sphereInfo& info, float &t) {
@@ -176,8 +69,6 @@ __device__ void fresnel(const float3& I, const float3& N, const float& ior, floa
 		float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
 		kr = (Rs * Rs + Rp * Rp) / 2;
 	}
-	// As a consequence of the conservation of energy, transmittance is given by:
-	// kt = 1 - kr;
 }
 
 
@@ -238,7 +129,6 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 			}
 			}
 		}
-	//}
 
 	if (closestObjectIndex == -1) {
 		return make_float3(0,0,0);
@@ -250,27 +140,24 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 		float3 nextPos = currRayPos + closestDist * currRayDir;
 
 		float extraReflection = 0;
+		float3 bias = 0.001 * normal;
 		if (currObject.refractivity > 0.) {
 			float kr;
 			bool outside = dot(currRayDir, normal) < 0;
 			fresnel(currRayDir, normal, outside? currObject.refractiveIndex : 1 / currObject.refractiveIndex, kr);
-			float3 bias = 0.001 * normal;
 
 
 			if (kr < 1) {
 				float3 refractionDirection = normalize(refract(currRayDir, normal, currObject.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
 				refracted = currObject.refractivity *(1-kr)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, currTime, objects, numObjects);
-				//if (!outside) {
-				//	refracted = make_float3(0, 1, 0);//return make_float3(0, 1, 0);
-				//}
 			}
 			extraReflection = min(1.,kr) * currObject.refractivity;
 
 		}
 		if (currObject.reflectivity + extraReflection > 0.) {
 			float3 reflectDir = reflect(currRayDir, normal);
-			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + 0.01*reflectDir, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
+			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
 		}
 		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity) * currObject.color;
 		return 10 * (1 / powf(length(nextPos), 1)) * color + reflected + refracted;
@@ -296,15 +183,17 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 
 	float sizeNearPlane = 6;
 	float sizeFarPlane = 8;
+	float3 lookDir = make_float3(0, 0, -1);
+	float3 origin = make_float3(0,0,0);
 	float distBetweenPlanes = 1.0;
 
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
 	float3 distFromCenter = make_float3(x - center.x, y - center.y, 0) *make_float3(1.0f / imgw, 1.0f / imgh, 1.); // coordinate dist from center
-	float3 firstPlanePos = sizeNearPlane*distFromCenter;
+	float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
 
-	float3 secondPlanePos = sizeFarPlane * distFromCenter;
-	secondPlanePos.z = -distBetweenPlanes;
+	float3 secondPlanePos = sizeFarPlane * distFromCenter + origin;
+	secondPlanePos = secondPlanePos + distBetweenPlanes * lookDir;
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 	//int out = 0;
@@ -313,13 +202,13 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 	sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
 	sphereInfo s2 = make_sphereInfo(make_float3(-8, -4, -15), 4);
 	sphereInfo s3 = make_sphereInfo(make_float3(2, 3, -40), 6);
-	sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.4)*10 + 2, 0,  cos(currTime*0.4) * 5 - 10), 3);
+	sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.4)*6 + 4, 0,  cos(currTime*0.4) * 5 - 10), 3);
 	planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
 	planeInfo p2 = make_planeInfo(make_float3(0, 10.0, 0), make_float3(0, 1, 0));
 
 	objectInfo objects[6];
 	objects[0] = make_objectInfo(sphere, &s1, 0.0, make_float3(1, 0, 0),0,0);
-	objects[1] = make_objectInfo(sphere, &s2, 0.1, make_float3(0, 1, 0),0.5,1.5);
+	objects[1] = make_objectInfo(sphere, &s2, 0.5, make_float3(0, 1, 0),0.0,1.5);
 	objects[2] = make_objectInfo(plane, &p1, 0.2, make_float3(0, 1, 1),0,0);
 	objects[3] = make_objectInfo(sphere, &s3, 0.7, make_float3(1, 1, 1), 0,0);
 	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
@@ -331,9 +220,10 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
-
 extern "C" void
 launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh, float currTime)
 {
+
 	cudaRender << < grid, block, sbytes >> >(g_odata, imgw, imgh, currTime);
 }
+
