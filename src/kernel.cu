@@ -165,13 +165,21 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 
 }
 
+struct inputStruct {
+	float mousePosX;
+	float mousePosY;
 
+	float currPosX;
+	float currPosY;
+	float currPosZ;
+};
 
+#define MOUSE_ROTATION_SCALE_X -0.005
+#define MOUSE_ROTATION_SCALE_Y -0.003
 
 __global__ void
-cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
+cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruct input)
 {
-
 	extern __shared__ uchar4 sdata[];
 
 	int tx = threadIdx.x;
@@ -183,21 +191,25 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 
 	float sizeNearPlane = 6;
 	float sizeFarPlane = 8;
-	float3 lookDir = make_float3(0, 0, -1);
-	float3 origin = make_float3(0,0,0);
+	//float3 lookDir = make_float3(0, 0, -1);
+	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);//make_float3(0,0,0);
 	float distBetweenPlanes = 1.0;
-
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
 	float3 distFromCenter = make_float3(x - center.x, y - center.y, 0) *make_float3(1.0f / imgw, 1.0f / imgh, 1.); // coordinate dist from center
 	float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
 
-	float3 secondPlanePos = sizeFarPlane * distFromCenter + origin;
-	secondPlanePos = secondPlanePos + distBetweenPlanes * lookDir;
+	float3 secondPlanePos = sizeFarPlane * distFromCenter;
+	secondPlanePos = secondPlanePos + distBetweenPlanes * make_float3(0,0,-1) + origin;
+
+	firstPlanePos = RotateAngleAxis(firstPlanePos - origin, MOUSE_ROTATION_SCALE_Y * input.mousePosY, make_float3(1, 0, 0)) + origin;
+	secondPlanePos = RotateAngleAxis(secondPlanePos - origin, MOUSE_ROTATION_SCALE_Y * input.mousePosY, make_float3(1, 0, 0)) + origin;
+
+	firstPlanePos = RotateAngleAxis(firstPlanePos - origin, MOUSE_ROTATION_SCALE_X*input.mousePosX, make_float3(0, 1, 0)) + origin;
+	secondPlanePos = RotateAngleAxis(secondPlanePos - origin, MOUSE_ROTATION_SCALE_X * input.mousePosX, make_float3(0, 1, 0)) + origin;
+
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
-	//int out = 0;
-
 
 	sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
 	sphereInfo s2 = make_sphereInfo(make_float3(-8, -4, -15), 4);
@@ -214,16 +226,16 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime)
 	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
 	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 0, 0), 1.0,1.5);
 
-
 	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, objects, 6);
 
 
+	//out.x = 255 * input.mouseDeltaX;
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
 extern "C" void
-launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh, float currTime)
+launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh, float currTime,inputStruct input)
 {
 
-	cudaRender << < grid, block, sbytes >> >(g_odata, imgw, imgh, currTime);
+	cudaRender << < grid, block, sbytes >> >(g_odata, imgw, imgh, currTime, input);
 }
 

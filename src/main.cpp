@@ -2,7 +2,7 @@
 // Dependencies: GLFW, GLEW
 
 #ifndef GLEW_STATIC
-	#define GLEW_STATIC
+#define GLEW_STATIC
 #endif
 
 // OpenGL
@@ -34,6 +34,15 @@ GLFWwindow* window;
 int WIDTH = 1024;
 int HEIGHT = 1024;
 
+struct inputStruct {
+	float mousePosX;
+	float mousePosY;
+
+	float currPosX;
+	float currPosY;
+	float currPosZ;
+};
+
 // OpenGL
 GLuint VBO, VAO, EBO;
 GLSLShader drawtex_f; // GLSL fragment shader
@@ -46,14 +55,14 @@ struct cudaGraphicsResource* cuda_tex_resource;
 GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
 extern "C" void
 // Forward declaration of CUDA render
-launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh, float currTime);
+launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int* g_odata, int imgw, int imgh, float currTime, inputStruct input);
 
 // CUDA
 size_t size_tex_data;
 unsigned int num_texels;
 unsigned int num_values;
 
-static const char *glsl_drawtex_vertshader_src =
+static const char* glsl_drawtex_vertshader_src =
 "#version 330 core\n"
 "layout (location = 0) in vec3 position;\n"
 "layout (location = 1) in vec3 color;\n"
@@ -69,7 +78,7 @@ static const char *glsl_drawtex_vertshader_src =
 "	ourTexCoord = texCoord;\n"
 "}\n";
 
-static const char *glsl_drawtex_fragshader_src =
+static const char* glsl_drawtex_fragshader_src =
 "#version 330 core\n"
 "uniform usampler2D tex;\n"
 "in vec3 ourColor;\n"
@@ -121,15 +130,51 @@ void initGLBuffers()
 	drawtex_v = GLSLShader("Textured draw vertex shader", glsl_drawtex_vertshader_src, GL_VERTEX_SHADER);
 	drawtex_f = GLSLShader("Textured draw fragment shader", glsl_drawtex_fragshader_src, GL_FRAGMENT_SHADER);
 	shdrawtex = GLSLProgram(&drawtex_v, &drawtex_f);
-	shdrawtex.compile();	
+	shdrawtex.compile();
 	SDK_CHECK_ERROR_GL();
 }
 
+bool WPressed = false;
+bool SPressed = false;
+bool DPressed = false;
+bool APressed = false;
+
+#define PRESSED_MACRO(inKey, variable) if (key == GLFW_KEY_##inKey) { \
+if (action == GLFW_PRESS){ \
+variable = true; \
+} \
+else if (action == GLFW_RELEASE) { \
+	variable = false; \
+} \
+}
 // Keyboard
-void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mods){
+void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	PRESSED_MACRO(W, WPressed);
+	PRESSED_MACRO(S, SPressed);
+	PRESSED_MACRO(D, DPressed);
+	PRESSED_MACRO(A, APressed);
+	//if (key == GLFW_KEY_W) {
+	//	if (action == GLFW_PRESS)
+	//		WPressed = true;
+	//	else if (action == GLFW_RELEASE)
+	//		WPressed = false;
+	//}
 }
 
-bool initGL(){
+double lastX = -1;
+double lastY = -1;
+
+double mouseDeltaX = 0.;
+double mouseDeltaY = 0.;
+
+void mouseFunc(GLFWwindow* window, double xPos, double yPos) {
+	mouseDeltaX = xPos - lastX;
+	mouseDeltaY = yPos - lastY;
+	lastX = xPos;
+	lastY = yPos;
+}
+
+bool initGL() {
 	glewExperimental = GL_TRUE; // need this to enforce core profile
 	GLenum err = glewInit();
 	glGetError(); // parse first error
@@ -149,13 +194,13 @@ void initCUDABuffers()
 	num_values = num_texels * 4;
 	size_tex_data = sizeof(GLubyte) * num_values;
 	// We don't want to use cudaMallocManaged here - since we definitely want
-	//cudaError_t stat;
-	//size_t myStackSize = 8196;
-	//stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
+	cudaError_t stat;
+	size_t myStackSize = 20000;
+	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 }
 
-bool initGLFW(){
+bool initGLFW() {
 	if (!glfwInit()) exit(EXIT_FAILURE);
 	// These hints switch the OpenGL profile to core
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -163,14 +208,19 @@ bool initGLFW(){
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	window = glfwCreateWindow(WIDTH, WIDTH, "Raytracer", NULL, NULL);
-	if (!window){ glfwTerminate(); exit(EXIT_FAILURE); }
+	if (!window) { glfwTerminate(); exit(EXIT_FAILURE); }
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(0);
 	glfwSetKeyCallback(window, keyboardfunc);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
+	glfwSetCursorPosCallback(window, mouseFunc);
 	return true;
 }
 
-void generateCUDAImage(std::chrono::duration<double> duration)
+inputStruct input;
+
+void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
 	// calculate grid size
 	dim3 block(8, 8, 1);
@@ -182,12 +232,18 @@ void generateCUDAImage(std::chrono::duration<double> duration)
 
 	//int time = std::chrono::duration_cast<std::chrono::milliseconds>(
 	//	p2.time_since_epoch()).count();
+	input.mousePosX = lastX - WIDTH / 2;
+	input.mousePosY = lastY - HEIGHT / 2;
 
-	launch_cudaRender(grid, block, 0, (unsigned int *) cuda_dev_render_buffer, WIDTH, HEIGHT, duration.count()); // launch with 0 additional shared memory allocated
+	input.currPosZ -= WPressed * deltaTime.count() * 10;
+	input.currPosZ += SPressed * deltaTime.count() * 10;
+	input.currPosX -= APressed * deltaTime.count() * 10;
+	input.currPosX += DPressed * deltaTime.count() * 10;
+	launch_cudaRender(grid, block, 0, (unsigned int*)cuda_dev_render_buffer, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
 
 	// We want to copy cuda_dev_render_buffer data to the texture
 	// Map buffer objects to get CUDA device pointers
-	cudaArray *texture_ptr;
+	cudaArray* texture_ptr;
 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
 	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0));
 
@@ -225,16 +281,16 @@ void generateCUDAImage(std::chrono::duration<double> duration)
 //}
 
 
-void display(std::chrono::duration<double> duration) {
+void display(std::chrono::duration<double> duration, std::chrono::duration<double> deltaTime) {
 	glClear(GL_COLOR_BUFFER_BIT);
-	generateCUDAImage(duration);
+	generateCUDAImage(duration, deltaTime);
 	glfwPollEvents();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	// Swap the screen buffers
 	glfwSwapBuffers(window);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 	initGLFW();
 	initGL();
 
@@ -242,7 +298,7 @@ int main(int argc, char *argv[]) {
 	printGlewInfo();
 	printGLInfo();
 
-	findCudaGLDevice(argc, (const char **)argv);
+	findCudaGLDevice(argc, (const char**)argv);
 	initGLBuffers();
 	initCUDABuffers();
 
@@ -301,7 +357,9 @@ int main(int argc, char *argv[]) {
 	{
 		auto currTime = std::chrono::system_clock::now();
 		auto totalTime = currTime - firstTime;
-		display(totalTime);
+
+
+		display(totalTime, currTime - lastTime);
 		//glfwWaitEvents();
 		if (frameNum++ % 1000 == 0) {
 			std::chrono::duration<double> elapsed_seconds = currTime - lastTime;
