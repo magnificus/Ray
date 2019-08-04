@@ -35,6 +35,7 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />
+    <CudaCompile Include="..\..\src\rayHelpers.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6539033A-8268-48FE-AEFA-BF1FF83DA9A5}</ProjectGuid>
