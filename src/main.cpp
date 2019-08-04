@@ -236,7 +236,7 @@ void initCUDABuffers()
 	size_tex_data = sizeof(GLubyte) * num_values;
 	// We don't want to use cudaMallocManaged here - since we definitely want
 	cudaError_t stat;
-	size_t myStackSize = 20000;
+	size_t myStackSize = 100000;
 	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 }

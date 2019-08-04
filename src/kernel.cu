@@ -196,17 +196,17 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	float3 rightV = normalize(cross(forwardV, up));
 	float3 upV = normalize(cross(rightV, forwardV));
 
-	//float sizeNearPlane = 5;
+	float sizeNearPlane = 6;
 	float sizeFarPlane = 10;
-	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);//make_float3(0,0,0);
-	float distBetweenPlanes = 5;
+	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);
+	float distBetweenPlanes = 2;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
-	float3 distFromCenter = /*make_float3(x - center.x, y - center.y, 0) */((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
+	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
 	//float3 distFromCenter = rightV * diffV + up2 * diffV; // coordinate dist from center
-	//float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
-	float3 firstPlanePos = origin;
-	float3 secondPlanePos = sizeFarPlane * distFromCenter + distBetweenPlanes* forwardV + origin;
+	float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
+	//float3 firstPlanePos = origin;
+	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distBetweenPlanes* forwardV) + origin;
 
 
 
