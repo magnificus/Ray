@@ -8,6 +8,8 @@
 // OpenGL
 #include <GL/glew.h> // Take care: GLEW should be included before GLFW
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 // CUDA
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
@@ -35,13 +37,20 @@ int WIDTH = 1024;
 int HEIGHT = 1024;
 
 struct inputStruct {
-	float mousePosX;
-	float mousePosY;
-
 	float currPosX;
 	float currPosY;
 	float currPosZ;
+
+	float forwardX;
+	float forwardY;
+	float forwardZ;
 };
+
+double currYaw = 270;
+double currPitch = 0;
+glm::vec3 currFront = glm::vec3(0, 0, -1);
+
+inputStruct input;
 
 // OpenGL
 GLuint VBO, VAO, EBO;
@@ -134,17 +143,17 @@ void initGLBuffers()
 	SDK_CHECK_ERROR_GL();
 }
 
-bool WPressed = false;
-bool SPressed = false;
-bool DPressed = false;
-bool APressed = false;
+float WPressed = 0.0;
+float SPressed = 0.0;
+float DPressed = 0.0;
+float APressed = 0.0;
 
 #define PRESSED_MACRO(inKey, variable) if (key == GLFW_KEY_##inKey) { \
 if (action == GLFW_PRESS){ \
-variable = true; \
+variable = 1.0; \
 } \
 else if (action == GLFW_RELEASE) { \
-	variable = false; \
+	variable = 0.0; \
 } \
 }
 // Keyboard
@@ -161,17 +170,49 @@ void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mod
 	//}
 }
 
-double lastX = -1;
-double lastY = -1;
+//double lastX = -1;
+//double lastY = -1;
+//
+//double mouseDeltaX = 0.;
+//double mouseDeltaY = 0.;
 
-double mouseDeltaX = 0.;
-double mouseDeltaY = 0.;
+bool firstMouse = true;
+double mouseDeltaX;
+double mouseDeltaY;
 
-void mouseFunc(GLFWwindow* window, double xPos, double yPos) {
-	mouseDeltaX = xPos - lastX;
-	mouseDeltaY = yPos - lastY;
-	lastX = xPos;
-	lastY = yPos;
+double lastX;
+double lastY;
+
+void mouseFunc(GLFWwindow* window, double xpos, double ypos) {
+
+	if (firstMouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
+	}
+
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+
+	float sensitivity = 0.05;
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	currYaw += xoffset;
+	currPitch += yoffset;
+
+	currPitch = currPitch > 89.0f ? 89.0f : currPitch;
+	currPitch = currPitch < -89.0f ? -89.0f : currPitch;
+
+
+	currFront.x = cos(glm::radians(currYaw)) * cos(glm::radians(currPitch));
+	currFront.y = sin(glm::radians(currPitch));
+	currFront.z = sin(glm::radians(currYaw)) * cos(glm::radians(currPitch));
+	currFront = glm::normalize(currFront);
+
 }
 
 bool initGL() {
@@ -212,13 +253,17 @@ bool initGLFW() {
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(0);
 	glfwSetKeyCallback(window, keyboardfunc);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	glfwSetCursorPosCallback(window, mouseFunc);
 	return true;
 }
 
-inputStruct input;
+
+#define X_ROTATE_SCALE 0.1
+#define Y_ROTATE_SCALE 0.1
+#define MOVE_SPEED 100
+
 
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
@@ -232,13 +277,43 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	//int time = std::chrono::duration_cast<std::chrono::milliseconds>(
 	//	p2.time_since_epoch()).count();
-	input.mousePosX = lastX - WIDTH / 2;
-	input.mousePosY = lastY - HEIGHT / 2;
+	//input.mousePosX = lastX - WIDTH / 2;
+	//input.mousePosY = lastY - HEIGHT / 2;
 
-	input.currPosZ -= WPressed * deltaTime.count() * 10;
-	input.currPosZ += SPressed * deltaTime.count() * 10;
-	input.currPosX -= APressed * deltaTime.count() * 10;
-	input.currPosX += DPressed * deltaTime.count() * 10;
+	//input.currRotX = (lastX - WIDTH / 2)*X_ROTATE_SCALE;
+	//input.currRotY = (lastY - HEIGHT / 2)*Y_ROTATE_SCALE;
+
+	//glRotatef()
+
+	//glm::vec3 ass;
+	//auto res = glm::rotate(glm::mat3(), 1.0, ass);
+	//glm::vec3 toRotate;
+	//glm::rotate(toRotate, 20.0, toRotate);
+	glm::vec3 frontV = currFront;
+	glm::vec3 currP(input.currPosX, input.currPosY, input.currPosZ);
+	glm::vec3 upV(0, 1, 0);
+	glm::vec3 rightV = glm::normalize(glm::cross(frontV, upV));
+
+	frontV *= MOVE_SPEED* (WPressed -SPressed)*deltaTime.count();
+	rightV *= MOVE_SPEED * (DPressed - APressed)*deltaTime.count();
+	currP += frontV;
+	currP += rightV;
+
+	input.currPosX = currP.x;
+	input.currPosY = currP.y;
+	input.currPosZ = currP.z;
+
+	input.forwardX = currFront.x;
+	input.forwardY = currFront.y;
+	input.forwardZ = currFront.z;
+
+	//input.forwardX = currP.x;
+	//input.forwardY = currP.y;
+	//input.forwardZ = currP.z;
+	//input.currPosZ -= WPressed * deltaTime.count() * 10;
+	//input.currPosZ += SPressed * deltaTime.count() * 10;
+	//input.currPosX -= APressed * deltaTime.count() * 10;
+	//input.currPosX += DPressed * deltaTime.count() * 10;
 	launch_cudaRender(grid, block, 0, (unsigned int*)cuda_dev_render_buffer, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
 
 	// We want to copy cuda_dev_render_buffer data to the texture

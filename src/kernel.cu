@@ -166,16 +166,18 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 }
 
 struct inputStruct {
-	float mousePosX;
-	float mousePosY;
-
 	float currPosX;
 	float currPosY;
 	float currPosZ;
+
+	float forwardX;
+	float forwardY;
+	float forwardZ;
 };
 
-#define MOUSE_ROTATION_SCALE_X -0.005
-#define MOUSE_ROTATION_SCALE_Y -0.003
+
+//#define MOUSE_ROTATION_SCALE_X -0.005
+//#define MOUSE_ROTATION_SCALE_Y -0.003
 
 __global__ void
 cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruct input)
@@ -189,24 +191,23 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	int x = blockIdx.x*bw + tx;
 	int y = blockIdx.y*bh + ty;
 
-	float sizeNearPlane = 6;
-	float sizeFarPlane = 8;
-	//float3 lookDir = make_float3(0, 0, -1);
+	float3 forwardV = make_float3(input.forwardX, input.forwardY, input.forwardZ);
+	float3 up = make_float3(0, 1, 0);
+	float3 rightV = normalize(cross(forwardV, up));
+	float3 upV = normalize(cross(rightV, forwardV));
+
+	//float sizeNearPlane = 5;
+	float sizeFarPlane = 10;
 	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);//make_float3(0,0,0);
-	float distBetweenPlanes = 1.0;
+	float distBetweenPlanes = 5;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
-	float3 distFromCenter = make_float3(x - center.x, y - center.y, 0) *make_float3(1.0f / imgw, 1.0f / imgh, 1.); // coordinate dist from center
-	float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
+	float3 distFromCenter = /*make_float3(x - center.x, y - center.y, 0) */((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
+	//float3 distFromCenter = rightV * diffV + up2 * diffV; // coordinate dist from center
+	//float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
+	float3 firstPlanePos = origin;
+	float3 secondPlanePos = sizeFarPlane * distFromCenter + distBetweenPlanes* forwardV + origin;
 
-	float3 secondPlanePos = sizeFarPlane * distFromCenter;
-	secondPlanePos = secondPlanePos + distBetweenPlanes * make_float3(0,0,-1) + origin;
-
-	firstPlanePos = RotateAngleAxis(firstPlanePos - origin, MOUSE_ROTATION_SCALE_Y * input.mousePosY, make_float3(1, 0, 0)) + origin;
-	secondPlanePos = RotateAngleAxis(secondPlanePos - origin, MOUSE_ROTATION_SCALE_Y * input.mousePosY, make_float3(1, 0, 0)) + origin;
-
-	firstPlanePos = RotateAngleAxis(firstPlanePos - origin, MOUSE_ROTATION_SCALE_X*input.mousePosX, make_float3(0, 1, 0)) + origin;
-	secondPlanePos = RotateAngleAxis(secondPlanePos - origin, MOUSE_ROTATION_SCALE_X * input.mousePosX, make_float3(0, 1, 0)) + origin;
 
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
