@@ -244,9 +244,9 @@ void initCUDABuffers()
 	num_values = num_texels * 4;
 	size_tex_data = sizeof(GLubyte) * num_values;
 	// We don't want to use cudaMallocManaged here - since we definitely want
-	cudaError_t stat;
-	size_t myStackSize = 10000;
-	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
+	//cudaError_t stat;
+	//size_t myStackSize = 20000;
+	//stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 }
 
@@ -284,15 +284,6 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	const auto p1 = std::chrono::system_clock::now();
 	const auto p2 = p1 - std::chrono::hours(24);
 
-	//int time = std::chrono::duration_cast<std::chrono::milliseconds>(
-	//	p2.time_since_epoch()).count();
-
-	//glRotatef()
-
-	//glm::vec3 ass;
-	//auto res = glm::rotate(glm::mat3(), 1.0, ass);
-	//glm::vec3 toRotate;
-	//glm::rotate(toRotate, 20.0, toRotate);
 	glm::vec3 frontV = currFront;
 	glm::vec3 currP(input.currPosX, input.currPosY, input.currPosZ);
 	glm::vec3 upV(0, 1, 0);
@@ -320,13 +311,14 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.UpZ = actualUpV.z;
 
 
-	launch_cudaRender(grid, block, 0, (unsigned int*)cuda_dev_render_buffer, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
-
 	// We want to copy cuda_dev_render_buffer data to the texture
 	// Map buffer objects to get CUDA device pointers
 	cudaArray* texture_ptr;
 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
 	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0));
+
+	launch_cudaRender(grid, block, 0, (unsigned int*)cuda_dev_render_buffer, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
+
 
 	int num_texels = WIDTH * HEIGHT;
 	int num_values = num_texels * 4;
@@ -338,8 +330,8 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 }
 
-//void display(void) {
-//	generateCUDAImage();
+//void display(std::chrono::duration<double> duration, std::chrono::duration<double> deltaTime) {
+//	generateCUDAImage(duration, deltaTime);
 //	glfwPollEvents();
 //	// Clear the color buffer
 //	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);

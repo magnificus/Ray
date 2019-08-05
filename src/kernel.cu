@@ -96,7 +96,7 @@ struct hitInfo {
 
 };
 
-#define LIGHT_POS make_float3(0,3,0)
+#define LIGHT_POS make_float3(0,5,20)
 
 
 __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const float& currTime, const objectInfo* objects, int numObjects) {
@@ -158,46 +158,10 @@ __device__ float getShadowTerm(const float3 originalPos, const float currTime, c
 
 }
 
-__device__ float3 trace(const float3 &currRayPos, const float3 &currRayDir, int remainingDepth, const float &currTime, objectInfo *objects, int numObjects) {
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const float currTime, objectInfo *objects, int numObjects) {
 	if (remainingDepth <= 0) {
 		return make_float3(0,0,0);
 	}
-
-	//float closestDist = 1000000;
-	//float3 normal;
-	//int closestObjectIndex = -1;
-
-	////for (int j = 0; j < 100; j++) {
-	//	for (int i = 0; i < numObjects; i++) {
-	//		const objectInfo& curr = objects[i];
-	//		float currDist;
-
-	//		switch (curr.s) {
-	//		case plane: {
-	//			planeInfo* p1 = (planeInfo*)curr.shapeData;
-	//			if (intersectPlane(*p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
-	//				closestDist = currDist;
-	//				closestObjectIndex = i;
-
-	//				normal = p1->normal;
-	//			}
-
-	//			break;
-	//		}
-	//		case sphere: {
-	//			sphereInfo* s1 = (sphereInfo*)curr.shapeData;
-	//			if (intersectsSphere(currRayPos, currRayDir, *s1, currDist) && currDist < closestDist) {
-	//				closestDist = currDist;
-	//				closestObjectIndex = i;
-
-	//				float3 nextPos = currRayPos + currDist * currRayDir;
-	//				normal = normalize(nextPos - s1->pos);
-
-	//			}
-	//			break;
-	//		}
-	//		}
-	//	}
 
 	hitInfo hit = getHit(currRayPos, currRayDir, currTime, objects, numObjects);
 
@@ -208,7 +172,7 @@ __device__ float3 trace(const float3 &currRayPos, const float3 &currRayDir, int 
 		objectInfo currObject = objects[hit.objectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
-		float3 nextPos = hit.pos;//currRayPos + closestDist * currRayDir;
+		float3 nextPos = hit.pos;
 		float3 normal = hit.normal;
 
 		float extraReflection = 0;
@@ -232,7 +196,7 @@ __device__ float3 trace(const float3 &currRayPos, const float3 &currRayDir, int 
 			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
 		}
 		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity) * currObject.color;
-		return 100 * (1 / powf(length(nextPos - LIGHT_POS), 2)) * getShadowTerm(nextPos + bias, currTime, objects, numObjects) * color + reflected + refracted;
+		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) * getShadowTerm(nextPos + bias, currTime, objects, numObjects) * color + reflected + refracted;
 	}
 
 }
@@ -249,6 +213,7 @@ struct inputStruct {
 	float upX;
 	float upY;
 	float upZ;
+
 };
 
 __global__ void
@@ -284,21 +249,25 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
 	sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
-	sphereInfo s2 = make_sphereInfo(make_float3(-8, -4, -15), 4);
-	sphereInfo s3 = make_sphereInfo(make_float3(2, 3, -40), 6);
-	sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.4)*6 + 4, 0,  cos(currTime*0.4) * 5 - 10), 3);
+	sphereInfo s2 = make_sphereInfo(make_float3(-15, -4, -15), 4);
+	sphereInfo s3 = make_sphereInfo(make_float3(2, 4, -40), 8);
+	sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.2)*6 + 4, 1,  cos(currTime*0.2) * 5 - 10), 3);
 	planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
-	planeInfo p2 = make_planeInfo(make_float3(0, 10.0, 0), make_float3(0, 1, 0));
+	planeInfo p2 = make_planeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0));
+	planeInfo p3 = make_planeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1));
+	planeInfo p4 = make_planeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0));
 
-	objectInfo objects[6];
+	objectInfo objects[10];
 	objects[0] = make_objectInfo(sphere, &s1, 0.0, make_float3(1, 0, 0),0,0);
 	objects[1] = make_objectInfo(sphere, &s2, 0.5, make_float3(0, 1, 0),0.0,1.5);
 	objects[2] = make_objectInfo(plane, &p1, 0.2, make_float3(0, 1, 1),0,0);
 	objects[3] = make_objectInfo(sphere, &s3, 0.7, make_float3(1, 1, 1), 0,0);
 	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
 	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 1, 1), 0.9,1.5);
+	objects[6] = make_objectInfo(plane, &p3, 0.5, make_float3(0, 1, 0), 0,0);
+	objects[7] = make_objectInfo(plane, &p4, 0.5, make_float3(0, 1, 0), 0,0);
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 1, currTime, objects, 6);
+	float3 out = 255*trace(firstPlanePos, dirVector, 1, currTime, objects, 8);
 
 
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
