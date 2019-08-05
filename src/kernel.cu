@@ -16,7 +16,7 @@ __device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const
 
 		float3 L = info.pos - origin;
 		float tca = dot(dir, L);
-		// if (tca < 0) return false;
+		 //if (tca < 0) return false;
 		float d2 = dot(L,L) - tca * tca;
 		if (d2 > info.rad2) return false;
 		float thc = sqrt(info.rad2 - d2);
@@ -89,55 +89,127 @@ __device__ float3 reflect(const float3& I, const float3& N)
 	return I - 2 * dot(I, N) * N;
 }
 
-__device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth, const float &currTime, objectInfo objects[], int numObjects) {
+struct hitInfo {
+	int objectIndex = -1;
+	float3 pos;
+	float3 normal;
+
+};
+
+#define LIGHT_POS make_float3(0,3,0)
+
+
+__device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const float& currTime, const objectInfo* objects, int numObjects) {
+	float closestDist = 1000000;
+	float3 normal;
+	hitInfo toReturn;
+	int closestObjectIndex = -1;
+
+
+	for (int i = 0; i < numObjects; i++) {
+		const objectInfo& curr = objects[i];
+		float currDist;
+
+		switch (curr.s) {
+		case plane: {
+			planeInfo* p1 = (planeInfo*)curr.shapeData;
+			if (intersectPlane(*p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+				closestDist = currDist;
+				closestObjectIndex = i;
+
+				normal = p1->normal;
+			}
+
+			break;
+		}
+		case sphere: {
+			sphereInfo* s1 = (sphereInfo*)curr.shapeData;
+			if (intersectsSphere(currRayPos, currRayDir, *s1, currDist) && currDist < closestDist) {
+				closestDist = currDist;
+				closestObjectIndex = i;
+
+				float3 nextPos = currRayPos + currDist * currRayDir;
+				normal = normalize(nextPos - s1->pos);
+
+			}
+			break;
+		}
+		}
+	}
+
+	toReturn.objectIndex = closestObjectIndex;
+	toReturn.normal = normal;
+	toReturn.pos = currRayPos + closestDist * currRayDir;
+	return toReturn;
+}
+
+
+__device__ float getShadowTerm(const float3 originalPos, const float currTime, const objectInfo* objects, int numObjects) {
+	float3 toLightVec = normalize(LIGHT_POS - originalPos);
+	hitInfo hit = getHit(originalPos, toLightVec, currTime, objects, numObjects);
+
+	if (hit.objectIndex == -1 || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
+		return 1.;
+	}
+	return objects[hit.objectIndex].refractivity * 0.8 + 0.2;
+	//while (length(currPos - LIGHT_POS) > 0.1) {
+	//
+	//}
+
+}
+
+__device__ float3 trace(const float3 &currRayPos, const float3 &currRayDir, int remainingDepth, const float &currTime, objectInfo *objects, int numObjects) {
 	if (remainingDepth <= 0) {
 		return make_float3(0,0,0);
 	}
 
-	float closestDist = 1000000;
-	float3 normal;
-	int closestObjectIndex = -1;
+	//float closestDist = 1000000;
+	//float3 normal;
+	//int closestObjectIndex = -1;
 
-	//for (int j = 0; j < 100; j++) {
-		for (int i = 0; i < numObjects; i++) {
-			const objectInfo& curr = objects[i];
-			float currDist;
+	////for (int j = 0; j < 100; j++) {
+	//	for (int i = 0; i < numObjects; i++) {
+	//		const objectInfo& curr = objects[i];
+	//		float currDist;
 
-			switch (curr.s) {
-			case plane: {
-				planeInfo* p1 = (planeInfo*)curr.shapeData;
-				if (intersectPlane(*p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
-					closestDist = currDist;
-					closestObjectIndex = i;
+	//		switch (curr.s) {
+	//		case plane: {
+	//			planeInfo* p1 = (planeInfo*)curr.shapeData;
+	//			if (intersectPlane(*p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+	//				closestDist = currDist;
+	//				closestObjectIndex = i;
 
-					normal = p1->normal;
-				}
+	//				normal = p1->normal;
+	//			}
 
-				break;
-			}
-			case sphere: {
-				sphereInfo* s1 = (sphereInfo*)curr.shapeData;
-				if (intersectsSphere(currRayPos, currRayDir, *s1, currDist) && currDist < closestDist) {
-					closestDist = currDist;
-					closestObjectIndex = i;
+	//			break;
+	//		}
+	//		case sphere: {
+	//			sphereInfo* s1 = (sphereInfo*)curr.shapeData;
+	//			if (intersectsSphere(currRayPos, currRayDir, *s1, currDist) && currDist < closestDist) {
+	//				closestDist = currDist;
+	//				closestObjectIndex = i;
 
-					float3 nextPos = currRayPos + currDist * currRayDir;
-					normal = normalize(nextPos - s1->pos);
+	//				float3 nextPos = currRayPos + currDist * currRayDir;
+	//				normal = normalize(nextPos - s1->pos);
 
-				}
-				break;
-			}
-			}
-		}
+	//			}
+	//			break;
+	//		}
+	//		}
+	//	}
 
-	if (closestObjectIndex == -1) {
+	hitInfo hit = getHit(currRayPos, currRayDir, currTime, objects, numObjects);
+
+	if (hit.objectIndex == -1) {
 		return make_float3(0,0,0);
 	}
 	else {
-		objectInfo currObject = objects[closestObjectIndex];
+		objectInfo currObject = objects[hit.objectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
-		float3 nextPos = currRayPos + closestDist * currRayDir;
+		float3 nextPos = hit.pos;//currRayPos + closestDist * currRayDir;
+		float3 normal = hit.normal;
 
 		float extraReflection = 0;
 		float3 bias = 0.001 * normal;
@@ -160,7 +232,7 @@ __device__ float3 trace(float3 currRayPos, float3 currRayDir, int remainingDepth
 			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
 		}
 		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity) * currObject.color;
-		return 10 * (1 / powf(length(nextPos), 1)) * color + reflected + refracted;
+		return 100 * (1 / powf(length(nextPos - LIGHT_POS), 2)) * getShadowTerm(nextPos + bias, currTime, objects, numObjects) * color + reflected + refracted;
 	}
 
 }
@@ -196,17 +268,18 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	float3 rightV = normalize(cross(forwardV, up));
 	float3 upV = normalize(cross(rightV, forwardV));
 
-	float sizeNearPlane = 6;
 	float sizeFarPlane = 10;
+	float sizeNearPlane = sizeFarPlane/2;
 	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);
-	float distBetweenPlanes = 2;
+	float distFarPlane = 4;
+	float distFirstPlane = distFarPlane /2.0f;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
 	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
 	//float3 distFromCenter = rightV * diffV + up2 * diffV; // coordinate dist from center
-	float3 firstPlanePos = sizeNearPlane*distFromCenter + origin;
+	float3 firstPlanePos = (sizeNearPlane*distFromCenter) + origin + (distFirstPlane * forwardV);
 	//float3 firstPlanePos = origin;
-	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distBetweenPlanes* forwardV) + origin;
+	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
 
 
@@ -226,9 +299,9 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	objects[2] = make_objectInfo(plane, &p1, 0.2, make_float3(0, 1, 1),0,0);
 	objects[3] = make_objectInfo(sphere, &s3, 0.7, make_float3(1, 1, 1), 0,0);
 	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
-	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 0, 0), 1.0,1.5);
+	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 1, 1), 0.9,1.5);
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 1, currTime, objects, 6);
+	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, objects, 6);
 
 
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);

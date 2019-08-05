@@ -147,6 +147,8 @@ float WPressed = 0.0;
 float SPressed = 0.0;
 float DPressed = 0.0;
 float APressed = 0.0;
+float QPressed = 0.0;
+float EPressed = 0.0;
 
 #define PRESSED_MACRO(inKey, variable) if (key == GLFW_KEY_##inKey) { \
 if (action == GLFW_PRESS){ \
@@ -162,6 +164,8 @@ void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mod
 	PRESSED_MACRO(S, SPressed);
 	PRESSED_MACRO(D, DPressed);
 	PRESSED_MACRO(A, APressed);
+	PRESSED_MACRO(Q, QPressed);
+	PRESSED_MACRO(E, EPressed);
 	//if (key == GLFW_KEY_W) {
 	//	if (action == GLFW_PRESS)
 	//		WPressed = true;
@@ -236,7 +240,7 @@ void initCUDABuffers()
 	size_tex_data = sizeof(GLubyte) * num_values;
 	// We don't want to use cudaMallocManaged here - since we definitely want
 	cudaError_t stat;
-	size_t myStackSize = 100000;
+	size_t myStackSize = 10000;
 	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 }
@@ -262,13 +266,13 @@ bool initGLFW() {
 
 #define X_ROTATE_SCALE 0.1
 #define Y_ROTATE_SCALE 0.1
-#define MOVE_SPEED 100
+#define MOVE_SPEED 50
 
 
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
 	// calculate grid size
-	dim3 block(4, 4, 1);
+	dim3 block(16, 16, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 
@@ -293,11 +297,14 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	glm::vec3 currP(input.currPosX, input.currPosY, input.currPosZ);
 	glm::vec3 upV(0, 1, 0);
 	glm::vec3 rightV = glm::normalize(glm::cross(frontV, upV));
+	glm::vec3 actualUpV = glm::normalize(glm::cross(frontV, rightV));
 
 	frontV *= MOVE_SPEED* (WPressed -SPressed)*deltaTime.count();
-	rightV *= MOVE_SPEED * (DPressed - APressed)*deltaTime.count();
+	rightV *= MOVE_SPEED* (DPressed -APressed)*deltaTime.count();
+	actualUpV *= MOVE_SPEED * (EPressed - QPressed)*deltaTime.count();
 	currP += frontV;
 	currP += rightV;
+	currP += actualUpV;
 
 	input.currPosX = currP.x;
 	input.currPosY = currP.y;
