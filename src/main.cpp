@@ -268,7 +268,7 @@ bool initGLFW() {
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
 	// calculate grid size
-	dim3 block(8, 8, 1);
+	dim3 block(4, 4, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 

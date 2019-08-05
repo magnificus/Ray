@@ -63,7 +63,7 @@ inline __device__ float3 inverse(float3 v)
 
 inline __device__ float3 normalize(float3 v)
 {
-	float invLen = /*1.0f / length(v);*/ 1 / sqrtf(dot(v, v));
+	float invLen = 1.0f / length(v);// 1 / sqrtf(dot(v, v));
 	return invLen * v;
 }
 

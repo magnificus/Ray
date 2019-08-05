@@ -210,6 +210,7 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 
 
 
+
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
 	sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
@@ -227,10 +228,9 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
 	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 0, 0), 1.0,1.5);
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, objects, 6);
+	float3 out = 255*trace(firstPlanePos, dirVector, 1, currTime, objects, 6);
 
 
-	//out.x = 255 * input.mouseDeltaX;
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
 extern "C" void
