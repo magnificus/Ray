@@ -44,7 +44,12 @@ struct inputStruct {
 	float forwardX;
 	float forwardY;
 	float forwardZ;
+
+	float UpX;
+	float UpY;
+	float UpZ;
 };
+
 
 double currYaw = 270;
 double currPitch = 0;
@@ -272,7 +277,7 @@ bool initGLFW() {
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
 	// calculate grid size
-	dim3 block(16, 16, 1);
+	dim3 block(8, 8, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 
@@ -281,11 +286,6 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	//int time = std::chrono::duration_cast<std::chrono::milliseconds>(
 	//	p2.time_since_epoch()).count();
-	//input.mousePosX = lastX - WIDTH / 2;
-	//input.mousePosY = lastY - HEIGHT / 2;
-
-	//input.currRotX = (lastX - WIDTH / 2)*X_ROTATE_SCALE;
-	//input.currRotY = (lastY - HEIGHT / 2)*Y_ROTATE_SCALE;
 
 	//glRotatef()
 
@@ -298,13 +298,14 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	glm::vec3 upV(0, 1, 0);
 	glm::vec3 rightV = glm::normalize(glm::cross(frontV, upV));
 	glm::vec3 actualUpV = glm::normalize(glm::cross(frontV, rightV));
+	glm::vec3 lessUp = actualUpV;
 
 	frontV *= MOVE_SPEED* (WPressed -SPressed)*deltaTime.count();
 	rightV *= MOVE_SPEED* (DPressed -APressed)*deltaTime.count();
-	actualUpV *= MOVE_SPEED * (EPressed - QPressed)*deltaTime.count();
+	lessUp *= MOVE_SPEED * (EPressed - QPressed)*deltaTime.count();
 	currP += frontV;
 	currP += rightV;
-	currP += actualUpV;
+	currP += lessUp;
 
 	input.currPosX = currP.x;
 	input.currPosY = currP.y;
@@ -314,13 +315,11 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.forwardY = currFront.y;
 	input.forwardZ = currFront.z;
 
-	//input.forwardX = currP.x;
-	//input.forwardY = currP.y;
-	//input.forwardZ = currP.z;
-	//input.currPosZ -= WPressed * deltaTime.count() * 10;
-	//input.currPosZ += SPressed * deltaTime.count() * 10;
-	//input.currPosX -= APressed * deltaTime.count() * 10;
-	//input.currPosX += DPressed * deltaTime.count() * 10;
+	input.UpX = actualUpV.x;
+	input.UpY = actualUpV.y;
+	input.UpZ = actualUpV.z;
+
+
 	launch_cudaRender(grid, block, 0, (unsigned int*)cuda_dev_render_buffer, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
 
 	// We want to copy cuda_dev_render_buffer data to the texture

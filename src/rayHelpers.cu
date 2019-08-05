@@ -117,7 +117,7 @@ inline __device__ objectInfo make_objectInfo(shape s, void* shapeData, float ref
 }
 
 
-inline __device__ float3 RotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 
+inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 
 {
 	double S, C;
 	sincos(angleDeg, &S, &C);

@@ -245,11 +245,11 @@ struct inputStruct {
 	float forwardX;
 	float forwardY;
 	float forwardZ;
+
+	float upX;
+	float upY;
+	float upZ;
 };
-
-
-//#define MOUSE_ROTATION_SCALE_X -0.005
-//#define MOUSE_ROTATION_SCALE_Y -0.003
 
 __global__ void
 cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruct input)
@@ -264,21 +264,18 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	int y = blockIdx.y*bh + ty;
 
 	float3 forwardV = make_float3(input.forwardX, input.forwardY, input.forwardZ);
-	float3 up = make_float3(0, 1, 0);
-	float3 rightV = normalize(cross(forwardV, up));
-	float3 upV = normalize(cross(rightV, forwardV));
+	float3 upV = make_float3(input.upX, input.upY, input.upZ);
+	float3 rightV = normalize(cross(upV,forwardV));
 
 	float sizeFarPlane = 10;
-	float sizeNearPlane = sizeFarPlane/2;
+	float sizeNearPlane = sizeFarPlane*0.5;
 	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);
 	float distFarPlane = 4;
-	float distFirstPlane = distFarPlane /2.0f;
+	float distFirstPlane = distFarPlane *0.5;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
 	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
-	//float3 distFromCenter = rightV * diffV + up2 * diffV; // coordinate dist from center
 	float3 firstPlanePos = (sizeNearPlane*distFromCenter) + origin + (distFirstPlane * forwardV);
-	//float3 firstPlanePos = origin;
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
 
@@ -301,7 +298,7 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
 	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 1, 1), 0.9,1.5);
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, objects, 6);
+	float3 out = 255*trace(firstPlanePos, dirVector, 1, currTime, objects, 6);
 
 
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
