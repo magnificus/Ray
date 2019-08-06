@@ -56,11 +56,13 @@ GLSLProgram shdrawtex; // GLSLS program for textured draw
 // Cuda <-> OpenGl interop resources
 void* cuda_dev_render_buffer; // Cuda buffer for initial render
 void* cuda_geometry_buffer; 
+
+
 struct cudaGraphicsResource* cuda_tex_resource;
 GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
 extern "C" void
 // Forward declaration of CUDA render
-launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int* g_odata, int imgw, int imgh, float currTime, inputStruct input);
+launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
 
 // CUDA
 size_t size_tex_data;
@@ -248,27 +250,12 @@ void initCUDABuffers()
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 
 
-	num_elements = 10;
-	//size_elements_data = sizeof(objectInfo)
+	num_elements = 8;
+	size_elements_data = sizeof(objectInfo) * num_elements;
 
-	//sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
-	//sphereInfo s2 = make_sphereInfo(make_float3(-15, -4, -15), 4);
-	//sphereInfo s3 = make_sphereInfo(make_float3(2, 4, -40), 8);
-	//sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.2) * 6 + 4, 1, cos(currTime * 0.2) * 5 - 10), 3);
-	//planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
-	//planeInfo p2 = make_planeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0));
-	//planeInfo p3 = make_planeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1));
-	//planeInfo p4 = make_planeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0));
+	checkCudaErrors(cudaMalloc(&cuda_geometry_buffer, size_elements_data)); // Allocate CUDA memory for objects
 
-	//objectInfo objects[10];
-	//objects[0] = make_objectInfo(sphere, &s1, 0.0, make_float3(1, 0, 0), 0, 0);
-	//objects[1] = make_objectInfo(sphere, &s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5);
-	//objects[2] = make_objectInfo(plane, &p1, 0.2, make_float3(0, 1, 1), 0, 0);
-	//objects[3] = make_objectInfo(sphere, &s3, 0.7, make_float3(1, 1, 1), 0, 0);
-	//objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0, 0);
-	//objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 1, 1), 0.9, 1.5);
-	//objects[6] = make_objectInfo(plane, &p3, 0.5, make_float3(0, 1, 0), 0, 0);
-	//objects[7] = make_objectInfo(plane, &p4, 0.5, make_float3(0, 1, 0), 0, 0);
+
 }
 
 bool initGLFW() {
@@ -302,8 +289,8 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 
-	const auto p1 = std::chrono::system_clock::now();
-	const auto p2 = p1 - std::chrono::hours(24);
+	//const auto pn = std::chrono::system_clock::now();
+	//const auto pt = pn - std::chrono::hours(24);
 
 	glm::vec3 frontV = currFront;
 	glm::vec3 currP(input.currPosX, input.currPosY, input.currPosZ);
@@ -332,13 +319,34 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.upZ = actualUpV.z;
 
 
-	// We want to copy cuda_dev_render_buffer data to the texture
-	// Map buffer objects to get CUDA device pointers
+	shapeInfo s1 = make_shapeInfo(make_float3(0, -3,  13), make_float3(0, 0, 0), 1);
+	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
+	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
+	shapeInfo s4 = make_shapeInfo(make_float3(7, 1, 5), make_float3(0, 0, 0), 3);
+	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
+	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
+	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
+	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
+
+	objectInfo objects[8];
+	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0);
+	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5);
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0, 1, 1), 0, 0);
+	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0);
+	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0);
+	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 1, 1), 0.9, 1.5);
+	objects[6] = make_objectInfo(plane, p3, 0.5, make_float3(0, 1, 0), 0, 0);
+	objects[7] = make_objectInfo(plane, p4, 0.5, make_float3(0, 1, 0), 0, 0);
+
+	cudaMemcpy(cuda_geometry_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
+
+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (objectInfo*)cuda_geometry_buffer, num_elements };
+
+
+	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
 	cudaArray* texture_ptr;
 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
-	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0));
-
-	launch_cudaRender(grid, block, 0, (unsigned int*)cuda_dev_render_buffer, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
+	/*checkCudaErrors(*/cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0);
 
 
 	int num_texels = WIDTH * HEIGHT;
@@ -348,6 +356,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
 
 	cudaDeviceSynchronize();
+
 
 }
 

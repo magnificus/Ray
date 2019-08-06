@@ -204,23 +204,8 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 }
 
-//struct inputStruct {
-//	float currPosX;
-//	float currPosY;
-//	float currPosZ;
-//
-//	float forwardX;
-//	float forwardY;
-//	float forwardZ;
-//
-//	float upX;
-//	float upY;
-//	float upZ;
-//
-//};
-
 __global__ void
-cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruct input)
+cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
 {
 	extern __shared__ uchar4 sdata[];
 
@@ -246,51 +231,17 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 	float3 firstPlanePos = (sizeNearPlane*distFromCenter) + origin + (distFirstPlane * forwardV);
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
-
-
-
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
-	//sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
-	//sphereInfo s2 = make_sphereInfo(make_float3(-15, -4, -15), 4);
-	//sphereInfo s3 = make_sphereInfo(make_float3(2, 4, -40), 8);
-	//sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.2)*6 + 4, 1,  cos(currTime*0.2) * 5 - 10), 3);
-	//planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
-	//planeInfo p2 = make_planeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0));
-	//planeInfo p3 = make_planeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1));
-	//planeInfo p4 = make_planeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0));
-
-	shapeInfo s1 = make_shapeInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), make_float3(0,0,0), 1);//make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
-	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
-	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
-	shapeInfo s4 = make_shapeInfo(make_float3(sin(currTime * 0.2)*6 + 4, 1,  cos(currTime*0.2) * 5 - 10), make_float3(0, 0, 0), 3);
-	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
-	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
-	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
-	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
+	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, pointers.objects, pointers.numObjects);
 
 
-
-
-	objectInfo objects[10];
-	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0),0,0);
-	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0),0.0,1.5);
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0, 1, 1),0,0);
-	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0,0);
-	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0,0);
-	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 1, 1), 0.9,1.5);
-	objects[6] = make_objectInfo(plane, p3, 0.5, make_float3(0, 1, 0), 0,0);
-	objects[7] = make_objectInfo(plane, p4, 0.5, make_float3(0, 1, 0), 0,0);
-
-	float3 out = 255*trace(firstPlanePos, dirVector, 10, currTime, objects, 8);
-
-
-	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
+	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
 extern "C" void
-launch_cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh, float currTime,inputStruct input)
+launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime,inputStruct input)
 {
 
-	cudaRender << < grid, block, sbytes >> >(g_odata, imgw, imgh, currTime, input);
+	cudaRender << < grid, block, sbytes >> >(pointers, imgw, imgh, currTime, input);
 }
 

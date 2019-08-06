@@ -66,6 +66,12 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 	return o;
 }
 
+struct inputPointers {
+	unsigned int* g_odata;
+	objectInfo* objects;
+	int numObjects;
+};
+
 
 struct inputStruct {
 	float currPosX;
