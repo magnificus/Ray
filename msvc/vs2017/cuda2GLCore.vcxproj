@@ -32,6 +32,7 @@
     <ClInclude Include="..\..\src\shader_tools\GLSLProgram.h" />
     <ClInclude Include="..\..\src\shader_tools\GLSLShader.h" />
     <ClInclude Include="..\..\src\shader_tools\shader_tools_common.h" />
+    <ClInclude Include="..\..\src\sharedStructs.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />

@@ -45,6 +45,7 @@
     <ClInclude Include="..\..\src\libs\helper_string.h">
       <Filter>cuda</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\sharedStructs.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />

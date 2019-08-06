@@ -4,6 +4,7 @@
 #include "vector_functions.h"
 #include "common_functions.h"
 #include "math_functions.h"
+#include "sharedStructs.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -67,54 +68,6 @@ inline __device__ float3 normalize(float3 v)
 	return invLen * v;
 }
 
-struct sphereInfo {
-	float3 pos;
-	float rad;
-	float rad2;
-};
-
-inline __device__ sphereInfo make_sphereInfo(float3 pos, float rad) {
-	sphereInfo s;
-	s.pos = pos;
-	s.rad = rad;
-	s.rad2 = rad * rad;
-	return s;
-}
-
-
-struct planeInfo {
-	float3 point;
-	float3 normal;
-};
-
-inline __device__ planeInfo make_planeInfo(float3 point, float3 normal) {
-	planeInfo p;
-	p.point = point;
-	p.normal = normal;
-	return p;
-}
-
-enum shape { sphere, plane };
-
-struct objectInfo {
-	shape s;
-	void* shapeData;
-	float reflectivity;
-	float refractivity;
-	float refractiveIndex;
-	float3 color;
-};
-
-inline __device__ objectInfo make_objectInfo(shape s, void* shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex) {
-	objectInfo o;
-	o.s = s;
-	o.shapeData = shapeData;
-	o.reflectivity = reflectivity;
-	o.color = color;
-	o.refractivity = refractivity;
-	o.refractiveIndex = refractiveIndex;
-	return o;
-}
 
 
 inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 

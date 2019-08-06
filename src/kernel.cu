@@ -10,16 +10,18 @@ __global__ void kernel(){
 
 
 
-__device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const sphereInfo& info, float &t) {
+__device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const shapeInfo& info, float &t) {
 
 		float t0, t1; // solutions for t if the ray intersects 
+
+		float rad2 = powf(info.rad, 2);
 
 		float3 L = info.pos - origin;
 		float tca = dot(dir, L);
 		 //if (tca < 0) return false;
 		float d2 = dot(L,L) - tca * tca;
-		if (d2 > info.rad2) return false;
-		float thc = sqrt(info.rad2 - d2);
+		if (d2 > rad2) return false;
+		float thc = sqrt(rad2 - d2);
 		t0 = tca - thc;
 		t1 = tca + thc;
 
@@ -38,12 +40,12 @@ __device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const
 }
 
 // plane normal, plane point, ray start, ray dir, point along line
-__device__ bool intersectPlane(const planeInfo& p, const float3& l0, const float3& l, float& t)
+__device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
 {
 	// assuming vectors are all normalized
 	float denom = dot(p.normal, l);
 	if (denom > 1e-6) {
-		float3 p0l0 = p.point - l0;
+		float3 p0l0 = p.pos - l0;
 		t = dot(p0l0, p.normal) / denom;
 		return (t >= 0);
 	}
@@ -69,6 +71,7 @@ __device__ void fresnel(const float3& I, const float3& N, const float& ior, floa
 		float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
 		kr = (Rs * Rs + Rp * Rp) / 2;
 	}
+
 }
 
 
@@ -112,24 +115,24 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const float& cur
 
 		switch (curr.s) {
 		case plane: {
-			planeInfo* p1 = (planeInfo*)curr.shapeData;
-			if (intersectPlane(*p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+			shapeInfo p1 = curr.shapeData;
+			if (intersectPlane(p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
 				closestDist = currDist;
 				closestObjectIndex = i;
 
-				normal = p1->normal;
+				normal = p1.normal;
 			}
 
 			break;
 		}
 		case sphere: {
-			sphereInfo* s1 = (sphereInfo*)curr.shapeData;
-			if (intersectsSphere(currRayPos, currRayDir, *s1, currDist) && currDist < closestDist) {
+			shapeInfo s1 = curr.shapeData;
+			if (intersectsSphere(currRayPos, currRayDir, s1, currDist) && currDist < closestDist) {
 				closestDist = currDist;
 				closestObjectIndex = i;
 
 				float3 nextPos = currRayPos + currDist * currRayDir;
-				normal = normalize(nextPos - s1->pos);
+				normal = normalize(nextPos - s1.pos);
 
 			}
 			break;
@@ -183,7 +186,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			fresnel(currRayDir, normal, outside? currObject.refractiveIndex : 1 / currObject.refractiveIndex, kr);
 
 
-			if (kr < 1) {
+			if (kr <= 1) {
 				float3 refractionDirection = normalize(refract(currRayDir, normal, currObject.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
 				refracted = currObject.refractivity *(1-kr)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, currTime, objects, numObjects);
@@ -201,20 +204,20 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 }
 
-struct inputStruct {
-	float currPosX;
-	float currPosY;
-	float currPosZ;
-
-	float forwardX;
-	float forwardY;
-	float forwardZ;
-
-	float upX;
-	float upY;
-	float upZ;
-
-};
+//struct inputStruct {
+//	float currPosX;
+//	float currPosY;
+//	float currPosZ;
+//
+//	float forwardX;
+//	float forwardY;
+//	float forwardZ;
+//
+//	float upX;
+//	float upY;
+//	float upZ;
+//
+//};
 
 __global__ void
 cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruct input)
@@ -248,26 +251,38 @@ cudaRender(unsigned int *g_odata, int imgw, int imgh, float currTime, inputStruc
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
-	sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
-	sphereInfo s2 = make_sphereInfo(make_float3(-15, -4, -15), 4);
-	sphereInfo s3 = make_sphereInfo(make_float3(2, 4, -40), 8);
-	sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.2)*6 + 4, 1,  cos(currTime*0.2) * 5 - 10), 3);
-	planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
-	planeInfo p2 = make_planeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0));
-	planeInfo p3 = make_planeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1));
-	planeInfo p4 = make_planeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0));
+	//sphereInfo s1 = make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
+	//sphereInfo s2 = make_sphereInfo(make_float3(-15, -4, -15), 4);
+	//sphereInfo s3 = make_sphereInfo(make_float3(2, 4, -40), 8);
+	//sphereInfo s4 = make_sphereInfo(make_float3(sin(currTime * 0.2)*6 + 4, 1,  cos(currTime*0.2) * 5 - 10), 3);
+	//planeInfo p1 = make_planeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0));
+	//planeInfo p2 = make_planeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0));
+	//planeInfo p3 = make_planeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1));
+	//planeInfo p4 = make_planeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0));
+
+	shapeInfo s1 = make_shapeInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), make_float3(0,0,0), 1);//make_sphereInfo(make_float3(sin(currTime) * 2.0, -3, cos(currTime) * 2 - 15), 1);
+	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
+	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
+	shapeInfo s4 = make_shapeInfo(make_float3(sin(currTime * 0.2)*6 + 4, 1,  cos(currTime*0.2) * 5 - 10), make_float3(0, 0, 0), 3);
+	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
+	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
+	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
+	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
+
+
+
 
 	objectInfo objects[10];
-	objects[0] = make_objectInfo(sphere, &s1, 0.0, make_float3(1, 0, 0),0,0);
-	objects[1] = make_objectInfo(sphere, &s2, 0.5, make_float3(0, 1, 0),0.0,1.5);
-	objects[2] = make_objectInfo(plane, &p1, 0.2, make_float3(0, 1, 1),0,0);
-	objects[3] = make_objectInfo(sphere, &s3, 0.7, make_float3(1, 1, 1), 0,0);
-	objects[4] = make_objectInfo(plane, &p2, 0.0, make_float3(1, 1, 1), 0,0);
-	objects[5] = make_objectInfo(sphere, &s4, 0.0, make_float3(1, 1, 1), 0.9,1.5);
-	objects[6] = make_objectInfo(plane, &p3, 0.5, make_float3(0, 1, 0), 0,0);
-	objects[7] = make_objectInfo(plane, &p4, 0.5, make_float3(0, 1, 0), 0,0);
+	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0),0,0);
+	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0),0.0,1.5);
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0, 1, 1),0,0);
+	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0,0);
+	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0,0);
+	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 1, 1), 0.9,1.5);
+	objects[6] = make_objectInfo(plane, p3, 0.5, make_float3(0, 1, 0), 0,0);
+	objects[7] = make_objectInfo(plane, p4, 0.5, make_float3(0, 1, 0), 0,0);
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 1, currTime, objects, 8);
+	float3 out = 255*trace(firstPlanePos, dirVector, 10, currTime, objects, 8);
 
 
 	g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
