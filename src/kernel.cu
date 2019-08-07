@@ -8,8 +8,6 @@ __global__ void kernel(){
   
 }
 
-
-
 __device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const shapeInfo& info, float &t) {
 
 		float t0, t1; // solutions for t if the ray intersects 
@@ -50,6 +48,35 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 		return (t >= 0);
 	}
 	return false;
+}
+
+
+__device__ bool rayTriangleIntersect(
+	const float3& orig, const float3& dir,
+	const float3& v0, const float3& v1, const float3& v2,
+	float& t, float& u, float& v)
+{
+	float3 v0v1 = v1 - v0;
+	float3 v0v2 = v2 - v0;
+	float3 pvec = cross(dir, v0v2);
+	float det = dot(pvec,v0v1);
+	// if the determinant is negative the triangle is backfacing
+	// if the determinant is close to 0, the ray misses the triangle
+	float kEpsilon = 0.000001;
+	if (det < kEpsilon) return false;
+	float invDet = 1 / det;
+
+	float3 tvec = orig - v0;
+	u = dot(tvec,pvec) * invDet;
+	if (u < 0 || u > 1) return false;
+
+	float3 qvec = cross(tvec,v0v1);
+	v = dot(dir,qvec) * invDet;
+	if (v < 0 || u + v > 1) return false;
+
+	t = dot(v0v2,qvec) * invDet;
+
+	return true;
 }
 
 
@@ -155,9 +182,6 @@ __device__ float getShadowTerm(const float3 originalPos, const float currTime, c
 		return 1.;
 	}
 	return objects[hit.objectIndex].refractivity * 0.8 + 0.2;
-	//while (length(currPos - LIGHT_POS) > 0.1) {
-	//
-	//}
 
 }
 
@@ -165,6 +189,27 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 	if (remainingDepth <= 0) {
 		return make_float3(0,0,0);
 	}
+	
+	float3 v1 = make_float3(0, 0, 10);
+	float3 v2 = make_float3(10, 0, 10);
+	float3 v3 = make_float3(10, 10, 10);
+
+	float t;
+	float u;
+	float v;
+
+	bool hitTri = rayTriangleIntersect(currRayPos, currRayDir, v3, v2, v1, t, u, v);
+
+	float3 hitPosTri = currRayPos + t * currRayDir;
+
+	//if (hitTri) {
+	//	return make_float3(1, 0, 0);
+	//}
+	//else {
+	//	return make_float3(0, 0, 0);
+	//}
+
+
 
 	hitInfo hit = getHit(currRayPos, currRayDir, currTime, objects, numObjects);
 
@@ -172,11 +217,16 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		return make_float3(0,0,0);
 	}
 	else {
+
 		objectInfo currObject = objects[hit.objectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
 		float3 nextPos = hit.pos;
 		float3 normal = hit.normal;
+
+		if (hitTri && length(hitPosTri - currRayPos) < length(nextPos - currRayPos)) {
+			return make_float3(1, 0, 0);
+		}
 
 		float extraReflection = 0;
 		float3 bias = 0.001 * normal;
@@ -221,7 +271,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	float3 rightV = normalize(cross(upV,forwardV));
 
 	float sizeFarPlane = 10;
-	float sizeNearPlane = sizeFarPlane*0.5;
+	float sizeNearPlane = sizeFarPlane *0.5;
 	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);
 	float distFarPlane = 4;
 	float distFirstPlane = distFarPlane *0.5;
@@ -232,7 +282,6 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
-
 	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, pointers.objects, pointers.numObjects);
 
 

@@ -56,7 +56,6 @@ inline __device__ float length(float3 v)
 	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-
 inline __device__ float3 inverse(float3 v)
 {
 	return make_float3(-v.x, -v.y, -v.z);
@@ -64,7 +63,7 @@ inline __device__ float3 inverse(float3 v)
 
 inline __device__ float3 normalize(float3 v)
 {
-	float invLen = /*1.0f / length(v);// */1 / sqrtf(dot(v, v));
+	float invLen = 1 / sqrtf(dot(v, v));
 	return invLen * v;
 }
 
