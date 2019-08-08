@@ -55,7 +55,8 @@ GLSLProgram shdrawtex; // GLSLS program for textured draw
 
 // Cuda <-> OpenGl interop resources
 void* cuda_dev_render_buffer; // Cuda buffer for initial render
-void* cuda_geometry_buffer; 
+void* cuda_custom_objects_buffer; 
+void* cuda_mesh_buffer; 
 
 
 struct cudaGraphicsResource* cuda_tex_resource;
@@ -71,6 +72,8 @@ unsigned int num_values;
 
 size_t size_elements_data;
 unsigned int num_elements;
+
+unsigned int num_meshes;
 
 static const char* glsl_drawtex_vertshader_src =
 "#version 330 core\n"
@@ -167,19 +170,7 @@ void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mod
 	PRESSED_MACRO(A, APressed);
 	PRESSED_MACRO(Q, QPressed);
 	PRESSED_MACRO(E, EPressed);
-	//if (key == GLFW_KEY_W) {
-	//	if (action == GLFW_PRESS)
-	//		WPressed = true;
-	//	else if (action == GLFW_RELEASE)
-	//		WPressed = false;
-	//}
 }
-
-//double lastX = -1;
-//double lastY = -1;
-//
-//double mouseDeltaX = 0.;
-//double mouseDeltaY = 0.;
 
 bool firstMouse = true;
 double mouseDeltaX;
@@ -253,7 +244,13 @@ void initCUDABuffers()
 	num_elements = 8;
 	size_elements_data = sizeof(objectInfo) * num_elements;
 
-	checkCudaErrors(cudaMalloc(&cuda_geometry_buffer, size_elements_data)); // Allocate CUDA memory for objects
+	checkCudaErrors(cudaMalloc(&cuda_custom_objects_buffer, size_elements_data)); // Allocate CUDA memory for objects
+
+
+	num_meshes = 1;
+	size_elements_data = sizeof(objectInfo) * num_elements;
+
+	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_elements_data)); // Allocate CUDA memory for triangle meshes
 
 
 }
@@ -322,25 +319,25 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	shapeInfo s1 = make_shapeInfo(make_float3(0, -3,  13), make_float3(0, 0, 0), 1);
 	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
 	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
-	shapeInfo s4 = make_shapeInfo(make_float3(7, 1, 5), make_float3(0, 0, 0), 3);
+	shapeInfo s4 = make_shapeInfo(make_float3(7, 3, -8), make_float3(0, 0, 0), 6);
 	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
 	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
 	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
 	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
 	objectInfo objects[8];
-	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0);
-	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5);
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0, 1, 1), 0, 0);
-	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0);
-	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0);
-	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 1, 1), 0.9, 1.5);
-	objects[6] = make_objectInfo(plane, p3, 0.5, make_float3(0, 1, 0), 0, 0);
-	objects[7] = make_objectInfo(plane, p4, 0.5, make_float3(0, 1, 0), 0, 0);
+	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
+	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5, 0);
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0, 1, 1), 0, 0, 0);
+	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0, 0);
+	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0, 0);
+	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 1, 1.3, 0.015);
+	objects[6] = make_objectInfo(plane, p3, 0.5, make_float3(0, 1, 0), 0, 0, 0);
+	objects[7] = make_objectInfo(plane, p4, 0.5, make_float3(0, 1, 0), 0, 0, 0);
 
-	cudaMemcpy(cuda_geometry_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
+	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
-	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (objectInfo*)cuda_geometry_buffer, num_elements };
+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (objectInfo*)cuda_custom_objects_buffer, num_elements };
 
 
 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated

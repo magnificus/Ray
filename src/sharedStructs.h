@@ -52,10 +52,11 @@ struct objectInfo {
 	float reflectivity;
 	float refractivity;
 	float refractiveIndex;
+	float insideColorDensity;
 	float3 color;
 };
 
-inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex) {
+inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex, float insideColorDensity) {
 	objectInfo o;
 	o.s = s;
 	o.shapeData = shapeData;
@@ -63,13 +64,25 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 	o.color = color;
 	o.refractivity = refractivity;
 	o.refractiveIndex = refractiveIndex;
+	o.insideColorDensity = insideColorDensity;
 	return o;
 }
+
+
+struct mesh {
+	float3* vertices;
+	int* indices;
+	int numIndices;
+};
 
 struct inputPointers {
 	unsigned int* g_odata;
 	objectInfo* objects;
 	int numObjects;
+
+	mesh* meshes;
+	int numMeshes;
+
 };
 
 

@@ -56,29 +56,94 @@ __device__ bool rayTriangleIntersect(
 	const float3& v0, const float3& v1, const float3& v2,
 	float& t, float& u, float& v)
 {
+	// compute plane's normal
 	float3 v0v1 = v1 - v0;
 	float3 v0v2 = v2 - v0;
-	float3 pvec = cross(dir, v0v2);
-	float det = dot(pvec,v0v1);
-	// if the determinant is negative the triangle is backfacing
-	// if the determinant is close to 0, the ray misses the triangle
-	float kEpsilon = 0.000001;
-	if (det < kEpsilon) return false;
-	float invDet = 1 / det;
+	// no need to normalize
+	float3 N = cross(v0v1, v0v2); // N 
+	float denom = dot(N, N);
 
-	float3 tvec = orig - v0;
-	u = dot(tvec,pvec) * invDet;
-	if (u < 0 || u > 1) return false;
 
-	float3 qvec = cross(tvec,v0v1);
-	v = dot(dir,qvec) * invDet;
-	if (v < 0 || u + v > 1) return false;
+	if (!intersectPlane(make_shapeInfo(v1, normalize(N), 0), orig, dir, t)) {
+		return false;
+	}
 
-	t = dot(v0v2,qvec) * invDet;
+	//// Step 1: finding P
 
-	return true;
+	//// check if ray and plane are parallel ?
+	//float NdotRayDirection = dot(N,dir);
+	////if (fabs(NdotRayDirection) < 0.000001) // almost 0 
+	////	return false; // they are parallel so they don't intersect ! 
+
+	//// compute d parameter using equation 2
+	////N = normalize(N);
+	//float d = dot(N,v0);
+
+	//// compute t (equation 3)
+	//t = (dot(N, orig) + d) / NdotRayDirection;
+	//// check if the triangle is in behind the ray
+	//if (t < 0) return false; // the triangle is behind 
+
+	// compute the intersection point using equation 1
+	float3 P = orig + t * dir;
+
+	// Step 2: inside-outside test
+	float3 C; // vector perpendicular to triangle's plane 
+
+	// edge 0
+	float3 edge0 = v1 - v0;
+	float3 vp0 = P - v0;
+	C = cross(edge0,vp0);
+	if (dot(N,C) < 0) return false; // P is on the right side 
+
+	// edge 1
+	float3 edge1 = v2 - v1;
+	float3 vp1 = P - v1;
+	C = cross(edge1,vp1);
+	if ((u = dot(N,C)) < 0)  return false; // P is on the right side 
+
+	// edge 2
+	float3 edge2 = v0 - v2;
+	float3 vp2 = P - v2;
+	C = cross(edge2,vp2);
+	if ((v = dot(N,C)) < 0) return false; // P is on the right side; 
+
+	u /= denom;
+	v /= denom;
+
+	return true; // this ray hits the triangle 
 }
 
+
+
+//__device__ bool rayTriangleIntersect(
+//	const float3& orig, const float3& dir,
+//	const float3& v0, const float3& v1, const float3& v2,
+//	float& t, float& u, float& v)
+//{
+//	float3 v0v1 = v1 - v0;
+//	float3 v0v2 = v2 - v0;
+//	float3 pvec = cross(dir, v0v2);
+//	float det = dot(pvec,v0v1);
+//	// if the determinant is negative the triangle is backfacing
+//	// if the determinant is close to 0, the ray misses the triangle
+//	float kEpsilon = 0.000001;
+//	if (det < kEpsilon) return false;
+//	float invDet = 1 / det;
+//
+//	float3 tvec = orig - v0;
+//	u = dot(tvec,pvec) * invDet;
+//	if (u < 0 || u > 1) return false;
+//
+//	float3 qvec = cross(tvec,v0v1);
+//	v = dot(dir,qvec) * invDet;
+//	if (v < 0 || u + v > 1) return false;
+//
+//	t = dot(v0v2,qvec) * invDet;
+//
+//	return true;
+//}
+//
 
 __device__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
 {
@@ -190,17 +255,17 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		return make_float3(0,0,0);
 	}
 	
-	float3 v1 = make_float3(0, 0, 10);
-	float3 v2 = make_float3(10, 0, 10);
-	float3 v3 = make_float3(10, 10, 10);
+	//float3 v1 = make_float3(0, 0, 10);
+	//float3 v2 = make_float3(10, 0, 10);
+	//float3 v3 = make_float3(10, 10, 10);
 
-	float t;
-	float u;
-	float v;
+	//float t;
+	//float u;
+	//float v;
 
-	bool hitTri = rayTriangleIntersect(currRayPos, currRayDir, v3, v2, v1, t, u, v);
+	//bool hitTri = rayTriangleIntersect(currRayPos, currRayDir, v3, v2, v1, t, u, v);
 
-	float3 hitPosTri = currRayPos + t * currRayDir;
+	//float3 hitPosTri = currRayPos + t * currRayDir;
 
 	//if (hitTri) {
 	//	return make_float3(1, 0, 0);
@@ -224,12 +289,14 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 nextPos = hit.pos;
 		float3 normal = hit.normal;
 
-		if (hitTri && length(hitPosTri - currRayPos) < length(nextPos - currRayPos)) {
-			return make_float3(1, 0, 0);
-		}
+		//if (hitTri && length(hitPosTri - currRayPos) < length(nextPos - currRayPos)) {
+		//	return make_float3(1, 0, 0);
+		//}
 
 		float extraReflection = 0;
+		float3 extraColor;
 		float3 bias = 0.001 * normal;
+		float extraColorSize = 0; 
 		if (currObject.refractivity > 0.) {
 			float kr;
 			bool outside = dot(currRayDir, normal) < 0;
@@ -237,18 +304,20 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 
 			if (kr <= 1) {
+				extraColorSize = outside ? 0 : min(1-kr, length(nextPos - currRayPos) * currObject.insideColorDensity);
 				float3 refractionDirection = normalize(refract(currRayDir, normal, currObject.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
-				refracted = currObject.refractivity *(1-kr)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, currTime, objects, numObjects);
+
+				refracted = currObject.refractivity *(1-kr - extraColorSize)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, currTime, objects, numObjects);
 			}
-			extraReflection = min(1.,kr) * currObject.refractivity;
+			extraReflection = min(1.,kr - extraColorSize) * currObject.refractivity;
 
 		}
 		if (currObject.reflectivity + extraReflection > 0.) {
 			float3 reflectDir = reflect(currRayDir, normal);
 			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
 		}
-		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity) * currObject.color;
+		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity + extraColorSize) * currObject.color;
 		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) * getShadowTerm(nextPos + bias, currTime, objects, numObjects) * color + reflected + refracted;
 	}
 
