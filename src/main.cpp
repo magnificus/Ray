@@ -24,6 +24,11 @@
 #include "glfw_tools.h"
 
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+
 #include <iostream>
 #include <chrono>
 #include <ctime>
@@ -37,9 +42,6 @@ using namespace std;
 GLFWwindow* window;
 int WIDTH = 1024;
 int HEIGHT = 1024;
-
-
-
 
 double currYaw = 270;
 double currPitch = 0;
@@ -73,28 +75,25 @@ unsigned int num_values;
 size_t size_elements_data;
 unsigned int num_elements;
 
+size_t size_meshes_data;
 unsigned int num_meshes;
 
 static const char* glsl_drawtex_vertshader_src =
 "#version 330 core\n"
 "layout (location = 0) in vec3 position;\n"
-"layout (location = 1) in vec3 color;\n"
-"layout (location = 2) in vec2 texCoord;\n"
+"layout (location = 1) in vec2 texCoord;\n"
 "\n"
-"out vec3 ourColor;\n"
 "out vec2 ourTexCoord;\n"
 "\n"
 "void main()\n"
 "{\n"
 "	gl_Position = vec4(position, 1.0f);\n"
-"	ourColor = color;\n"
 "	ourTexCoord = texCoord;\n"
 "}\n";
 
 static const char* glsl_drawtex_fragshader_src =
 "#version 330 core\n"
 "uniform usampler2D tex;\n"
-"in vec3 ourColor;\n"
 "in vec2 ourTexCoord;\n"
 "out vec4 color;\n"
 "void main()\n"
@@ -105,11 +104,11 @@ static const char* glsl_drawtex_fragshader_src =
 
 // QUAD GEOMETRY
 GLfloat vertices[] = {
-	// Positions          // Colors           // Texture Coords
-	1.0f, 1.0f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,  // Top Right
-	1.0f, -1.0f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // Bottom Right
-	-1.0f, -1.0f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // Bottom Left
-	-1.0f, 1.0f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f // Top Left 
+	// Positions             // Texture Coords
+	1.0f, 1.0f, 0.5f,1.0f, 1.0f,  // Top Right
+	1.0f, -1.0f, 0.5f, 1.0f, 0.0f,  // Bottom Right
+	-1.0f, -1.0f, 0.5f, 0.0f, 0.0f,  // Bottom Left
+	-1.0f, 1.0f, 0.5f,  0.0f, 1.0f // Top Left 
 };
 // you can also put positions, colors and coordinates in seperate VBO's
 GLuint indices[] = {  // Note that we start from 0!
@@ -248,9 +247,29 @@ void initCUDABuffers()
 
 
 	num_meshes = 1;
-	size_elements_data = sizeof(objectInfo) * num_elements;
+	size_meshes_data = sizeof(mesh) * num_elements;
 
-	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_elements_data)); // Allocate CUDA memory for triangle meshes
+
+
+
+	//int numVertices;
+	//int numIndices;
+
+	//void* vertP;
+	//void* indP;
+
+	//size_t verticesSize;
+	//size_t indicesSize;
+	//checkCudaErrors(cudaMalloc(&vertP, verticesSize)); // Allocate CUDA memory for objects
+	//checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, indicesSize)); // Allocate CUDA memory for triangle meshes
+
+
+	//struct mesh {
+	//	float3* vertices;
+	//	int* indices;
+	//	int numIndices;
+	//};
+
 
 
 }
@@ -285,9 +304,6 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	dim3 block(8, 8, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
-
-	//const auto pn = std::chrono::system_clock::now();
-	//const auto pt = pn - std::chrono::hours(24);
 
 	glm::vec3 frontV = currFront;
 	glm::vec3 currP(input.currPosX, input.currPosY, input.currPosZ);
@@ -328,12 +344,12 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	objectInfo objects[8];
 	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5, 0);
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0, 1, 1), 0, 0, 0);
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(1, 1, 1), 0, 0, 0);
 	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0, 0);
 	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0, 0);
 	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 1, 1.3, 0.015);
-	objects[6] = make_objectInfo(plane, p3, 0.5, make_float3(0, 1, 0), 0, 0, 0);
-	objects[7] = make_objectInfo(plane, p4, 0.5, make_float3(0, 1, 0), 0, 0, 0);
+	objects[6] = make_objectInfo(plane, p3, 0, make_float3(1, 1, 0), 0, 0, 0);
+	objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
@@ -418,14 +434,11 @@ int main(int argc, char* argv[]) {
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	// Position attribute (3 floats)
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-	// Color attribute (3 floats)
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
 	// Texture attribute (2 floats)
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	// Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound 
@@ -460,7 +473,6 @@ int main(int argc, char* argv[]) {
 
 
 		display(totalTime, currTime - lastTime);
-		//glfwWaitEvents();
 		if (frameNum++ % 1000 == 0) {
 			std::chrono::duration<double> elapsed_seconds = currTime - lastTime;
 			// show fps every 1000 frames
