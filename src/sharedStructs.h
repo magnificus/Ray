@@ -68,20 +68,35 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 	return o;
 }
 
-
-struct mesh {
-	float3* vertices;
-	int* indices;
-	int numIndices;
+struct triangleMesh {
+	float3* vertices; //float3
+	float3* normals; //float3
+	unsigned int* indices; // unsigned int
+	int numIndices = 0;
+	int numVertices = 0;
 };
 
-struct inputPointers {
-	unsigned int* g_odata;
-	objectInfo* objects;
+struct sceneInfo {
+
+	// objects are pure mathematical objects, while meshes are triangle meshes
+	const float currTime;
+	const objectInfo* objects;
 	int numObjects;
 
-	mesh* meshes;
+	const triangleMesh* meshes;
 	int numMeshes;
+};
+
+
+struct inputPointers {
+	unsigned int* g_odata; // texture position
+
+	sceneInfo scene;
+	//objectInfo* objects;
+	//int numObjects;
+
+	//triangleMesh* meshes;
+	//int numMeshes;
 
 };
 

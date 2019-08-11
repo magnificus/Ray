@@ -52,7 +52,7 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 
 
 __device__ bool rayTriangleIntersect(
-	const float3& orig, const float3& dir,
+	const float3& orig, const float3& dir, const float3& N,
 	const float3& v0, const float3& v1, const float3& v2,
 	float& t, float& u, float& v)
 {
@@ -60,7 +60,7 @@ __device__ bool rayTriangleIntersect(
 	float3 v0v1 = v1 - v0;
 	float3 v0v2 = v2 - v0;
 	// no need to normalize
-	float3 N = cross(v0v1, v0v2); // N 
+	//float3 N = cross(v0v1, v0v2); // N 
 	float denom = dot(N, N);
 
 
@@ -84,6 +84,8 @@ __device__ bool rayTriangleIntersect(
 	//// check if the triangle is in behind the ray
 	//if (t < 0) return false; // the triangle is behind 
 
+
+	//return true;
 	// compute the intersection point using equation 1
 	float3 P = orig + t * dir;
 
@@ -186,6 +188,7 @@ __device__ float3 reflect(const float3& I, const float3& N)
 
 struct hitInfo {
 	int objectIndex = -1;
+	bool hitMesh = false;
 	float3 pos;
 	float3 normal;
 
@@ -194,15 +197,16 @@ struct hitInfo {
 #define LIGHT_POS make_float3(0,5,20)
 
 
-__device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const float& currTime, const objectInfo* objects, int numObjects) {
+__device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo& scene) {
 	float closestDist = 1000000;
 	float3 normal;
 	hitInfo toReturn;
 	int closestObjectIndex = -1;
 
 
-	for (int i = 0; i < numObjects; i++) {
-		const objectInfo& curr = objects[i];
+	// mathematical objects
+	for (int i = 0; i < scene.numObjects; i++) {
+		const objectInfo& curr = scene.objects[i];
 		float currDist;
 
 		switch (curr.s) {
@@ -232,6 +236,30 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const float& cur
 		}
 	}
 
+
+	// meshes
+	for (int i = 0; i < scene.numMeshes; i++) {
+		const triangleMesh currMesh = scene.meshes[i];
+		for (unsigned int j = 0; j < scene.meshes[i].numIndices; j+=3) {
+			float t;
+			float u;
+			float v;
+			bool hitTriangle = rayTriangleIntersect(currRayPos, currRayDir, currMesh.normals[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t, u, v);
+			if (hitTriangle && t < closestDist) {
+				closestDist = t;
+				toReturn.hitMesh = true;
+				normal = u*currMesh.normals[currMesh.indices[j]] + v* currMesh.normals[currMesh.indices[j+1]] +(1-v-u)* currMesh.normals[currMesh.indices[j+2]];
+			//	closestObjectIndex = 0;
+
+			//	//c
+			}
+
+
+		}
+
+	}
+
+
 	toReturn.objectIndex = closestObjectIndex;
 	toReturn.normal = normal;
 	toReturn.pos = currRayPos + closestDist * currRayDir;
@@ -239,51 +267,45 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const float& cur
 }
 
 
-__device__ float getShadowTerm(const float3 originalPos, const float currTime, const objectInfo* objects, int numObjects) {
+__device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene) {
 	float3 toLightVec = normalize(LIGHT_POS - originalPos);
-	hitInfo hit = getHit(originalPos, toLightVec, currTime, objects, numObjects);
+	hitInfo hit = getHit(originalPos, toLightVec, scene);
 
 	if (hit.objectIndex == -1 || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
 		return 1.;
 	}
-	return objects[hit.objectIndex].refractivity * 0.8 + 0.2;
+	return 0.2;
+	//return objects[hit.objectIndex].refractivity * 0.8 + 0.2;
 
 }
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const float currTime, objectInfo *objects, int numObjects) {
+
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const sceneInfo &scene) {
 	if (remainingDepth <= 0) {
 		return make_float3(0,0,0);
 	}
-	
-	//float3 v1 = make_float3(0, 0, 10);
-	//float3 v2 = make_float3(10, 0, 10);
-	//float3 v3 = make_float3(10, 10, 10);
 
-	//float t;
-	//float u;
-	//float v;
 
-	//bool hitTri = rayTriangleIntersect(currRayPos, currRayDir, v3, v2, v1, t, u, v);
-
-	//float3 hitPosTri = currRayPos + t * currRayDir;
-
-	//if (hitTri) {
-	//	return make_float3(1, 0, 0);
+	//int blargh;
+	//for (int i = 0; i < 1000; i++) {
+	//	float t;
+	//	blargh += intersectsSphere(currRayPos, currRayDir, scene.objects[0].shapeData, t);
 	//}
-	//else {
-	//	return make_float3(0, 0, 0);
-	//}
+	//return make_float3(0, 0, blargh);
 
 
+	hitInfo hit = getHit(currRayPos, currRayDir, scene);
 
-	hitInfo hit = getHit(currRayPos, currRayDir, currTime, objects, numObjects);
+
+	//if (hit.hitMesh)
+	//	return make_float3(0, 1, 0);
 
 	if (hit.objectIndex == -1) {
 		return make_float3(0,0,0);
 	}
 	else {
 
-		objectInfo currObject = objects[hit.objectIndex];
+		objectInfo currObject = scene.objects[hit.objectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
 		float3 nextPos = hit.pos;
@@ -308,17 +330,17 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				float3 refractionDirection = normalize(refract(currRayDir, normal, currObject.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
 
-				refracted = currObject.refractivity *(1-kr - extraColorSize)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, currTime, objects, numObjects);
+				refracted = currObject.refractivity *(1-kr - extraColorSize)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene);
 			}
 			extraReflection = min(1.,kr - extraColorSize) * currObject.refractivity;
 
 		}
 		if (currObject.reflectivity + extraReflection > 0.) {
 			float3 reflectDir = reflect(currRayDir, normal);
-			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, currTime, objects, numObjects);
+			reflected = (currObject.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, scene);
 		}
 		float3 color = (1 - currObject.reflectivity - extraReflection - currObject.refractivity + extraColorSize) * currObject.color;
-		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) * getShadowTerm(nextPos + bias, currTime, objects, numObjects) * color + reflected + refracted;
+		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) /** getShadowTerm(nextPos + bias, scene) */* color + reflected + refracted;
 	}
 
 }
@@ -351,9 +373,14 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
-	float3 out = 255*trace(firstPlanePos, dirVector, 5, currTime, pointers.objects, pointers.numObjects);
+
+	//sceneInfo info = 
+
+	float3 out = 255*trace(firstPlanePos, dirVector, 5, pointers.scene/*currTime, pointers.objects, pointers.numObjects, pointers.meshes, pointers.numMeshes*/);
 
 
+	//float3 out = 50*pointers.scene.meshes[0].vertices[10];
+	//out = 128*make_float3(pointers.scene.meshes
 	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
 extern "C" void

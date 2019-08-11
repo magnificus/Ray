@@ -223,6 +223,62 @@ bool initGL() {
 	return true;
 }
 
+
+triangleMesh myMesh;
+triangleMesh myMeshOnCuda;
+
+// we assume it's all triangles
+triangleMesh importModel(std::string path) {
+
+	triangleMesh toReturn;
+
+	Assimp::Importer importer;
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+	if (!scene) {
+		cout << "invalid path to mesh fuccboi\n";
+		return toReturn;
+	}
+
+	if (scene->HasMeshes()) {
+		auto firstMesh = scene->mMeshes[0];
+		// indices
+
+		unsigned int totalIndices = 0;
+
+		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
+			auto face = firstMesh->mFaces[i];
+			totalIndices += face.mNumIndices;
+		}
+
+		toReturn.numIndices = totalIndices;
+		toReturn.numVertices = firstMesh->mNumVertices;
+		toReturn.indices = (unsigned int*) malloc(toReturn.numIndices * sizeof(unsigned int));
+
+		unsigned int currIndexPos = 0;
+		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
+			auto face = firstMesh->mFaces[i];
+			for (int j = 1; j < face.mNumIndices; j+=2) {
+				toReturn.indices[currIndexPos++] = face.mIndices[0];
+				toReturn.indices[currIndexPos++] = face.mIndices[j];
+				toReturn.indices[currIndexPos++] = face.mIndices[j+1];
+			}
+		}
+
+		// vertices & normals
+		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
+		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
+		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
+			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x*20, firstMesh->mVertices[i].y * 20, firstMesh->mVertices[i].z * 20);
+			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
+			if (firstMesh->HasNormals())
+				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
+		}
+		//firstMesh->
+	}
+
+	return toReturn;
+}
+
 void initCUDABuffers()
 {
 	// set up vertex data parameters
@@ -247,10 +303,36 @@ void initCUDABuffers()
 
 
 	num_meshes = 1;
-	size_meshes_data = sizeof(mesh) * num_elements;
+	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
 
+	myMesh = importModel("C:/Users/Tobbe/Desktop/le cube.ply");
 
+	myMeshOnCuda.numIndices = myMesh.numIndices;
+	myMeshOnCuda.numVertices = myMesh.numVertices;
+	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
+
+	unsigned int indicesSize = myMesh.numIndices * sizeof(myMesh.indices[0]);
+	unsigned int verticesSize = myMesh.numVertices * sizeof(myMesh.vertices[0]);
+
+	if (myMesh.numIndices > 0) {
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
+
+		// copy result to cuda buffers
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+	}
+	//checkCudaErrors(cudaMemcpyToArray(myMeshOnCuda, 0, 0, cuda_mesh_buffer, sizeof(triangleMesh), cudaMemcpyDeviceToDevice));
+	//checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
+	//checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
+	//checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
+
+
+	//checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, indicesSize)); // Allocate CUDA memory for triangle meshes
 
 	//int numVertices;
 	//int numIndices;
@@ -260,8 +342,6 @@ void initCUDABuffers()
 
 	//size_t verticesSize;
 	//size_t indicesSize;
-	//checkCudaErrors(cudaMalloc(&vertP, verticesSize)); // Allocate CUDA memory for objects
-	//checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, indicesSize)); // Allocate CUDA memory for triangle meshes
 
 
 	//struct mesh {
@@ -353,7 +433,8 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
-	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (objectInfo*)cuda_custom_objects_buffer, num_elements };
+	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, 1 };
+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, info };
 
 
 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
