@@ -247,7 +247,7 @@ triangleMesh importModel(std::string path) {
 
 		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
 			auto face = firstMesh->mFaces[i];
-			totalIndices += face.mNumIndices;
+			totalIndices += face.mNumIndices + (face.mNumIndices > 3 ? (face.mNumIndices - 3)*2 : 0);
 		}
 
 		toReturn.numIndices = totalIndices;
@@ -257,10 +257,11 @@ triangleMesh importModel(std::string path) {
 		unsigned int currIndexPos = 0;
 		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
 			auto face = firstMesh->mFaces[i];
-			for (int j = 1; j < face.mNumIndices; j+=2) {
-				toReturn.indices[currIndexPos++] = face.mIndices[0];
-				toReturn.indices[currIndexPos++] = face.mIndices[j];
-				toReturn.indices[currIndexPos++] = face.mIndices[j+1];
+			for (int j = 2; j < face.mNumIndices; j++) {
+				toReturn.indices[currIndexPos] = face.mIndices[0];
+				toReturn.indices[currIndexPos+1] = face.mIndices[j-1];
+				toReturn.indices[currIndexPos+2] = face.mIndices[j];
+				currIndexPos += 3;
 			}
 		}
 
@@ -268,12 +269,11 @@ triangleMesh importModel(std::string path) {
 		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
 		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
 		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
-			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x*20, firstMesh->mVertices[i].y * 20, firstMesh->mVertices[i].z * 20);
+			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x, firstMesh->mVertices[i].y, firstMesh->mVertices[i].z);
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
 			if (firstMesh->HasNormals())
 				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
 		}
-		//firstMesh->
 	}
 
 	return toReturn;
@@ -312,8 +312,8 @@ void initCUDABuffers()
 	myMeshOnCuda.numVertices = myMesh.numVertices;
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
 
-	unsigned int indicesSize = myMesh.numIndices * sizeof(myMesh.indices[0]);
-	unsigned int verticesSize = myMesh.numVertices * sizeof(myMesh.vertices[0]);
+	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
+	unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
 
 	if (myMesh.numIndices > 0) {
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
@@ -381,7 +381,7 @@ bool initGLFW() {
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
 	// calculate grid size
-	dim3 block(8, 8, 1);
+	dim3 block(16, 16, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 

@@ -42,7 +42,7 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 {
 	// assuming vectors are all normalized
 	float denom = dot(p.normal, l);
-	if (denom > 1e-6) {
+	if (denom > 1e-8) {
 		float3 p0l0 = p.pos - l0;
 		t = dot(p0l0, p.normal) / denom;
 		return (t >= 0);
@@ -52,37 +52,38 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 
 
 __device__ bool rayTriangleIntersect(
-	const float3& orig, const float3& dir, const float3& N,
-	const float3& v0, const float3& v1, const float3& v2,
+	 float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
 	float& t, float& u, float& v)
 {
 	// compute plane's normal
-	float3 v0v1 = v1 - v0;
-	float3 v0v2 = v2 - v0;
+
+
+	//v0 = make_float3(0, 0, 0) - v0;
+	//dir.x = -dir.x;
+	//dir.z = -dir.x;
+	//orig.y = -orig.y;
+	float3 v0v1 = v2 - v0;
+	float3 v0v2 = v1 - v0;
 	// no need to normalize
-	//float3 N = cross(v0v1, v0v2); // N 
+	float3 N = cross(v0v1, v0v2); // N 
 	float denom = dot(N, N);
 
 
-	if (!intersectPlane(make_shapeInfo(v1, normalize(N), 0), orig, dir, t)) {
-		return false;
-	}
-
 	//// Step 1: finding P
 
-	//// check if ray and plane are parallel ?
-	//float NdotRayDirection = dot(N,dir);
-	////if (fabs(NdotRayDirection) < 0.000001) // almost 0 
-	////	return false; // they are parallel so they don't intersect ! 
+	// check if ray and plane are parallel ?
+	float NdotRayDirection = dot(N,dir);
+	if (fabs(NdotRayDirection) < 0.0001) // almost 0 
+		return false; // they are parallel so they don't intersect ! 
 
-	//// compute d parameter using equation 2
-	////N = normalize(N);
-	//float d = dot(N,v0);
+	// compute d parameter using equation 2
+	//N = normalize(N);
+	float d = dot(N,v0);
 
-	//// compute t (equation 3)
-	//t = (dot(N, orig) + d) / NdotRayDirection;
-	//// check if the triangle is in behind the ray
-	//if (t < 0) return false; // the triangle is behind 
+	// compute t (equation 3)
+	t = (dot(N, orig) + d) / NdotRayDirection;
+	// check if the triangle is in behind the ray
+	if (t < 0) return false; // the triangle is behind 
 
 
 	//return true;
@@ -118,11 +119,53 @@ __device__ bool rayTriangleIntersect(
 
 
 
+
+__device__ bool RayIntersectsTriangle(float3 rayOrigin,
+	float3 rayVector,
+	float3 vertex0, float3 vertex1, float3 vertex2,
+	float& t)
+{
+
+	rayOrigin.z = -rayOrigin.z;
+	rayOrigin.x = -rayOrigin.x;
+
+	const float EPSILON = 0.0000001;
+	float3 edge1, edge2, h, s, q;
+	float a, f, u, v;
+	edge1 = vertex1 - vertex0;
+	edge2 = vertex2 - vertex0;
+	h = cross(rayVector,edge2);
+	a = dot(edge1,h);
+	if (a > -EPSILON && a < EPSILON)
+		return false;    // This ray is parallel to this triangle.
+	f = 1.0 / a;
+	s = rayOrigin - vertex0;
+	u = f * dot(s,h);
+	if (u < 0.0 || u > 1.0)
+		return false;
+	q = cross(s,edge1);
+	v = f * dot(rayVector,q);
+	if (v < 0.0 || u + v > 1.0)
+		return false;
+	// At this stage we can compute t to find out where the intersection point is on the line.
+	t = f * dot(edge2,q);
+	if (t > EPSILON) // ray intersection
+	{
+		return true;
+	}
+	else // This means that there is a line intersection but not a ray intersection.
+		return false;
+}
+
+
+
+
 //__device__ bool rayTriangleIntersect(
 //	const float3& orig, const float3& dir,
 //	const float3& v0, const float3& v1, const float3& v2,
 //	float& t, float& u, float& v)
 //{
+//
 //	float3 v0v1 = v1 - v0;
 //	float3 v0v2 = v2 - v0;
 //	float3 pvec = cross(dir, v0v2);
@@ -145,7 +188,7 @@ __device__ bool rayTriangleIntersect(
 //
 //	return true;
 //}
-//
+
 
 __device__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
 {
@@ -244,12 +287,13 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 			float t;
 			float u;
 			float v;
-			bool hitTriangle = rayTriangleIntersect(currRayPos, currRayDir, currMesh.normals[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t, u, v);
+			//bool hitTriangle = rayTriangleIntersect(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t, u, v);
+			bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t);
 			if (hitTriangle && t < closestDist) {
 				closestDist = t;
 				toReturn.hitMesh = true;
-				normal = u*currMesh.normals[currMesh.indices[j]] + v* currMesh.normals[currMesh.indices[j+1]] +(1-v-u)* currMesh.normals[currMesh.indices[j+2]];
-			//	closestObjectIndex = 0;
+				normal = u*currMesh.normals[currMesh.indices[j]] +v * currMesh.normals[currMesh.indices[j + 1]] + (1 - v - u) * currMesh.normals[currMesh.indices[j + 2]];
+				closestObjectIndex = 0;
 
 			//	//c
 			}
@@ -287,7 +331,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 
 	//int blargh;
-	//for (int i = 0; i < 1000; i++) {
+	//for (int i = 0; i < 100; i++) {
 	//	float t;
 	//	blargh += intersectsSphere(currRayPos, currRayDir, scene.objects[0].shapeData, t);
 	//}
@@ -297,8 +341,8 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 	hitInfo hit = getHit(currRayPos, currRayDir, scene);
 
 
-	//if (hit.hitMesh)
-	//	return make_float3(0, 1, 0);
+	if (hit.hitMesh)
+		return make_float3(0, 1, 0);
 
 	if (hit.objectIndex == -1) {
 		return make_float3(0,0,0);
@@ -368,7 +412,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	float distFirstPlane = distFarPlane *0.5;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
-	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
+	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y-y) / imgh) * upV;
 	float3 firstPlanePos = (sizeNearPlane*distFromCenter) + origin + (distFirstPlane * forwardV);
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
