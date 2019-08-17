@@ -81,13 +81,17 @@ struct triangleMesh {
 	int numVertices = 0;
 
 	rayHitInfo rayInfo;
+
+
+	float3 center;
+	float boundingSphereRad;
 };
 
 struct sceneInfo {
 
 	// objects are pure mathematical objects, while meshes are triangle meshes
 	const float currTime;
-	const objectInfo* objects;
+	objectInfo* objects;
 	int numObjects;
 
 	const triangleMesh* meshes;

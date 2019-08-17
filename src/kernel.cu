@@ -4,37 +4,37 @@
 
 
 cudaError_t cuda();
-__global__ void kernel(){
-  
+__global__ void kernel() {
+
 }
 
-__device__ bool intersectsSphere(const float3 &origin, const float3& dir,  const shapeInfo& info, float &t) {
+__device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
 
-		float t0, t1; // solutions for t if the ray intersects 
+	float t0, t1; // solutions for t if the ray intersects 
 
-		float rad2 = powf(info.rad, 2);
+	float rad2 = powf(rad, 2);
 
-		float3 L = info.pos - origin;
-		float tca = dot(dir, L);
-		 //if (tca < 0) return false;
-		float d2 = dot(L,L) - tca * tca;
-		if (d2 > rad2) return false;
-		float thc = sqrt(rad2 - d2);
-		t0 = tca - thc;
-		t1 = tca + thc;
+	float3 L = pos - origin;
+	float tca = dot(dir, L);
+	//if (tca < 0) return false;
+	float d2 = dot(L, L) - tca * tca;
+	if (d2 > rad2) return false;
+	float thc = sqrt(rad2 - d2);
+	t0 = tca - thc;
+	t1 = tca + thc;
 
-		if (t0 > t1) {
-			float temp = t0;
-			t0 = t1;
-			t1 = temp;
-		}
+	if (t0 > t1) {
+		float temp = t0;
+		t0 = t1;
+		t1 = temp;
+	}
 
-		if (t0 < 0) {
-			t0 = t1; // if t0 is negative, let's use t1 instead 
-			if (t0 < 0) return false; // both t0 and t1 are negative 
-		}
-		t = t0;
-		return true;
+	if (t0 < 0) {
+		t0 = t1; // if t0 is negative, let's use t1 instead 
+		if (t0 < 0) return false; // both t0 and t1 are negative 
+	}
+	t = t0;
+	return true;
 }
 
 // plane normal, plane point, ray start, ray dir, point along line
@@ -52,7 +52,7 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 
 
 __device__ bool rayTriangleIntersect(
-	 float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
+	float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
 	float& t, float& u, float& v)
 {
 	// compute plane's normal
@@ -71,12 +71,12 @@ __device__ bool rayTriangleIntersect(
 	//// Step 1: finding P
 
 	// check if ray and plane are parallel ?
-	float NdotRayDirection = dot(N,dir);
+	float NdotRayDirection = dot(N, dir);
 	if (fabs(NdotRayDirection) < 0.0001) // almost 0 
 		return false; // they are parallel so they don't intersect ! 
 
 	// compute d parameter using equation 2
-	float d = dot(N,v0);
+	float d = dot(N, v0);
 
 	// compute t (equation 3)
 	t = (dot(N, orig) + d) / NdotRayDirection;
@@ -93,20 +93,20 @@ __device__ bool rayTriangleIntersect(
 	// edge 0
 	float3 edge0 = v1 - v0;
 	float3 vp0 = P - v0;
-	C = cross(edge0,vp0);
-	if (dot(N,C) < 0) return false; // P is on the right side 
+	C = cross(edge0, vp0);
+	if (dot(N, C) < 0) return false; // P is on the right side 
 
 	// edge 1
 	float3 edge1 = v2 - v1;
 	float3 vp1 = P - v1;
-	C = cross(edge1,vp1);
-	if ((u = dot(N,C)) < 0)  return false; // P is on the right side 
+	C = cross(edge1, vp1);
+	if ((u = dot(N, C)) < 0)  return false; // P is on the right side 
 
 	// edge 2
 	float3 edge2 = v0 - v2;
 	float3 vp2 = P - v2;
-	C = cross(edge2,vp2);
-	if ((v = dot(N,C)) < 0) return false; // P is on the right side; 
+	C = cross(edge2, vp2);
+	if ((v = dot(N, C)) < 0) return false; // P is on the right side; 
 
 	u /= denom;
 	v /= denom;
@@ -128,22 +128,22 @@ __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 	float a, f;
 	edge1 = vertex1 - vertex0;
 	edge2 = vertex2 - vertex0;
-	h = cross(rayVector,edge2);
-	a = dot(edge1,h);
+	h = cross(rayVector, edge2);
+	a = dot(edge1, h);
 	if (a > -EPSILON && a < EPSILON)
 		return false;    // This ray is parallel to this triangle.
 	f = 1.0 / a;
 	s = rayOrigin - vertex0;
-	u = f * dot(s,h);
-	if (u < 0.0 || u > 1.0)
-		return false;
-	q = cross(s,edge1);
-	v = f * dot(rayVector,q);
-	if (v < 0.0 || u + v > 1.0)
-		return false;
+	u = f * dot(s, h);
+	//if (u < 0.0 || u > 1.0)
+	//	return false;
+	q = cross(s, edge1);
+	v = f * dot(rayVector, q);
+	//if (v < 0.0 || u + v > 1.0)
+	//	return false;
 	// At this stage we can compute t to find out where the intersection point is on the line.
-	t = f * dot(edge2,q);
-	if (t > EPSILON) // ray intersection
+	t = f * dot(edge2, q);
+	if (t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0))) // ray intersection
 	{
 		return true;
 	}
@@ -156,7 +156,7 @@ __device__ void fresnel(const float3& I, const float3& N, const float& ior, floa
 {
 	float cosi = clamp(-1, 1, dot(I, N));
 	float etai = 1, etat = ior;
-	if (cosi > 0) { float temp = etai; etai = etat; etat = temp;}
+	if (cosi > 0) { float temp = etai; etai = etat; etat = temp; }
 	// Compute sini using Snell's law
 	float sint = etai / etat * sqrtf(max(0.f, 1 - cosi * cosi));
 	// Total internal reflection
@@ -192,7 +192,7 @@ __device__ float3 reflect(const float3& I, const float3& N)
 }
 
 struct hitInfo {
-	rayHitInfo info;
+	const rayHitInfo* info;
 	bool hit;
 	//int objectIndex = -1;
 	//bool hitMesh = false;
@@ -221,7 +221,7 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 			shapeInfo p1 = curr.shapeData;
 			if (intersectPlane(p1, currRayPos, currRayDir, currDist) && currDist < closestDist) {
 				closestDist = currDist;
-				toReturn.info = curr.rayInfo;
+				toReturn.info = &curr.rayInfo;
 				normal = p1.normal;
 				toReturn.hit = true;
 			}
@@ -230,11 +230,11 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 		}
 		case sphere: {
 			shapeInfo s1 = curr.shapeData;
-			if (intersectsSphere(currRayPos, currRayDir, s1, currDist) && currDist < closestDist) {
+			if (intersectsSphere(currRayPos, currRayDir, s1.pos, s1.rad, currDist) && currDist < closestDist) {
 				closestDist = currDist;
 				float3 nextPos = currRayPos + currDist * currRayDir;
 				normal = normalize(nextPos - s1.pos);
-				toReturn.info = curr.rayInfo;
+				toReturn.info = &curr.rayInfo;
 				toReturn.hit = true;
 
 			}
@@ -247,26 +247,25 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 	// meshes
 	for (int i = 0; i < scene.numMeshes; i++) {
 		triangleMesh currMesh = scene.meshes[i];
-		for (unsigned int j = 0; j < scene.meshes[i].numIndices; j+=3) {
-			float t;
-			float u;
-			float v;
 
-			bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t,u,v);
+		float distToBoundingSphere;
+		if (intersectsSphere(currRayPos, currRayDir, currMesh.center, currMesh.boundingSphereRad, distToBoundingSphere) && distToBoundingSphere < closestDist) {
 
-			if (hitTriangle && t < closestDist) {
-				closestDist = t;
-				toReturn.info = currMesh.rayInfo;
+			for (unsigned int j = 0; j < scene.meshes[i].numIndices; j += 3) {
+				float t;
+				float u;
+				float v;
 
-				//float mp3 = v;
-				//float mp2 = u;
-				//float mp1 = (1 - v - u);
+				bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t, u, v);
 
-				normal = (1 - v - u) * currMesh.normals[currMesh.indices[j]] + u * currMesh.normals[currMesh.indices[j + 1]] +  v * currMesh.normals[currMesh.indices[j + 2]];
-				toReturn.hit = true;
+				if (hitTriangle && t < closestDist) {
+					closestDist = t;
+					toReturn.info = &currMesh.rayInfo;
+
+					normal = (1 - v - u) * currMesh.normals[currMesh.indices[j]] + u * currMesh.normals[currMesh.indices[j + 1]] + v * currMesh.normals[currMesh.indices[j + 2]];
+					toReturn.hit = true;
+				}
 			}
-
-
 		}
 
 	}
@@ -291,20 +290,20 @@ __device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene)
 }
 
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const sceneInfo &scene) {
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const sceneInfo& scene) {
 	if (remainingDepth <= 0) {
-		return make_float3(0,0,0);
+		return make_float3(0, 0, 0);
 	}
 
 
 	hitInfo hit = getHit(currRayPos, currRayDir, scene);
 
 	if (!hit.hit) {
-		return make_float3(0,0,0);
+		return make_float3(0, 0, 0);
 	}
 	else {
 
-		rayHitInfo info = hit.info;
+		rayHitInfo info = *hit.info;
 		//objectInfo currObject = scene.objects[hit.objectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
@@ -314,29 +313,29 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float extraReflection = 0;
 		float3 extraColor;
 		float3 bias = 0.001 * normal;
-		float extraColorSize = 0; 
+		float extraColorSize = 0;
 		if (info.refractivity > 0.) {
 			float kr;
 			bool outside = dot(currRayDir, normal) < 0;
-			fresnel(currRayDir, normal, outside? info.refractiveIndex : 1 / info.refractiveIndex, kr);
+			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
 			if (kr <= 1) {
-				extraColorSize = outside ? 0 : min(1-kr, length(nextPos - currRayPos) * info.insideColorDensity);
+				extraColorSize = outside ? 0 : min(1 - kr, length(nextPos - currRayPos) * info.insideColorDensity);
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
 
-				refracted = info.refractivity *(1-kr - extraColorSize)* trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene);
+				refracted = info.refractivity * (1 - kr - extraColorSize) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene);
 			}
-			extraReflection = min(1.,kr - extraColorSize) * info.refractivity;
+			extraReflection = min(1., kr - extraColorSize) * info.refractivity;
 
 		}
 		if (info.reflectivity + extraReflection > 0.) {
 			float3 reflectDir = reflect(currRayDir, normal);
-			reflected = (info.reflectivity + extraReflection )* trace(nextPos + bias, reflectDir, remainingDepth - 1, scene);
+			reflected = (info.reflectivity + extraReflection) * trace(nextPos + bias, reflectDir, remainingDepth - 1, scene);
 		}
 		float3 color = (1 - info.reflectivity - extraReflection - info.refractivity + extraColorSize) * info.color;
-		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) /** getShadowTerm(nextPos + bias, scene) */* color + reflected + refracted;
+		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) /* getShadowTerm(nextPos + bias, scene) */ * color + reflected + refracted;
 	}
 
 }
@@ -350,29 +349,29 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	int ty = threadIdx.y;
 	int bw = blockDim.x;
 	int bh = blockDim.y;
-	int x = blockIdx.x*bw + tx;
-	int y = blockIdx.y*bh + ty;
+	int x = blockIdx.x * bw + tx;
+	int y = blockIdx.y * bh + ty;
 
 	float3 forwardV = make_float3(input.forwardX, input.forwardY, input.forwardZ);
 	float3 upV = make_float3(input.upX, input.upY, input.upZ);
-	float3 rightV = normalize(cross(upV,forwardV));
+	float3 rightV = normalize(cross(upV, forwardV));
 
 	float sizeFarPlane = 10;
-	float sizeNearPlane = sizeFarPlane *0.5;
+	float sizeNearPlane = sizeFarPlane * 0.5;
 	float3 origin = make_float3(input.currPosX, input.currPosY, input.currPosZ);
 	float distFarPlane = 4;
-	float distFirstPlane = distFarPlane *0.5;
+	float distFirstPlane = distFarPlane * 0.5;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
-	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y-y) / imgh) * upV;
-	float3 firstPlanePos = (sizeNearPlane*distFromCenter) + origin + (distFirstPlane * forwardV);
+	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
+	float3 firstPlanePos = (sizeNearPlane * distFromCenter) + origin + (distFirstPlane * forwardV);
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
 	//sceneInfo info = 
 
-	float3 out = 255*trace(firstPlanePos, dirVector, 5, pointers.scene);
+	float3 out = 255 * trace(firstPlanePos, dirVector, 3, pointers.scene);
 
 
 	//float3 out = 50*pointers.scene.meshes[0].vertices[10];
@@ -380,9 +379,9 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
 extern "C" void
-launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime,inputStruct input)
+launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
 {
 
-	cudaRender << < grid, block, sbytes >> >(pointers, imgw, imgh, currTime, input);
+	cudaRender << < grid, block, sbytes >> > (pointers, imgw, imgh, currTime, input);
 }
 

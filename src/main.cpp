@@ -228,7 +228,7 @@ triangleMesh myMesh;
 triangleMesh myMeshOnCuda;
 
 // we assume it's all triangles
-triangleMesh importModel(std::string path) {
+triangleMesh importModel(std::string path, float scale, float3 offset) {
 
 	triangleMesh toReturn;
 
@@ -271,7 +271,7 @@ triangleMesh importModel(std::string path) {
 		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
 		cout << "vertices: " << firstMesh->mNumVertices;
 		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
-			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x*20, firstMesh->mVertices[i].y*20, firstMesh->mVertices[i].z*20);
+			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x* scale + offset.x, firstMesh->mVertices[i].y* scale + offset.y, firstMesh->mVertices[i].z* scale + offset.z);
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
 			//if (firstMesh->HasNormals())
 				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
@@ -279,6 +279,52 @@ triangleMesh importModel(std::string path) {
 	}
 
 	return toReturn;
+}
+
+#define MAX(a,b) a > b ? a : b
+#define MIN(a,b) a < b ? a : b
+#define MOST(type, v1,v2) make_float3( type (v1.x, v2.x), type (v1.y,v2.y), type (v1.z, v2.z));
+
+void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void** mesh_pointer) {
+
+	myMeshOnCuda.numIndices = myMesh.numIndices;
+	myMeshOnCuda.numVertices = myMesh.numVertices;
+
+	myMeshOnCuda.rayInfo.color = make_float3(0, 0, 0);
+	myMeshOnCuda.rayInfo.refractivity = 1.0;
+	myMeshOnCuda.rayInfo.reflectivity = 0.0;
+	myMeshOnCuda.rayInfo.insideColorDensity = 0.0;
+	myMeshOnCuda.rayInfo.refractiveIndex = 1.3;
+
+
+	float BIG_VALUE = 1000000;
+
+	float3 max = make_float3(-BIG_VALUE,-BIG_VALUE,-BIG_VALUE);
+	float3 min = make_float3(BIG_VALUE, BIG_VALUE, BIG_VALUE);
+	for (int i = 0; i < myMesh.numVertices; i++) {
+		max = MOST(MAX, max, myMesh.vertices[i]);
+		min = MOST(MIN, min, myMesh.vertices[i]);
+	}
+	
+	myMeshOnCuda.center = make_float3((max.x + min.x) * 0.5, (max.y + min.y) * 0.5, (max.z + min.z) * 0.5);
+	myMeshOnCuda.boundingSphereRad = sqrtf(powf(max.x - myMeshOnCuda.center.x, 2) + powf(max.y - myMeshOnCuda.center.y, 2) + powf(max.z - myMeshOnCuda.center.z, 2));
+
+	checkCudaErrors(cudaMalloc(mesh_pointer, sizeof(triangleMesh)));
+
+	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
+	unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
+
+	if (myMesh.numIndices > 0) {
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
+
+		// copy result to cuda buffers
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(*mesh_pointer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+	}
 }
 
 void initCUDABuffers()
@@ -308,57 +354,10 @@ void initCUDABuffers()
 	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
 
-	myMesh = importModel("C:/Users/Tobbe/Desktop/le monke.ply");
+	myMesh = importModel("C:/Users/Tobbe/Desktop/bun4.ply", 100, make_float3(0,0,-20));
 
-	myMeshOnCuda.numIndices = myMesh.numIndices;
-	myMeshOnCuda.numVertices = myMesh.numVertices;
+	addMeshToCuda(myMesh, myMeshOnCuda, &cuda_mesh_buffer);
 
-
-	myMeshOnCuda.rayInfo.color = make_float3(0, 1, 0);
-	myMeshOnCuda.rayInfo.refractivity = 1.0;
-	myMeshOnCuda.rayInfo.reflectivity = 0.0;
-	myMeshOnCuda.rayInfo.insideColorDensity = 0.0;
-	myMeshOnCuda.rayInfo.refractiveIndex = 1.3;
-
-	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
-
-	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
-	unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
-
-	if (myMesh.numIndices > 0) {
-		checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
-		checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
-		checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
-
-		// copy result to cuda buffers
-		checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
-	}
-	//checkCudaErrors(cudaMemcpyToArray(myMeshOnCuda, 0, 0, cuda_mesh_buffer, sizeof(triangleMesh), cudaMemcpyDeviceToDevice));
-	//checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
-	//checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
-	//checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
-
-
-	//checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, indicesSize)); // Allocate CUDA memory for triangle meshes
-
-	//int numVertices;
-	//int numIndices;
-
-	//void* vertP;
-	//void* indP;
-
-	//size_t verticesSize;
-	//size_t indicesSize;
-
-
-	//struct mesh {
-	//	float3* vertices;
-	//	int* indices;
-	//	int numIndices;
-	//};
 
 
 
