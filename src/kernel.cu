@@ -123,7 +123,7 @@ __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 	float& t, float& u, float& v)
 {
 
-	const float EPSILON = 0.0000001;
+	const float EPSILON = 0.001;
 	float3 edge1, edge2, h, s, q;
 	float a, f;
 	edge1 = vertex1 - vertex0;
@@ -312,7 +312,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 		float extraReflection = 0;
 		float3 extraColor;
-		float3 bias = 0.001 * normal;
+		float3 bias = 0.5 * normal;
 		float extraColorSize = 0;
 		if (info.refractivity > 0.) {
 			float kr;
@@ -323,7 +323,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			if (kr <= 1) {
 				extraColorSize = outside ? 0 : min(1 - kr, length(nextPos - currRayPos) * info.insideColorDensity);
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
-				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
+				float3 refractionRayOrig = nextPos + 0.1*currRayDir;// outside ? nextPos - bias : nextPos + bias;
 
 				refracted = info.refractivity * (1 - kr - extraColorSize) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene);
 			}
@@ -371,7 +371,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	//sceneInfo info = 
 
-	float3 out = 255 * trace(firstPlanePos, dirVector, 3, pointers.scene);
+	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene);
 
 
 	//float3 out = 50*pointers.scene.meshes[0].vertices[10];

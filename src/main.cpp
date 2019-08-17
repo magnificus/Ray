@@ -354,7 +354,7 @@ void initCUDABuffers()
 	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
 
-	myMesh = importModel("C:/Users/Tobbe/Desktop/bun4.ply", 100, make_float3(0,0,-20));
+	myMesh = importModel("C:/Users/Tobbe/Desktop/bun3.ply", 50, make_float3(0,0,10));
 
 	addMeshToCuda(myMesh, myMeshOnCuda, &cuda_mesh_buffer);
 
@@ -436,7 +436,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(1, 1, 1), 0, 0, 0);
 	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0, 0);
 	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0, 0);
-	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 1, 1.3, 0.015);
+	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 0, 1.3, 0.015);
 	objects[6] = make_objectInfo(plane, p3, 0, make_float3(1, 1, 0), 0, 0, 0);
 	objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
