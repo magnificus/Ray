@@ -48,7 +48,7 @@ inline __device__  float dot(float3 v1, float3 v2)
 
 inline __device__  float3 cross(float3 v1, float3 v2)
 {
-	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.x * v2.z - v1.z * v2.x, v1.x * v2.y - v1.y * v2.x);
+	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
 }
 
 inline __device__ float length(float3 v)
@@ -63,7 +63,7 @@ inline __device__ float3 inverse(float3 v)
 
 inline __device__ float3 normalize(float3 v)
 {
-	float invLen = 1 / length(v);//1 / sqrtf(dot(v, v));
+	float invLen = 1 / sqrtf(dot(v, v));
 	return invLen * v;
 }
 

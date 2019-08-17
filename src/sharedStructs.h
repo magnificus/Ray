@@ -46,9 +46,7 @@ inline __device__ planeInfo make_planeInfo(float3 point, float3 normal) {
 
 enum shape { sphere, plane };
 
-struct objectInfo {
-	shape s;
-	shapeInfo shapeData;
+struct rayHitInfo {
 	float reflectivity;
 	float refractivity;
 	float refractiveIndex;
@@ -56,15 +54,22 @@ struct objectInfo {
 	float3 color;
 };
 
+struct objectInfo {
+	shape s;
+	shapeInfo shapeData;
+	rayHitInfo rayInfo;
+
+};
+
 inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex, float insideColorDensity) {
 	objectInfo o;
 	o.s = s;
 	o.shapeData = shapeData;
-	o.reflectivity = reflectivity;
-	o.color = color;
-	o.refractivity = refractivity;
-	o.refractiveIndex = refractiveIndex;
-	o.insideColorDensity = insideColorDensity;
+	o.rayInfo.reflectivity = reflectivity;
+	o.rayInfo.color = color;
+	o.rayInfo.refractivity = refractivity;
+	o.rayInfo.refractiveIndex = refractiveIndex;
+	o.rayInfo.insideColorDensity = insideColorDensity;
 	return o;
 }
 
@@ -74,6 +79,8 @@ struct triangleMesh {
 	unsigned int* indices; // unsigned int
 	int numIndices = 0;
 	int numVertices = 0;
+
+	rayHitInfo rayInfo;
 };
 
 struct sceneInfo {

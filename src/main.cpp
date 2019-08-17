@@ -233,7 +233,8 @@ triangleMesh importModel(std::string path) {
 	triangleMesh toReturn;
 
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+	//importer.SetPropertyFloat("PP_GSN_MAX_SMOOTHING_ANGLE", 45);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
 	if (!scene) {
 		cout << "invalid path to mesh fuccboi\n";
 		return toReturn;
@@ -268,10 +269,11 @@ triangleMesh importModel(std::string path) {
 		// vertices & normals
 		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
 		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
+		cout << "vertices: " << firstMesh->mNumVertices;
 		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
-			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x, firstMesh->mVertices[i].y, firstMesh->mVertices[i].z);
+			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x*20, firstMesh->mVertices[i].y*20, firstMesh->mVertices[i].z*20);
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
-			if (firstMesh->HasNormals())
+			//if (firstMesh->HasNormals())
 				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
 		}
 	}
@@ -306,10 +308,18 @@ void initCUDABuffers()
 	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
 
-	myMesh = importModel("C:/Users/Tobbe/Desktop/le cube.ply");
+	myMesh = importModel("C:/Users/Tobbe/Desktop/le monke.ply");
 
 	myMeshOnCuda.numIndices = myMesh.numIndices;
 	myMeshOnCuda.numVertices = myMesh.numVertices;
+
+
+	myMeshOnCuda.rayInfo.color = make_float3(0, 1, 0);
+	myMeshOnCuda.rayInfo.refractivity = 1.0;
+	myMeshOnCuda.rayInfo.reflectivity = 0.0;
+	myMeshOnCuda.rayInfo.insideColorDensity = 0.0;
+	myMeshOnCuda.rayInfo.refractiveIndex = 1.3;
+
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
 
 	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
