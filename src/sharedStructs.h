@@ -73,8 +73,12 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 	return o;
 }
 
+// total size will be pow(GRID_SIZE,3) bc of xyz
+#define GRID_SIZE 2
+#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
+#define GRID_DEPTH 1
 
-#define INTERNAL_SPHERES_DEPTH 1
+#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
 
 struct triangleMesh {
 	float3* vertices; 
@@ -84,15 +88,13 @@ struct triangleMesh {
 	int numVertices = 0;
 
 	rayHitInfo rayInfo;
-	//float3 center;
-	//float boundingSphereRad;
-
-	//unsigned int** internalSpheres; // we have a list of lists corresponding to which triangles intersect which underlying spheres x, then y, then z
-	//unsigned int* internalSphereListSizes;
 
 	// acceleration structure
 	float3 bbMin;
 	float3 bbMax;
+	unsigned int** grid; // lists with unsigned int marking which triangles intersect
+	unsigned int* gridSizes;
+	float3 gridBoxDimensions;
 };
 
 struct sceneInfo {
@@ -141,6 +143,10 @@ inline __device__ float3 operator+(const float3& a, const float3& b) {
 
 inline __device__ float3 operator*(const float3& a, const float3& b) {
 	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+inline __device__ float3 operator/(const float3& a, const float3& b) {
+	return make_float3(a.x / b.x, a.y / b.y, a.z / b.z);
 }
 
 

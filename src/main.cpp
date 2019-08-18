@@ -268,21 +268,14 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
 		// vertices & normals
 		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
 		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
-		cout << "vertices: " << firstMesh->mNumVertices;
+		cout << "num vertices: " << firstMesh->mNumVertices << endl;
+		cout << "num faces: " << toReturn.numIndices/3 << endl;
 		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
 			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x* scale + offset.x, firstMesh->mVertices[i].y* scale + offset.y, firstMesh->mVertices[i].z* scale + offset.z);
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
 			//if (firstMesh->HasNormals())
 				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
 		}
-	}
-
-	unsigned int* internalSphereSizes;
-	unsigned int** internalSpheres;
-
-	for (int i = 0; i < pow(8, INTERNAL_SPHERES_DEPTH); i++) {
-		//internalSpheres[i] = 
-
 	}
 
 	return toReturn;
@@ -313,28 +306,106 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 		min = MOST(MIN, min, myMesh.vertices[i]);
 	}
 	
+
+	// acceleration structure
+	float3 center = 0.5 * (max + min);
 	myMeshOnCuda.bbMax = max;
 	myMeshOnCuda.bbMin = min;
 
-	//myMeshOnCuda.center = make_float3((max.x + min.x) * 0.5, (max.y + min.y) * 0.5, (max.z + min.z) * 0.5);
-	//myMeshOnCuda.boundingSphereRad = sqrtf(powf(max.x - myMeshOnCuda.center.x, 2) + powf(max.y - myMeshOnCuda.center.y, 2) + powf(max.z - myMeshOnCuda.center.z, 2));
+
+	unsigned int gridSize = GRID_SIZE* GRID_SIZE * GRID_SIZE * sizeof(unsigned int*);
+	unsigned int gridSizesSize = GRID_SIZE * GRID_SIZE * GRID_SIZE * sizeof(unsigned int);
+
+	unsigned int** grid = (unsigned int**)malloc(gridSize);
+	unsigned int* gridSizes = (unsigned int*)malloc(gridSizesSize);
+
+
+	float3 gridDist = (1.0 / GRID_SIZE) * (max - min);
+	myMeshOnCuda.gridBoxDimensions = gridDist;
+
+	for (int x = 0; x < GRID_SIZE; x++) {
+		for (int y = 0; y < GRID_SIZE; y++) {
+			for (int z = 0; z < GRID_SIZE; z++) {
+				std::vector<unsigned int> trianglesToAddToBlock;
+				float3 currMin = make_float3(x,y,z)*gridDist + min;
+				float3 currMax = make_float3(x+1,y+1,z+1)*gridDist + min;
+				float3 currCenter = 0.5 * (currMin + currMax);
+
+				for (int i = 0; i < myMesh.numIndices; i += 3) {
+					float3 v0 = myMesh.vertices[myMesh.indices[i]];
+					float3 v1 = myMesh.vertices[myMesh.indices[i+1]];
+					float3 v2 = myMesh.vertices[myMesh.indices[i+2]];
+
+					float tMin;
+					float tMax;
+					// we intersect if we're either inside the slab or one edge crosses it
+					bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
+					intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
+					intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
+					intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+
+					if (intersecting) {
+						trianglesToAddToBlock.push_back(i);
+					}
+				}
+
+				cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+				gridSizes[GRID_POS(x,y,z)] = trianglesToAddToBlock.size();
+				grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
+
+				for (int i = 0; i < trianglesToAddToBlock.size(); i++) {
+					grid[GRID_POS(x, y, z)][i] = trianglesToAddToBlock[i]; // add collisions to grid
+				}
+			}
+		}
+	}
 
 	checkCudaErrors(cudaMalloc(mesh_pointer, sizeof(triangleMesh)));
 
 	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
 	unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
 
+
 	if (myMesh.numIndices > 0) {
+		// allocate cuda space
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
+		// this shit is getting convoluted man
+		// gotta allocate for each list in grid separately, then feed the correct pointers to the correct positions
 
-		// copy result to cuda buffers
+		unsigned int** CudaGridPointer = (unsigned int**)malloc(gridSize);
+
+		for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+			checkCudaErrors(cudaMalloc(&CudaGridPointer[i], gridSizes[i]*sizeof(unsigned int)));
+			checkCudaErrors(cudaMemcpy(CudaGridPointer[i], grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
+
+		}
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.grid, gridSize));
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.gridSizes, gridSizesSize));
+
+		// copy data to cuda buffers
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
+		//for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+		//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid + i * sizeof(unsigned int*), grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
+		//}
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSizesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
+
+
 		checkCudaErrors(cudaMemcpy(*mesh_pointer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+
+		free(CudaGridPointer);
+
 	}
+
+	for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+		free(grid[i]);
+	}
+	free(grid);
+	free(gridSizes);
 }
 
 void initCUDABuffers()

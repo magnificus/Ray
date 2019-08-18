@@ -252,16 +252,26 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 		float tMin;
 		float tMax;
 		if (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0) {
-			for (unsigned int j = 0; j < scene.meshes[i].numIndices; j += 3) {
+
+			// engage the GRID
+			float3 hitPos = currRayPos + tMin*currRayDir;
+			float3 gridPos = (hitPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+			gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
+			//if (gridPos.x > 1  || gridPos.y > 1 || )
+			gridPos = make_float3(0, 1, 1);
+			unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
+
+			for (unsigned int j = 0; j < currMesh.gridSizes[gridPosLoc]; j++){
+				unsigned int iPos = currMesh.grid[gridPosLoc][j];
 				float t;
 				float u;
 				float v;
-				bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t, u, v);
+				bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[iPos]], currMesh.vertices[currMesh.indices[iPos + 1]], currMesh.vertices[currMesh.indices[iPos + 2]], t, u, v);
 				if (hitTriangle && t < closestDist) {
 					closestDist = t;
 					toReturn.info = &currMesh.rayInfo;
 
-					normal = (1 - v - u) * currMesh.normals[currMesh.indices[j]] + u * currMesh.normals[currMesh.indices[j + 1]] + v * currMesh.normals[currMesh.indices[j + 2]];
+					normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
 					toReturn.hit = true;
 				}
 			}
