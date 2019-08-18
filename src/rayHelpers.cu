@@ -23,50 +23,6 @@ inline __device__ int rgbToInt(float r, float g, float b)
 	return (int(b) << 16) | (int(g) << 8) | int(r);
 }
 
-inline __device__ float3 operator+(const float3& a, const float3& b) {
-	return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
-}
-
-inline __device__ float3 operator*(const float3& a, const float3& b) {
-	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
-}
-
-
-inline __device__ float3 operator*(const float& a, const float3& b) {
-	return make_float3(a * b.x, a * b.y, a * b.z);
-}
-
-inline __device__ float3 operator-(const float3& a, const float3& b) {
-	return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
-}
-
-
-inline __device__  float dot(float3 v1, float3 v2)
-{
-	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-}
-
-inline __device__  float3 cross(float3 v1, float3 v2)
-{
-	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
-}
-
-inline __device__ float length(float3 v)
-{
-	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
-inline __device__ float3 inverse(float3 v)
-{
-	return make_float3(-v.x, -v.y, -v.z);
-}
-
-inline __device__ float3 normalize(float3 v)
-{
-	float invLen = 1 / sqrtf(dot(v, v));
-	return invLen * v;
-}
-
 
 
 inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 

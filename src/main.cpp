@@ -227,13 +227,12 @@ bool initGL() {
 triangleMesh myMesh;
 triangleMesh myMeshOnCuda;
 
-// we assume it's all triangles
+
 triangleMesh importModel(std::string path, float scale, float3 offset) {
 
 	triangleMesh toReturn;
 
 	Assimp::Importer importer;
-	//importer.SetPropertyFloat("PP_GSN_MAX_SMOOTHING_ANGLE", 45);
 	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
 	if (!scene) {
 		cout << "invalid path to mesh fuccboi\n";
@@ -258,7 +257,7 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
 		unsigned int currIndexPos = 0;
 		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
 			auto face = firstMesh->mFaces[i];
-			for (int j = 2; j < face.mNumIndices; j++) {
+			for (int j = 2; j < face.mNumIndices; j++) { // fan triangulate if not triangles
 				toReturn.indices[currIndexPos] = face.mIndices[0];
 				toReturn.indices[currIndexPos+1] = face.mIndices[j-1];
 				toReturn.indices[currIndexPos+2] = face.mIndices[j];
@@ -276,6 +275,14 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
 			//if (firstMesh->HasNormals())
 				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
 		}
+	}
+
+	unsigned int* internalSphereSizes;
+	unsigned int** internalSpheres;
+
+	for (int i = 0; i < pow(8, INTERNAL_SPHERES_DEPTH); i++) {
+		//internalSpheres[i] = 
+
 	}
 
 	return toReturn;
@@ -306,8 +313,11 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 		min = MOST(MIN, min, myMesh.vertices[i]);
 	}
 	
-	myMeshOnCuda.center = make_float3((max.x + min.x) * 0.5, (max.y + min.y) * 0.5, (max.z + min.z) * 0.5);
-	myMeshOnCuda.boundingSphereRad = sqrtf(powf(max.x - myMeshOnCuda.center.x, 2) + powf(max.y - myMeshOnCuda.center.y, 2) + powf(max.z - myMeshOnCuda.center.z, 2));
+	myMeshOnCuda.bbMax = max;
+	myMeshOnCuda.bbMin = min;
+
+	//myMeshOnCuda.center = make_float3((max.x + min.x) * 0.5, (max.y + min.y) * 0.5, (max.z + min.z) * 0.5);
+	//myMeshOnCuda.boundingSphereRad = sqrtf(powf(max.x - myMeshOnCuda.center.x, 2) + powf(max.y - myMeshOnCuda.center.y, 2) + powf(max.z - myMeshOnCuda.center.z, 2));
 
 	checkCudaErrors(cudaMalloc(mesh_pointer, sizeof(triangleMesh)));
 

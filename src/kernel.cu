@@ -8,6 +8,7 @@ __global__ void kernel() {
 
 }
 
+
 __device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
 
 	float t0, t1; // solutions for t if the ray intersects 
@@ -248,16 +249,14 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 	for (int i = 0; i < scene.numMeshes; i++) {
 		triangleMesh currMesh = scene.meshes[i];
 
-		float distToBoundingSphere;
-		if (intersectsSphere(currRayPos, currRayDir, currMesh.center, currMesh.boundingSphereRad, distToBoundingSphere) && distToBoundingSphere < closestDist) {
-
+		float tMin;
+		float tMax;
+		if (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0) {
 			for (unsigned int j = 0; j < scene.meshes[i].numIndices; j += 3) {
 				float t;
 				float u;
 				float v;
-
 				bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[j]], currMesh.vertices[currMesh.indices[j + 1]], currMesh.vertices[currMesh.indices[j + 2]], t, u, v);
-
 				if (hitTriangle && t < closestDist) {
 					closestDist = t;
 					toReturn.info = &currMesh.rayInfo;

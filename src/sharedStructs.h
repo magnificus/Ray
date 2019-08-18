@@ -73,18 +73,26 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 	return o;
 }
 
+
+#define INTERNAL_SPHERES_DEPTH 1
+
 struct triangleMesh {
-	float3* vertices; //float3
-	float3* normals; //float3
-	unsigned int* indices; // unsigned int
+	float3* vertices; 
+	float3* normals; 
+	unsigned int* indices; 
 	int numIndices = 0;
 	int numVertices = 0;
 
 	rayHitInfo rayInfo;
+	//float3 center;
+	//float boundingSphereRad;
 
+	//unsigned int** internalSpheres; // we have a list of lists corresponding to which triangles intersect which underlying spheres x, then y, then z
+	//unsigned int* internalSphereListSizes;
 
-	float3 center;
-	float boundingSphereRad;
+	// acceleration structure
+	float3 bbMin;
+	float3 bbMax;
 };
 
 struct sceneInfo {
@@ -125,3 +133,100 @@ struct inputStruct {
 	float upY;
 	float upZ;
 };
+
+
+inline __device__ float3 operator+(const float3& a, const float3& b) {
+	return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+inline __device__ float3 operator*(const float3& a, const float3& b) {
+	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+
+inline __device__ float3 operator*(const float& a, const float3& b) {
+	return make_float3(a * b.x, a * b.y, a * b.z);
+}
+
+inline __device__ float3 operator-(const float3& a, const float3& b) {
+	return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+
+inline __device__  float dot(float3 v1, float3 v2)
+{
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+inline __device__  float3 cross(float3 v1, float3 v2)
+{
+	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
+}
+
+inline __device__ float length(float3 v)
+{
+	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+inline __device__ float length1(float3 v)
+{
+	return v.x + v.y + v.z;
+}
+
+inline __device__ float3 inverse(float3 v)
+{
+	return make_float3(-v.x, -v.y, -v.z);
+}
+
+inline __device__ float3 normalize(float3 v)
+{
+	float invLen = 1 / sqrtf(dot(v, v));
+	return invLen * v;
+}
+
+inline __device__ bool intersectBox(const float3& orig, const float3& dir, const float3& min, const float3 max, float &tmin, float &tmax)
+{
+	tmin = (min.x - orig.x) / dir.x;
+	tmax = (max.x - orig.x) / dir.x;
+
+	if (tmin > tmax) {
+		float temp = tmin; tmin = tmax; tmax = temp;
+	}
+
+	float tymin = (min.y - orig.y) / dir.y;
+	float tymax = (max.y - orig.y) / dir.y;
+
+	if (tymin > tymax) {
+		float temp = tymin; tymin = tymax; tymax = temp;
+	}
+
+	if ((tmin > tymax) || (tymin > tmax))
+		return false;
+
+	if (tymin > tmin)
+		tmin = tymin;
+
+	if (tymax < tmax)
+		tmax = tymax;
+
+	float tzmin = (min.z - orig.z) / dir.z;
+	float tzmax = (max.z - orig.z) / dir.z;
+
+	if (tzmin > tzmax) {
+		float temp = tzmin; tzmin = tzmax; tzmax = temp;
+
+	}
+
+	if ((tmin > tzmax) || (tzmin > tmax))
+		return false;
+
+	if (tzmin > tmin)
+		tmin = tzmin;
+
+	if (tzmax < tmax)
+		tmax = tzmax;
+
+	return true;
+
+
+}
