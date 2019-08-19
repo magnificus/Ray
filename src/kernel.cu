@@ -249,33 +249,55 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 	for (int i = 0; i < scene.numMeshes; i++) {
 		triangleMesh currMesh = scene.meshes[i];
 
-		float tMin;
+		float tMin = 0;
 		float tMax;
-		if (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0) {
+
+		float3 gridPos = (currRayPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+		gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
+
+		bool isAlreadyInside = max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0;
+		if (isAlreadyInside || (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0)) {
 
 			// engage the GRID
-			float3 hitPos = currRayPos + tMin*currRayDir;
-			float3 gridPos = (hitPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
-			gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
-			//if (gridPos.x > 1  || gridPos.y > 1 || )
-			gridPos = make_float3(0, 1, 1);
-			unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
+			float3 currPos = currRayPos + (tMin + 0.001)*currRayDir;
+			gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
 
-			for (unsigned int j = 0; j < currMesh.gridSizes[gridPosLoc]; j++){
-				unsigned int iPos = currMesh.grid[gridPosLoc][j];
-				float t;
-				float u;
-				float v;
-				bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[iPos]], currMesh.vertices[currMesh.indices[iPos + 1]], currMesh.vertices[currMesh.indices[iPos + 2]], t, u, v);
-				if (hitTriangle && t < closestDist) {
-					closestDist = t;
-					toReturn.info = &currMesh.rayInfo;
+			int i = 0;
+			int stepsBeforeQuit = 100000;
+			while (--stepsBeforeQuit > 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
 
-					normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
-					toReturn.hit = true;
+				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
+				unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
+
+				for (unsigned int j = 0; j < currMesh.gridSizes[gridPosLoc]; j++) {
+					unsigned int iPos = currMesh.grid[gridPosLoc][j];
+					float t;
+					float u;
+					float v;
+					bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[iPos]], currMesh.vertices[currMesh.indices[iPos + 1]], currMesh.vertices[currMesh.indices[iPos + 2]], t, u, v);
+					if (hitTriangle && t < closestDist) {
+						closestDist = t;
+						toReturn.info = &currMesh.rayInfo;
+
+						normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
+						toReturn.hit = true;
+						stepsBeforeQuit = 1;
+						//goto outOfMesh;
+					}
 				}
+
+				float3 distFromCorner = currPos - gridPos * currMesh.gridBoxDimensions - currMesh.bbMin;
+				float3 distFromOtherCorner = currMesh.gridBoxDimensions - distFromCorner;
+				float remainingToHitX = max(-distFromCorner.x / currRayDir.x, distFromOtherCorner.x / currRayDir.x);
+				float remainingToHitY = max(-distFromCorner.y / currRayDir.y, distFromOtherCorner.y / currRayDir.y);
+				float remainingToHitZ = max(-distFromCorner.z / currRayDir.z, distFromOtherCorner.z / currRayDir.z);
+				float minDist = min(remainingToHitX, min(remainingToHitY, remainingToHitZ));
+
+				currPos = currPos + (minDist + 0.01) * currRayDir;
+				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
 			}
 		}
+		outOfMesh:
 
 	}
 
@@ -380,7 +402,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	//sceneInfo info = 
 
-	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene);
+	float3 out = 255 * trace(firstPlanePos, dirVector, 4, pointers.scene);
 
 
 	//float3 out = 50*pointers.scene.meshes[0].vertices[10];

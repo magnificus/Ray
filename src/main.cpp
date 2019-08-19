@@ -291,8 +291,8 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 	myMeshOnCuda.numVertices = myMesh.numVertices;
 
 	myMeshOnCuda.rayInfo.color = make_float3(0, 0, 0);
-	myMeshOnCuda.rayInfo.refractivity = 1.0;
-	myMeshOnCuda.rayInfo.reflectivity = 0.0;
+	myMeshOnCuda.rayInfo.refractivity = 0.0;
+	myMeshOnCuda.rayInfo.reflectivity = 1.0;
 	myMeshOnCuda.rayInfo.insideColorDensity = 0.0;
 	myMeshOnCuda.rayInfo.refractiveIndex = 1.3;
 
@@ -349,7 +349,7 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 					}
 				}
 
-				cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+				//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
 				gridSizes[GRID_POS(x,y,z)] = trianglesToAddToBlock.size();
 				grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
 
@@ -377,7 +377,7 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 		unsigned int** CudaGridPointer = (unsigned int**)malloc(gridSize);
 
 		for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
-			checkCudaErrors(cudaMalloc(&CudaGridPointer[i], gridSizes[i]*sizeof(unsigned int)));
+			checkCudaErrors(cudaMalloc(&(CudaGridPointer[i]), gridSizes[i]*sizeof(unsigned int)));
 			checkCudaErrors(cudaMemcpy(CudaGridPointer[i], grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
 		}
@@ -391,7 +391,7 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 		//for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
 		//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid + i * sizeof(unsigned int*), grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
 		//}
-		checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSizesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
 
 
@@ -435,7 +435,7 @@ void initCUDABuffers()
 	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
 
-	myMesh = importModel("C:/Users/Tobbe/Desktop/bun3.ply", 50, make_float3(0,0,10));
+	myMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0,0,40));
 
 	addMeshToCuda(myMesh, myMeshOnCuda, &cuda_mesh_buffer);
 
@@ -471,7 +471,7 @@ bool initGLFW() {
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
 	// calculate grid size
-	dim3 block(16, 16, 1);
+	dim3 block(8, 8, 1);
 	dim3 grid(WIDTH / block.x, HEIGHT / block.y, 1); // 2D grid, every thread will compute a pixel
 
 
