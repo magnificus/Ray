@@ -290,9 +290,9 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 	myMeshOnCuda.numIndices = myMesh.numIndices;
 	myMeshOnCuda.numVertices = myMesh.numVertices;
 
-	myMeshOnCuda.rayInfo.color = make_float3(0, 0, 0);
-	myMeshOnCuda.rayInfo.refractivity = 0.0;
-	myMeshOnCuda.rayInfo.reflectivity = 1.0;
+	myMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
+	myMeshOnCuda.rayInfo.refractivity = 0.6;
+	myMeshOnCuda.rayInfo.reflectivity = 0.3;
 	myMeshOnCuda.rayInfo.insideColorDensity = 0.0;
 	myMeshOnCuda.rayInfo.refractiveIndex = 1.3;
 

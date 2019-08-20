@@ -264,7 +264,7 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 
 			int i = 0;
 			int stepsBeforeQuit = 100000;
-			while (--stepsBeforeQuit > 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
+			while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
 
 				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
 				unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
@@ -366,7 +366,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			reflected = (info.reflectivity + extraReflection) * trace(nextPos + bias, reflectDir, remainingDepth - 1, scene);
 		}
 		float3 color = (1 - info.reflectivity - extraReflection - info.refractivity + extraColorSize) * info.color;
-		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) /* getShadowTerm(nextPos + bias, scene) */ * color + reflected + refracted;
+		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2))  */*getShadowTerm(nextPos + bias, scene)  **/ color + reflected + refracted;
 	}
 
 }
