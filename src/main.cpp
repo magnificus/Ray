@@ -43,6 +43,7 @@ GLFWwindow* window;
 int WIDTH = 1024;
 int HEIGHT = 1024;
 
+// camera
 double currYaw = 270;
 double currPitch = 0;
 glm::vec3 currFront = glm::vec3(0, 0, -1);
@@ -111,9 +112,9 @@ GLfloat vertices[] = {
 	-1.0f, 1.0f, 0.5f,  0.0f, 1.0f // Top Left 
 };
 // you can also put positions, colors and coordinates in seperate VBO's
-GLuint indices[] = {  // Note that we start from 0!
-	0, 1, 3,  // First Triangle
-	1, 2, 3   // Second Triangle
+GLuint indices[] = {  
+	0, 1, 3,  
+	1, 2, 3  
 };
 
 // Create 2D OpenGL texture in gl_tex and bind it to CUDA in cuda_tex
@@ -224,10 +225,6 @@ bool initGL() {
 }
 
 
-triangleMesh myMesh;
-triangleMesh myMeshOnCuda;
-
-
 triangleMesh importModel(std::string path, float scale, float3 offset) {
 
 	triangleMesh toReturn;
@@ -285,17 +282,10 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
 #define MIN(a,b) a < b ? a : b
 #define MOST(type, v1,v2) make_float3( type (v1.x, v2.x), type (v1.y,v2.y), type (v1.z, v2.z));
 
-void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void** mesh_pointer) {
+triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void** mesh_pointer) {
 
 	myMeshOnCuda.numIndices = myMesh.numIndices;
 	myMeshOnCuda.numVertices = myMesh.numVertices;
-
-	myMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
-	myMeshOnCuda.rayInfo.refractivity = 0.6;
-	myMeshOnCuda.rayInfo.reflectivity = 0.3;
-	myMeshOnCuda.rayInfo.insideColorDensity = 0.0;
-	myMeshOnCuda.rayInfo.refractiveIndex = 1.3;
-
 
 	float BIG_VALUE = 1000000;
 
@@ -349,7 +339,7 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 					}
 				}
 
-				//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+				cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
 				gridSizes[GRID_POS(x,y,z)] = trianglesToAddToBlock.size();
 				grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
 
@@ -360,7 +350,7 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 		}
 	}
 
-	checkCudaErrors(cudaMalloc(mesh_pointer, sizeof(triangleMesh)));
+	//checkCudaErrors(cudaMalloc(mesh_pointer, sizeof(triangleMesh)));
 
 	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
 	unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
@@ -388,14 +378,11 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
-		//for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
-		//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid + i * sizeof(unsigned int*), grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
-		//}
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
 
 
-		checkCudaErrors(cudaMemcpy(*mesh_pointer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+		//checkCudaErrors(cudaMemcpy(*mesh_pointer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
 
 		free(CudaGridPointer);
 
@@ -406,6 +393,7 @@ void addMeshToCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void*
 	}
 	free(grid);
 	free(gridSizes);
+
 }
 
 void initCUDABuffers()
@@ -416,7 +404,10 @@ void initCUDABuffers()
 	size_tex_data = sizeof(GLubyte) * num_values;
 
 
-	//cuda_geometry_buffer
+	//
+
+
+
 
 	// We don't want to use cudaMallocManaged here - since we definitely want
 	cudaError_t stat;
@@ -430,17 +421,45 @@ void initCUDABuffers()
 
 	checkCudaErrors(cudaMalloc(&cuda_custom_objects_buffer, size_elements_data)); // Allocate CUDA memory for objects
 
+	shapeInfo s1 = make_shapeInfo(make_float3(0, -3, 13), make_float3(0, 0, 0), 1);
+	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
+	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
+	shapeInfo s4 = make_shapeInfo(make_float3(7, 3, -8), make_float3(0, 0, 0), 6);
+	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
+	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
+	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
+	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
+
+	objectInfo objects[8];
+	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
+	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5, 0);
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(1, 1, 1), 0, 0, 0);
+	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0, 0);
+	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0, 0);
+	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 0, 1.3, 0.015);
+	objects[6] = make_objectInfo(plane, p3, 0, make_float3(1, 1, 0), 0, 0, 0);
+	objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
+
+	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
 	num_meshes = 1;
 	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
 
-	myMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0,0,40));
-
-	addMeshToCuda(myMesh, myMeshOnCuda, &cuda_mesh_buffer);
-
+	triangleMesh bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0,0,40));
+	triangleMesh bunnyMeshOnCuda;// = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0, 0, 40));
 
 
+	bunnyMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
+	bunnyMeshOnCuda.rayInfo.refractivity = 0.6;
+	bunnyMeshOnCuda.rayInfo.reflectivity = 0.3;
+	bunnyMeshOnCuda.rayInfo.insideColorDensity = 0.0;
+	bunnyMeshOnCuda.rayInfo.refractiveIndex = 1.5;
+
+	prepareMeshForCuda(bunnyMesh, bunnyMeshOnCuda, &cuda_mesh_buffer);
+
+	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
+	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, &bunnyMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
 
 }
 
@@ -502,28 +521,9 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.upZ = actualUpV.z;
 
 
-	shapeInfo s1 = make_shapeInfo(make_float3(0, -3,  13), make_float3(0, 0, 0), 1);
-	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
-	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
-	shapeInfo s4 = make_shapeInfo(make_float3(7, 3, -8), make_float3(0, 0, 0), 6);
-	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
-	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
-	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
-	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
-	objectInfo objects[8];
-	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
-	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5, 0);
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(1, 1, 1), 0, 0, 0);
-	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0, 0);
-	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0, 0);
-	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 0, 1.3, 0.015);
-	objects[6] = make_objectInfo(plane, p3, 0, make_float3(1, 1, 0), 0, 0, 0);
-	objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
-	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
-
-	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, 1 };
+	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
 	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, info };
 
 

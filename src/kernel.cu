@@ -57,9 +57,6 @@ __device__ bool rayTriangleIntersect(
 	float& t, float& u, float& v)
 {
 	// compute plane's normal
-	//dir.x = -dir.x;
-	//orig.z = -orig.z;
-	// orig.y = -orig.y;
 	float3 v0v1 = v1 - v0;
 	float3 v0v2 = v2 - v0;
 
@@ -84,7 +81,6 @@ __device__ bool rayTriangleIntersect(
 	// check if the triangle is in behind the ray
 	if (t < 0) return false; // the triangle is behind 
 
-	//return true;
 	// compute the intersection point using equation 1
 	float3 P = orig + t * dir;
 
@@ -269,11 +265,11 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
 				unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
 
+				float t;
+				float u;
+				float v;
 				for (unsigned int j = 0; j < currMesh.gridSizes[gridPosLoc]; j++) {
 					unsigned int iPos = currMesh.grid[gridPosLoc][j];
-					float t;
-					float u;
-					float v;
 					bool hitTriangle = RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[iPos]], currMesh.vertices[currMesh.indices[iPos + 1]], currMesh.vertices[currMesh.indices[iPos + 2]], t, u, v);
 					if (hitTriangle && t < closestDist) {
 						closestDist = t;
@@ -282,7 +278,6 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 						normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
 						toReturn.hit = true;
 						stepsBeforeQuit = 1;
-						//goto outOfMesh;
 					}
 				}
 
