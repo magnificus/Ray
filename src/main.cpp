@@ -225,54 +225,58 @@ bool initGL() {
 }
 
 
-triangleMesh importModel(std::string path, float scale, float3 offset) {
+std::vector<triangleMesh> importModel(std::string path, float scale, float3 offset) {
 
-	triangleMesh toReturn;
+	std::vector<triangleMesh> toReturn;
 
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenNormals);
 	if (!scene) {
-		cout << "invalid path to mesh fuccboi\n";
+		cout << "ya entered an invalid path to mesh fuccboi\n";
 		return toReturn;
 	}
 
-	if (scene->HasMeshes()) {
-		auto firstMesh = scene->mMeshes[0];
+	for (int i = 0; i < scene->mNumMeshes; i++) {
+		auto mesh = scene->mMeshes[i];
 		// indices
+
+		triangleMesh current;
 
 		unsigned int totalIndices = 0;
 
-		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
-			auto face = firstMesh->mFaces[i];
+		for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+			auto face = mesh->mFaces[i];
 			totalIndices += face.mNumIndices + (face.mNumIndices > 3 ? (face.mNumIndices - 3)*2 : 0);
 		}
 
-		toReturn.numIndices = totalIndices;
-		toReturn.numVertices = firstMesh->mNumVertices;
-		toReturn.indices = (unsigned int*) malloc(toReturn.numIndices * sizeof(unsigned int));
+		current.numIndices = totalIndices;
+		current.numVertices = mesh->mNumVertices;
+		current.indices = (unsigned int*) malloc(current.numIndices * sizeof(unsigned int));
 
 		unsigned int currIndexPos = 0;
-		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
-			auto face = firstMesh->mFaces[i];
+		for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+			auto face = mesh->mFaces[i];
 			for (int j = 2; j < face.mNumIndices; j++) { // fan triangulate if not triangles
-				toReturn.indices[currIndexPos] = face.mIndices[0];
-				toReturn.indices[currIndexPos+1] = face.mIndices[j-1];
-				toReturn.indices[currIndexPos+2] = face.mIndices[j];
+				current.indices[currIndexPos] = face.mIndices[0];
+				current.indices[currIndexPos+1] = face.mIndices[j-1];
+				current.indices[currIndexPos+2] = face.mIndices[j];
 				currIndexPos += 3;
 			}
 		}
 
 		// vertices & normals
-		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
-		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
-		cout << "num vertices: " << firstMesh->mNumVertices << endl;
-		cout << "num faces: " << toReturn.numIndices/3 << endl;
-		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
-			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x* scale + offset.x, firstMesh->mVertices[i].y* scale + offset.y, firstMesh->mVertices[i].z* scale + offset.z);
+		current.vertices = (float3*)malloc(current.numVertices * sizeof(float3));
+		current.normals = (float3*)malloc(current.numVertices * sizeof(float3));
+		cout << "num vertices: " << mesh->mNumVertices << endl;
+		cout << "num faces: " << current.numIndices/3 << endl;
+		for (unsigned int i = 0; i < current.numVertices; i++) {
+			current.vertices[i] = make_float3(mesh->mVertices[i].x* scale + offset.x, mesh->mVertices[i].y* scale + offset.y, mesh->mVertices[i].z* scale + offset.z);
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
-			//if (firstMesh->HasNormals())
-				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
+			if (mesh->HasNormals())
+				current.normals[i] = make_float3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
 		}
+
+		toReturn.push_back(current);
 	}
 
 	return toReturn;
@@ -282,7 +286,7 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
 #define MIN(a,b) a < b ? a : b
 #define MOST(type, v1,v2) make_float3( type (v1.x, v2.x), type (v1.y,v2.y), type (v1.z, v2.z));
 
-triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void** mesh_pointer) {
+triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda) {
 
 	myMeshOnCuda.numIndices = myMesh.numIndices;
 	myMeshOnCuda.numVertices = myMesh.numVertices;
@@ -330,16 +334,19 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMesh
 					float tMax;
 					// we intersect if we're either inside the slab or one edge crosses it
 					bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
-					intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
-					intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
-					intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+					if (!intersecting)
+						intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
+					if (!intersecting)
+						intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
+					if (!intersecting)
+						intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
 
 					if (intersecting) {
 						trianglesToAddToBlock.push_back(i);
 					}
 				}
 
-				cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+				//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
 				gridSizes[GRID_POS(x,y,z)] = trianglesToAddToBlock.size();
 				grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
 
@@ -442,24 +449,40 @@ void initCUDABuffers()
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
-	num_meshes = 1;
-	size_meshes_data = sizeof(triangleMesh) * num_elements;
 
+	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palm1.obj", 3, make_float3(0, -4.5, 70));
+	std::vector<rayHitInfo> infos;
+	infos.push_back(rayHitInfo{ 0.0, 0.0, 0.0, 0.0, make_float3(133.0/255.0,87.0/255.0,35.0/255.0)}); // bark
+	infos.push_back(rayHitInfo{ 0.3, 0.1, 1.0, 0.1, make_float3(111.0/255.0,153.0/255,64.0/255)}); // leaves
 
-	triangleMesh bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0,0,40));
-	triangleMesh bunnyMeshOnCuda;// = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0, 0, 40));
+	//	float reflectivity;
+	//float refractivity;
+	//float refractiveIndex;
+	//float insideColorDensity;
+	//float3 color;
 
+	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
+	num_meshes = importedMeshes.size();
 
-	bunnyMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
-	bunnyMeshOnCuda.rayInfo.refractivity = 0.6;
-	bunnyMeshOnCuda.rayInfo.reflectivity = 0.3;
-	bunnyMeshOnCuda.rayInfo.insideColorDensity = 0.0;
-	bunnyMeshOnCuda.rayInfo.refractiveIndex = 1.5;
+	assert(infos.size() == importedMeshes.size());
 
-	prepareMeshForCuda(bunnyMesh, bunnyMeshOnCuda, &cuda_mesh_buffer);
+	triangleMesh *meshesOnCuda = (triangleMesh*) malloc(size_meshes_data);
+	for (int i = 0; i < importedMeshes.size(); i++) {
+		triangleMesh curr = importedMeshes[i];
+		rayHitInfo currInfo = infos[i];
+		triangleMesh importedMeshOnCuda;
+		//importedMeshOnCuda.rayInfo.refractivity = 0.6;
+		//importedMeshOnCuda.rayInfo.reflectivity = 0.3;
+		//importedMeshOnCuda.rayInfo.insideColorDensity = 0.0;
+		//importedMeshOnCuda.rayInfo.refractiveIndex = 1.5;
+		prepareMeshForCuda(curr, importedMeshOnCuda);
+		importedMeshOnCuda.rayInfo = currInfo;
+		meshesOnCuda[i] = importedMeshOnCuda;
+	}
 
-	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
-	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, &bunnyMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
+	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
+
 
 }
 

@@ -292,7 +292,6 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
 			}
 		}
-		outOfMesh:
 
 	}
 
