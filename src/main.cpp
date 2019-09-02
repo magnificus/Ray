@@ -225,12 +225,12 @@ bool initGL() {
 }
 
 
-std::vector<triangleMesh> importModel(std::string path, float scale, float3 offset) {
+std::vector<triangleMesh> importModel(std::string path, float scale, float3 offset, bool switchYZ = false) {
 
 	std::vector<triangleMesh> toReturn;
 
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenNormals);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_GenSmoothNormals);
 	if (!scene) {
 		cout << "ya entered an invalid path to mesh fuccboi\n";
 		return toReturn;
@@ -270,7 +270,12 @@ std::vector<triangleMesh> importModel(std::string path, float scale, float3 offs
 		cout << "num vertices: " << mesh->mNumVertices << endl;
 		cout << "num faces: " << current.numIndices/3 << endl;
 		for (unsigned int i = 0; i < current.numVertices; i++) {
-			current.vertices[i] = make_float3(mesh->mVertices[i].x* scale + offset.x, mesh->mVertices[i].y* scale + offset.y, mesh->mVertices[i].z* scale + offset.z);
+			float y = mesh->mVertices[i].y * scale + offset.y;
+			float z = mesh->mVertices[i].z * scale + offset.z;
+			if (switchYZ) {
+				std::swap(y, z);
+			}
+			current.vertices[i] = make_float3(mesh->mVertices[i].x* scale + offset.x, y, z);
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
 			if (mesh->HasNormals())
 				current.normals[i] = make_float3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
@@ -411,11 +416,6 @@ void initCUDABuffers()
 	size_tex_data = sizeof(GLubyte) * num_values;
 
 
-	//
-
-
-
-
 	// We don't want to use cudaMallocManaged here - since we definitely want
 	cudaError_t stat;
 	size_t myStackSize = 8192;
@@ -423,43 +423,45 @@ void initCUDABuffers()
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 
 
-	num_elements = 8;
+	num_elements = 4;
 	size_elements_data = sizeof(objectInfo) * num_elements;
 
 	checkCudaErrors(cudaMalloc(&cuda_custom_objects_buffer, size_elements_data)); // Allocate CUDA memory for objects
 
-	shapeInfo s1 = make_shapeInfo(make_float3(0, -3, 13), make_float3(0, 0, 0), 1);
-	shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
-	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8);
-	shapeInfo s4 = make_shapeInfo(make_float3(7, 3, -8), make_float3(0, 0, 0), 6);
-	shapeInfo p1 = make_shapeInfo(make_float3(0, -4.0, 0), make_float3(0, -1, 0), 0);
-	shapeInfo p2 = make_shapeInfo(make_float3(0, 50.0, 0), make_float3(0, 1, 0), 0);
-	shapeInfo p3 = make_shapeInfo(make_float3(0, 0.0, -70), make_float3(0, 0, -1), 0);
-	shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
+	//shapeInfo s1 = make_shapeInfo(make_float3(0, -3, 13), make_float3(0, 0, 0), 1);
+	//shapeInfo s2 = make_shapeInfo(make_float3(-15, -4, -15), make_float3(0, 0, 0), 4);
+	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8); // reflective
+	shapeInfo s4 = make_shapeInfo(make_float3(7, 8, -8), make_float3(0, 0, 0), 6); // refractive
+	shapeInfo p1 = make_shapeInfo(make_float3(0, -5, 0), make_float3(0, 1, 0), 0); // water
+	//shapeInfo p2 = make_shapeInfo(make_float3(0, 500.0, 0), make_float3(0, 1, 0), 0);
+	shapeInfo p3 = make_shapeInfo(make_float3(0, -10.0, 0), make_float3(0, 1, 0), 0); // sand bottom
+	//shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
-	objectInfo objects[8];
-	objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
-	objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5, 0);
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(1, 1, 1), 0, 0, 0);
-	objects[3] = make_objectInfo(sphere, s3, 0.7, make_float3(1, 1, 1), 0, 0, 0);
-	objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(1, 1, 1), 0, 0, 0);
-	objects[5] = make_objectInfo(sphere, s4, 0.0, make_float3(0, 0.2, 1), 0, 1.3, 0.015);
-	objects[6] = make_objectInfo(plane, p3, 0, make_float3(1, 1, 0), 0, 0, 0);
-	objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
+	shapeInfo sun = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 1);
+
+
+	objectInfo objects[4];
+	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
+	//objects[1] = make_objectInfo(sphere, s2, 0.5, make_float3(0, 1, 0), 0.0, 1.5, 0);
+	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
+	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 0.0, 0.0), 0, 1.5, 0.0); // refractive
+	objects[2] = make_objectInfo(plane, p1, 0.0, make_float3(0,0,1), 1.0, 1.3, 0); // water
+	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand bottom
+	//objects[4] = make_objectInfo(plane, p2, 0.0, make_float3(53.0 / 255, 81.0 / 255, 98.0 / 255), 0, 0, 0);
+	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
 
-	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palm1.obj", 3, make_float3(0, -4.5, 70));
+	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palmera.obj", 3, make_float3(0, 0, 0), true);
 	std::vector<rayHitInfo> infos;
 	infos.push_back(rayHitInfo{ 0.0, 0.0, 0.0, 0.0, make_float3(133.0/255.0,87.0/255.0,35.0/255.0)}); // bark
 	infos.push_back(rayHitInfo{ 0.3, 0.1, 1.0, 0.1, make_float3(111.0/255.0,153.0/255,64.0/255)}); // leaves
 
-	//	float reflectivity;
-	//float refractivity;
-	//float refractiveIndex;
-	//float insideColorDensity;
-	//float3 color;
+	//std::vector<triangleMesh> beachMesh = importModel("C:/Users/Tobbe/Desktop/beach.ply", 3, make_float3(0.0, 0.0, 0.0), true);
+	//importedMeshes.insert(std::end(importedMeshes), std::begin(beachMesh), std::end(beachMesh));
+	//infos.push_back(rayHitInfo{ 0.0, 0.0, 1.0, 0.1, make_float3(76.0 / 255.0,70.0 / 255,50.0 / 255) }); // sand
+
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();
@@ -469,14 +471,13 @@ void initCUDABuffers()
 	triangleMesh *meshesOnCuda = (triangleMesh*) malloc(size_meshes_data);
 	for (int i = 0; i < importedMeshes.size(); i++) {
 		triangleMesh curr = importedMeshes[i];
-		rayHitInfo currInfo = infos[i];
 		triangleMesh importedMeshOnCuda;
 		//importedMeshOnCuda.rayInfo.refractivity = 0.6;
 		//importedMeshOnCuda.rayInfo.reflectivity = 0.3;
 		//importedMeshOnCuda.rayInfo.insideColorDensity = 0.0;
 		//importedMeshOnCuda.rayInfo.refractiveIndex = 1.5;
 		prepareMeshForCuda(curr, importedMeshOnCuda);
-		importedMeshOnCuda.rayInfo = currInfo;
+		importedMeshOnCuda.rayInfo = infos[i];
 		meshesOnCuda[i] = importedMeshOnCuda;
 	}
 

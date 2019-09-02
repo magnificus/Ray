@@ -3,16 +3,17 @@
 #include "cuda_runtime.h"
 
 
-struct sphereInfo {
-	float3 pos;
-	float rad;
-	float rad2;
-};
 
 struct shapeInfo {
 	float3 pos;
 	float3 normal;
 	float rad;
+};
+
+struct sphereInfo {
+	float3 pos;
+	float rad;
+	float rad2;
 };
 
 inline __device__ shapeInfo make_shapeInfo(float3 pos, float3 normal, float rad) {

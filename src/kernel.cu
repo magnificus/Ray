@@ -3,6 +3,10 @@
 
 
 
+//#define USING_POINT_LIGHT
+#define STATIC_LIGHT_DIR make_float3(0,1,0)
+#define BACKGROUND_COLOR make_float3(53.0/255, 81.0/255, 98.0/255)
+
 cudaError_t cuda();
 __global__ void kernel() {
 
@@ -43,7 +47,7 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 {
 	// assuming vectors are all normalized
 	float denom = dot(p.normal, l);
-	if (denom > 1e-8) {
+	if (denom < -1e-8) {
 		float3 p0l0 = p.pos - l0;
 		t = dot(p0l0, p.normal) / denom;
 		return (t >= 0);
@@ -198,7 +202,7 @@ struct hitInfo {
 
 };
 
-#define LIGHT_POS make_float3(0,5,20)
+#define LIGHT_POS make_float3(0,10,20)
 
 
 __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo& scene) {
@@ -303,13 +307,24 @@ __device__ hitInfo getHit(float3 currRayPos, float3 currRayDir, const sceneInfo&
 
 
 __device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene) {
+#ifdef USING_POINT_LIGHT
 	float3 toLightVec = normalize(LIGHT_POS - originalPos);
-	hitInfo hit = getHit(originalPos, toLightVec, scene);
-
+#else
+	float3 toLightVec = STATIC_LIGHT_DIR;
+#endif
+	hitInfo hit = getHit(originalPos + 0.01*toLightVec, toLightVec, scene);
+#ifdef USING_POINT_LIGHT
 	if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
 		return 1.;
 	}
 	return 0.2;
+#else 
+	if (!hit.hit) {
+		return 1.;
+	}
+	return 0.2;
+#endif
+
 	//return objects[hit.objectIndex].refractivity * 0.8 + 0.2;
 
 }
@@ -324,7 +339,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 	hitInfo hit = getHit(currRayPos, currRayDir, scene);
 
 	if (!hit.hit) {
-		return make_float3(0, 0, 0);
+		return BACKGROUND_COLOR;
 	}
 	else {
 
@@ -337,7 +352,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 		float extraReflection = 0;
 		float3 extraColor;
-		float3 bias = 0.5 * normal;
+		float3 bias = 0.01 * normal;
 		float extraColorSize = 0;
 		if (info.refractivity > 0.) {
 			float kr;
@@ -348,7 +363,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			if (kr <= 1) {
 				extraColorSize = outside ? 0 : min(1 - kr, length(nextPos - currRayPos) * info.insideColorDensity);
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
-				float3 refractionRayOrig = nextPos + 0.1*currRayDir;// outside ? nextPos - bias : nextPos + bias;
+				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
 
 				refracted = info.refractivity * (1 - kr - extraColorSize) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene);
 			}
@@ -360,7 +375,13 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			reflected = (info.reflectivity + extraReflection) * trace(nextPos + bias, reflectDir, remainingDepth - 1, scene);
 		}
 		float3 color = (1 - info.reflectivity - extraReflection - info.refractivity + extraColorSize) * info.color;
+#ifdef USING_POINT_LIGHT
+		float3 light_dir = normalize(LIGHT_POS - nextPos) 
 		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2))  */*getShadowTerm(nextPos + bias, scene)  **/ color + reflected + refracted;
+#else
+		float3 light_dir = STATIC_LIGHT_DIR;
+		return getShadowTerm(nextPos + bias, scene)  * 3.0* max(0.0,dot(light_dir, normal))*color + reflected + refracted;
+#endif
 	}
 
 }
@@ -396,7 +417,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	//sceneInfo info = 
 
-	float3 out = 255 * trace(firstPlanePos, dirVector, 4, pointers.scene);
+	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene);
 
 
 	//float3 out = 50*pointers.scene.meshes[0].vertices[10];
