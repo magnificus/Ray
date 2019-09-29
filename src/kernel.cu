@@ -330,7 +330,7 @@ __device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene)
 }
 
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const sceneInfo& scene) {
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const sceneInfo& scene, const hitInfo *prevHitToAddDepthFrom) {
 	if (remainingDepth <= 0) {
 		return make_float3(0, 0, 0);
 	}
@@ -352,8 +352,15 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 		float extraReflection = 0;
 		float3 extraColor;
-		float3 bias = 0.01 * normal;
-		float extraColorSize = 0;
+		float3 bias = 0.001 * normal;
+		//float extraColorSize = 0;
+		float prevColorMP = 0;
+		float3 extraPrevColor = make_float3(0,0,0);
+		if (prevHitToAddDepthFrom && prevHitToAddDepthFrom->info->insideColorDensity > 0.001) {
+			prevColorMP = min(1., length(nextPos - currRayPos) * prevHitToAddDepthFrom->info->insideColorDensity);
+			extraPrevColor = prevColorMP * prevHitToAddDepthFrom->info->color;
+		}
+
 		if (info.refractivity > 0.) {
 			float kr;
 			bool outside = dot(currRayDir, normal) < 0;
@@ -361,26 +368,27 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 
 			if (kr <= 1) {
-				extraColorSize = outside ? 0 : min(1 - kr, length(nextPos - currRayPos) * info.insideColorDensity);
+				//extraColorSize = outside ? 0 : min(1 - kr, length(nextPos - currRayPos) * info.insideColorDensity);
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
 
-				refracted = info.refractivity * (1 - kr - extraColorSize) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene);
+				refracted = info.refractivity * max(0.,(1 - kr/* - extraColorSize*/)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene, &hit);
 			}
-			extraReflection = min(1., kr - extraColorSize) * info.refractivity;
+			extraReflection = max(0.,min(1., kr/* - extraColorSize*/)) * info.refractivity;
 
 		}
 		if (info.reflectivity + extraReflection > 0.) {
 			float3 reflectDir = reflect(currRayDir, normal);
-			reflected = (info.reflectivity + extraReflection) * trace(nextPos + bias, reflectDir, remainingDepth - 1, scene);
+			reflected = (info.reflectivity + extraReflection) * trace(nextPos + bias, reflectDir, remainingDepth - 1, scene, nullptr);
 		}
-		float3 color = (1 - info.reflectivity - extraReflection - info.refractivity + extraColorSize) * info.color;
+		float3 color = (1.-prevColorMP)*((1 - info.reflectivity - extraReflection - info.refractivity/* + extraColorSize*/) * info.color) + extraPrevColor;
 #ifdef USING_POINT_LIGHT
 		float3 light_dir = normalize(LIGHT_POS - nextPos) 
 		return 1000 * (1 / powf(length(nextPos - LIGHT_POS), 2))  */*getShadowTerm(nextPos + bias, scene)  **/ color + reflected + refracted;
 #else
 		float3 light_dir = STATIC_LIGHT_DIR;
-		return getShadowTerm(nextPos + bias, scene)  * 3.0* max(0.0,dot(light_dir, normal))*color + reflected + refracted;
+		float angleFactor = (0.7 + 0.3 * max(0.0, dot(light_dir, normal)));
+		return getShadowTerm(nextPos + bias, scene)* 3.0* angleFactor *color + reflected + refracted;
 #endif
 	}
 
@@ -417,7 +425,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	//sceneInfo info = 
 
-	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene);
+	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene, nullptr);
 
 
 	//float3 out = 50*pointers.scene.meshes[0].vertices[10];
