@@ -448,7 +448,7 @@ void initCUDABuffers()
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 0.0, 0.0), 1.0, 1.5, 0.0); // refractive
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.04); // water top
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.06); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
 	objects[5] = make_objectInfo(sphere, s2, 0.0, make_float3(1.0, 1, 0), 0.0, 1.5, 0);
