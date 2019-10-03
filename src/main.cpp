@@ -427,7 +427,7 @@ void initCUDABuffers()
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 
 
-	#define NUM_ELEMENTS 6
+	#define NUM_ELEMENTS 7
 	num_elements = NUM_ELEMENTS;
 	size_elements_data = sizeof(objectInfo) * num_elements;
 
@@ -441,18 +441,18 @@ void initCUDABuffers()
 	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
 	//shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
-	//shapeInfo sun = make_shapeInfo(make_float3(500, 1000, 500), make_float3(1, 0, 0), 100);
+	shapeInfo sun = make_shapeInfo(make_float3(500, 1000, 500), make_float3(1, 0, 0), 100);
 
 
 	objectInfo objects[NUM_ELEMENTS];
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 0.0, 0.0), 1.0, 1.5, 0.0); // refractive
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.025); // water top
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.04); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
 	objects[5] = make_objectInfo(sphere, s2, 0.0, make_float3(1.0, 1, 0), 0.0, 1.5, 0);
-	//objects[6] = make_objectInfo(sphere, sun, 0.0, make_float3(1,1,1), 0.5, 1.33, 0.0); // water bottom
+	objects[6] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.5, 1.33, 0.0);
 	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);

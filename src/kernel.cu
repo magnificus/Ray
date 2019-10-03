@@ -4,7 +4,7 @@
 
 #define USING_SHADOWS
 //#define USING_POINT_LIGHT
-#define SOFT_SHADOWS
+//#define SOFT_SHADOWS
 #define STATIC_LIGHT_DIR make_float3(0.5,1,0.5)
 #define AMBIENT_OCCLUSION
 
@@ -13,7 +13,7 @@
 
 
 #define AIR_DENSITY 0.001
-#define AIR_COLOR make_float3(53.0/255, 81.0/255, 98.0/255);
+#define AIR_COLOR 3.0*make_float3(53.0/255, 81.0/255, 98.0/255);
 cudaError_t cuda();
 __global__ void kernel() {
 
@@ -347,7 +347,7 @@ __device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene)
 		toReturn = 0.0;
 	}
 #else 
-	if (!hit.hit) {
+	if (!hit.hit || length(hit.pos - originalPos) > 100.0f) {
 		toReturn = 1.;
 	}
 	else {
@@ -403,11 +403,12 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		bool outside = dot(currRayDir, normal) < 0;
 
 		if (prevHitToAddDepthFrom.hit && prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
-			prevColorMP = min(1., length(nextPos - currRayPos) * prevHitToAddDepthFrom.info.insideColorDensity);
+			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos));
+			//prevColorMP = min(1., length(nextPos - currRayPos) * prevHitToAddDepthFrom.info.insideColorDensity);
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
 		else if (!prevHitToAddDepthFrom.hit){
-			prevColorMP = min(1., length(nextPos - currRayPos)*AIR_DENSITY);
+			prevColorMP = 1 - powf(1. - AIR_DENSITY, length(nextPos - currRayPos));
 			extraPrevColor = prevColorMP * AIR_COLOR;
 		}
 
@@ -471,13 +472,8 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
-	//sceneInfo info = 
-
 	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene, hitInfo());
 
-
-	//float3 out = 50*pointers.scene.meshes[0].vertices[10];
-	//out = 128*make_float3(pointers.scene.meshes
 	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
 extern "C" void

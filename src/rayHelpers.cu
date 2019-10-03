@@ -1,5 +1,4 @@
 #pragma once
-
 #include "cuda_runtime.h"
 #include "vector_functions.h"
 #include "common_functions.h"
