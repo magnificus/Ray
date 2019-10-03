@@ -28,7 +28,6 @@ inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleD
 {
 	double S, C;
 	sincos(angleDeg, &S, &C);
-	//FMath::SinCos(&S, &C, FMath::DegreesToRadians(angleDeg));
 
 	const float XX = axis.x * axis.x;
 	const float YY = axis.y * axis.y;
@@ -52,4 +51,9 @@ inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleD
 }
 
 
+inline __device__ float rand(float2 co) {
+
+	float val= sinf(dot(make_float2(co.x, co.y), make_float2(12.9898, 78.233)) * 43758.5453);
+	return val - floor(val);
+}
 

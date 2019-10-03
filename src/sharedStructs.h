@@ -177,6 +177,11 @@ inline __device__  float dot(float3 v1, float3 v2)
 	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
+inline __device__  float dot(float2 v1, float2 v2)
+{
+	return v1.x * v2.x + v1.y * v2.y;
+}
+
 inline __device__  float3 cross(float3 v1, float3 v2)
 {
 	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);

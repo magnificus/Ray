@@ -434,12 +434,12 @@ void initCUDABuffers()
 	checkCudaErrors(cudaMalloc(&cuda_custom_objects_buffer, size_elements_data)); // Allocate CUDA memory for objects
 
 	shapeInfo s1 = make_shapeInfo(make_float3(0, -99, 0), make_float3(0, 0, 0), 100);
-	shapeInfo s2 = make_shapeInfo(make_float3(2, 4, 40), make_float3(0, 0, 0), 8); // diffuse
-	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8); // reflective
-	shapeInfo s4 = make_shapeInfo(make_float3(-40, 4, 2), make_float3(0, 0, 0), 8); // refractive
+	shapeInfo s2 = make_shapeInfo(make_float3(0, -16, 80), make_float3(0, 0, 0), 8); // diffuse
+	shapeInfo s3 = make_shapeInfo(make_float3(0, 4, -40), make_float3(0, 0, 0), 8); // reflective
+	shapeInfo s4 = make_shapeInfo(make_float3(-40, 4, 0), make_float3(0, 0, 0), 8); // refractive
 	shapeInfo p1 = make_shapeInfo(make_float3(0, -5, 0), make_float3(0, 1, 0), 0); // water top
 	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
-	//shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
+	//shapeInfo s4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
 	shapeInfo sun = make_shapeInfo(make_float3(500, 1000, 500), make_float3(1, 0, 0), 100);
 
@@ -448,10 +448,10 @@ void initCUDABuffers()
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 0.0, 0.0), 1.0, 1.5, 0.0); // refractive
-	objects[2] = make_objectInfo(water, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.06); // water top
+	objects[2] = make_objectInfo(water, p1, 0.2, make_float3(0,0.0,0.1), 0.7, 1.33, 0.06); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
-	objects[5] = make_objectInfo(sphere, s2, 0.0, make_float3(1.0, 1, 0), 0.0, 1.5, 0);
+	objects[5] = make_objectInfo(sphere, s2, 0.0, make_float3(0.71, 0.71, 0), 0.0, 1.5, 0); // yellow boi
 	objects[6] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.5, 1.33, 0.0);
 	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 

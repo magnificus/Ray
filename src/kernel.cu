@@ -239,6 +239,18 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 		shapeInfo info = curr.shapeData;
 		switch (curr.s) {
 		case water: {
+			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+				closestDist = currDist;
+				toReturn.info = curr.rayInfo;
+				float3 waveInput = 0.1*(currRayPos + currDist * currRayDir);
+				float strength = 0.1;
+
+
+				normal = normalize(info.normal + strength*make_float3(sinf(waveInput.x), 0, sinf(waveInput.z*0.1)));
+				toReturn.hit = true;
+			}
+
+			break;
 		}
 		case plane: {
 			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
@@ -323,6 +335,12 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 	toReturn.normal = normal;
 	toReturn.pos = currRayPos + closestDist * currRayDir;
 	return toReturn;
+}
+
+
+__device__ float3 getWave(float3 pos, float xSpeed, float ySpeed, float xSize, float ySize) {
+
+	return make_float3(1, 1, 1);
 }
 
 
