@@ -45,7 +45,7 @@ inline __device__ planeInfo make_planeInfo(float3 point, float3 normal) {
 	return p;
 }
 
-enum shape { sphere, plane };
+enum shape { sphere, plane, water };
 
 struct rayHitInfo {
 	float reflectivity;
@@ -54,6 +54,17 @@ struct rayHitInfo {
 	float insideColorDensity;
 	float3 color;
 };
+
+
+inline __device__ rayHitInfo make_rayHitInfo(float inReflectivity, float inRefractivity, float inRefractiveIndex, float inInsideColorDensity, float3 inColor) {
+	rayHitInfo r;
+	r.reflectivity = inReflectivity;
+	r.refractivity = inRefractivity;
+	r.refractiveIndex = inRefractiveIndex;
+	r.insideColorDensity = inInsideColorDensity;
+	r.color = inColor;
+	return r;
+}
 
 struct objectInfo {
 	shape s;
@@ -93,6 +104,7 @@ struct triangleMesh {
 	// acceleration structure
 	float3 bbMin;
 	float3 bbMax;
+	float rad;
 	unsigned int** grid; // lists with unsigned int marking which triangles intersect
 	unsigned int* gridSizes;
 	float3 gridBoxDimensions;
@@ -125,8 +137,8 @@ struct inputPointers {
 
 struct inputStruct {
 	float currPosX;
-	float currPosY;
-	float currPosZ;
+	float currPosY = 5;
+	float currPosZ = 10;
 
 	float forwardX;
 	float forwardY;

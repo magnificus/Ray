@@ -291,10 +291,8 @@ std::vector<triangleMesh> importModel(std::string path, float scale, float3 offs
 #define MIN(a,b) a < b ? a : b
 #define MOST(type, v1,v2) make_float3( type (v1.x, v2.x), type (v1.y,v2.y), type (v1.z, v2.z));
 
-triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda) {
-
-	myMeshOnCuda.numIndices = myMesh.numIndices;
-	myMeshOnCuda.numVertices = myMesh.numVertices;
+triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
+	triangleMesh myMeshOnCuda = myMesh;
 
 	float BIG_VALUE = 1000000;
 
@@ -310,6 +308,12 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMesh
 	float3 center = 0.5 * (max + min);
 	myMeshOnCuda.bbMax = max;
 	myMeshOnCuda.bbMin = min;
+
+	float rad = 0;
+	for (int i = 0; i < myMesh.numVertices; i++) {
+		rad = MAX(rad, length(myMesh.vertices[i] - center));
+	}
+	myMeshOnCuda.rad = rad;
 
 
 	unsigned int gridSize = GRID_SIZE* GRID_SIZE * GRID_SIZE * sizeof(unsigned int*);
@@ -394,7 +398,6 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMesh
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
 
 
-		//checkCudaErrors(cudaMemcpy(*mesh_pointer, &myMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
 
 		free(CudaGridPointer);
 
@@ -406,6 +409,7 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMesh
 	free(grid);
 	free(gridSizes);
 
+	return myMeshOnCuda;
 }
 
 void initCUDABuffers()
@@ -434,22 +438,21 @@ void initCUDABuffers()
 	shapeInfo s3 = make_shapeInfo(make_float3(2, 4, -40), make_float3(0, 0, 0), 8); // reflective
 	shapeInfo s4 = make_shapeInfo(make_float3(-40, 4, 2), make_float3(0, 0, 0), 8); // refractive
 	shapeInfo p1 = make_shapeInfo(make_float3(0, -5, 0), make_float3(0, 1, 0), 0); // water top
-	//shapeInfo p2 = make_shapeInfo(make_float3(0, -14.8, 0), make_float3(0, 1, 0), 0); // water bottom
-	shapeInfo p3 = make_shapeInfo(make_float3(0, -25.0, 0), make_float3(0, 1, 0), 0); // sand bottom
+	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
 	//shapeInfo p4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
-	shapeInfo sun = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 1);
+	//shapeInfo sun = make_shapeInfo(make_float3(500, 1000, 500), make_float3(1, 0, 0), 100);
 
 
 	objectInfo objects[NUM_ELEMENTS];
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 0.0, 0.0), 1.0, 1.5, 0.0); // refractive
-	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.04); // water top
+	objects[2] = make_objectInfo(plane, p1, 0.2, make_float3(0,0.0,0.1), 0.8, 1.33, 0.025); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
 	objects[5] = make_objectInfo(sphere, s2, 0.0, make_float3(1.0, 1, 0), 0.0, 1.5, 0);
-	//objects[5] = make_objectInfo(plane, p2, 0.0, make_float3(0,0,1), 0.5, 1.33, 0.0); // water bottom
+	//objects[6] = make_objectInfo(sphere, sun, 0.0, make_float3(1,1,1), 0.5, 1.33, 0.0); // water bottom
 	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
@@ -457,12 +460,12 @@ void initCUDABuffers()
 
 	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palmera.obj", 10, make_float3(0, 0, 0), true);
 	std::vector<rayHitInfo> infos;
-	infos.push_back(rayHitInfo{ 0.0, 0.0, 0.0, 0.0, make_float3(133.0/255.0,87.0/255.0,35.0/255.0)}); // bark
-	infos.push_back(rayHitInfo{ 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255)}); // palm leaves
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0))); // bark
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255))); // palm leaves
 
-	//std::vector<triangleMesh> beachMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 30, make_float3(0.0, 0.0, 0.0), true);
-	//importedMeshes.insert(std::end(importedMeshes), std::begin(beachMesh), std::end(beachMesh));
-	//infos.push_back(rayHitInfo{ 0.0, 0.0, 1.0, 0.1, make_float3(76.0 / 255.0,70.0 / 255,50.0 / 255) }); // sand
+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 50, make_float3(15.0, -2.2, 0.0), false);
+	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
+	infos.push_back(make_rayHitInfo( 0.5, 0.0, 1.5, 0.0, make_float3(1.0,0.0,0.0) )); //bunny
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();
@@ -470,16 +473,18 @@ void initCUDABuffers()
 	assert(infos.size() == importedMeshes.size());
 
 	triangleMesh *meshesOnCuda = (triangleMesh*) malloc(size_meshes_data);
+
 	for (int i = 0; i < importedMeshes.size(); i++) {
 		triangleMesh curr = importedMeshes[i];
-		triangleMesh importedMeshOnCuda;
+		//triangleMesh importedMeshOnCuda;
 		//importedMeshOnCuda.rayInfo.refractivity = 0.6;
 		//importedMeshOnCuda.rayInfo.reflectivity = 0.3;
 		//importedMeshOnCuda.rayInfo.insideColorDensity = 0.0;
 		//importedMeshOnCuda.rayInfo.refractiveIndex = 1.5;
-		prepareMeshForCuda(curr, importedMeshOnCuda);
-		importedMeshOnCuda.rayInfo = infos[i];
-		meshesOnCuda[i] = importedMeshOnCuda;
+		curr.rayInfo = infos[i];
+
+		meshesOnCuda[i] = prepareMeshForCuda(curr);
+		//meshesOnCuda[i].rayInfo = infos[i];
 	}
 
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
@@ -646,6 +651,7 @@ int main(int argc, char* argv[]) {
 	// This also means it stores its unbind calls so make sure you don't unbind the element array buffer before unbinding your VAO, otherwise it doesn't have an EBO configured.
 	auto firstTime = std::chrono::system_clock::now();
 	auto lastTime = firstTime;
+	auto lastMeasureTime = firstTime;
 	int frameNum = 0;
 	// Some computation here
 
@@ -669,11 +675,14 @@ int main(int argc, char* argv[]) {
 
 
 		display(totalTime, currTime - lastTime);
-		if (frameNum++ % 1000 == 0) {
-			std::chrono::duration<double> elapsed_seconds = currTime - lastTime;
-			// show fps every 1000 frames
+		std::chrono::duration<double> elapsed_seconds = currTime - lastMeasureTime;
+		frameNum++;
+		if (elapsed_seconds.count() >= 1.0) {
+			// show fps every  second
 
-			std::cout << "fps: " << (1 / elapsed_seconds.count()) << "\n";
+			std::cout << "fps: " << (frameNum / elapsed_seconds.count()) << "\n";
+			frameNum = 0;
+			lastMeasureTime = currTime;
 		}
 		lastTime = currTime;
 	}
