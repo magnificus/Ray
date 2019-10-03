@@ -238,6 +238,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 
 		shapeInfo info = curr.shapeData;
 		switch (curr.s) {
+		case water: {
+		}
 		case plane: {
 			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
 				closestDist = currDist;
@@ -258,8 +260,6 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 
 			}
 			break;
-		} case water: {
-
 		}
 		}
 	}
@@ -437,7 +437,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 #else
 		float3 light_dir = STATIC_LIGHT_DIR;
 		float angleFactor = (0.8 + 0.2 * max(0.0, dot(light_dir, normal)));
-		return (1. - prevColorMP) * ((0.8*getShadowTerm(nextPos + bias, scene) + 0.2)* 3.0* angleFactor *color + reflected + refracted) + extraPrevColor;
+		return (1. - prevColorMP) * ((0.8*getShadowTerm(nextPos + 0.01*inverse(currRayDir), scene) + 0.2)* 3.0* angleFactor *color + reflected + refracted) + extraPrevColor;
 #endif
 	}
 
