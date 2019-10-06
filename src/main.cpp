@@ -447,12 +447,12 @@ void initCUDABuffers()
 	objectInfo objects[NUM_ELEMENTS];
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
-	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(1, 0.0, 0.0), 1.0, 1.5, 0.0); // refractive
+	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.5, 0.0); // refractive
 	objects[2] = make_objectInfo(water, p1, 0.0, make_float3(0,0.0,0.1), 1.0, 1.33, 0.06); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
-	objects[5] = make_objectInfo(sphere, s2, 0.0, make_float3(0.3, 0.3, 0), 0.0, 1.5, 0); // yellow boi
-	objects[6] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.5, 1.33, 0.0); // sun
+	objects[5] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.0, 1.33, 0.0); // sun
+	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.3, 0.3, 0), 0.0, 1.5, 0); // yellow boi
 	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
@@ -463,9 +463,9 @@ void initCUDABuffers()
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0))); // bark
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255))); // palm leaves
 
-	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 500, make_float3(120.0, -80, 0.0), false);
+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.04, make_float3(50.0, -60, 30.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, make_float3(1.0,0.0,0.0) )); //bunny
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.1*make_float3(215./255,198./255,171./255) )); //bunny
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();

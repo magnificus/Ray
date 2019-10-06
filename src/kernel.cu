@@ -268,38 +268,34 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 
 				closestDist = currDist;
 				toReturn.info = curr.rayInfo;
-				float3 waveInput = (currRayPos + currDist * currRayDir)*0.5 + make_float3(3*currentTime + 10000, 10000,10000);
-				float strength = 2000.;
+				float3 waveInput = (currRayPos + currDist * currRayDir)*0.3 + make_float3(2*currentTime + 10000, 10000,10000);
+				float strength = 2000;
 
 				float d = 0.01;
-				float h1 = perlin2d(waveInput.x - d, waveInput.z, 1, 3);
-				float h2 = perlin2d(waveInput.x + d, waveInput.z, 1, 3);
-				float h3 = perlin2d(waveInput.x, waveInput.z - d, 1, 3);
-				float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 3);
+				float h1 = perlin2d(waveInput.x - d, waveInput.z, 1, 4);
+				float h2 = perlin2d(waveInput.x + d, waveInput.z, 1, 4);
+				float h3 = perlin2d(waveInput.x, waveInput.z - d, 1, 4);
+				float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 4);
 
-				// derivatives
+				//// derivatives
 				float d1 = (h2 - h1) / 2*d; 
 				float d2 = (h4 - h3) / 2*d;
 
-				//float3 distortion = make_float3(perlin2d(waveInput.x+10000, 0.0, 1, 1)*2* - 1., 0, perlin2d(waveInput.z + 20000, waveInput.x + 30000, 1, 1)*2.-1.);
+
+				//float d1 = perlin2d(waveInput.x, waveInput.z, 1, 5)*2.-1;
+				//float d2 = perlin2d(waveInput.z, waveInput.x, 1, 5)*2.-1;
+
+
 				float3 rightDir = make_float3(0, 0, 1);
 				float3 otherDir1 = cross(rightDir, info.normal);
 				float3 otherDir2 = cross(otherDir1, info.normal);
 
-				//otherDir1 = dot(currRayDir, otherDir1) > 0.1 ? inverse(otherDir1) : otherDir1;
-				//otherDir2 = dot(currRayDir, otherDir2) > 0.1 ? inverse(otherDir2) : otherDir2;
+				//otherDir1 = dot(currRayDir, otherDir1) > -0.0001 ? inverse(otherDir1) : otherDir1;
+				//otherDir2 = dot(currRayDir, otherDir2) > -0.0001 ? inverse(otherDir2) : otherDir2;
 
 				float3 distortion = (otherDir1 * d1 +otherDir2 * d2);
 
-				//distortion = dot(distortion, currRayDir) <= -0.0000001 ? distortion : inverse(distortion);
-
-				//distortion = distortion * make_float3(currRayDir.x, currRayDir.y, currRayDir.z);
-
 				normal = normalize(info.normal + strength*distortion);
-				//normal = normalize(info.normal + strength*make_float3(sinf(waveInput.x+currentTime), 0, sinf(waveInput.z + currentTime)));
-				//normal = normalize(info.normal + strength * make_float3(sinf(waveInput.x + currentTime), 0, 0));
-				//normal = make_float3(currRayDir.x > 0 ? -abs(normal.x) : abs(normal.x), currRayDir.y > 0 ? -abs(normal.y) : abs(normal.y), currRayDir.z > 0 ? -abs(normal.z) : abs(normal.z));
-				//normal = dot(currRayDir, normal) < 0. ? inverse(normal) + 2 * normal : normal;
 
 				toReturn.hit = true;
 			}
@@ -467,11 +463,7 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 }
 
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo prevHitToAddDepthFrom) {
-	if (remainingDepth <= 0) {
-		return AIR_COLOR;
-	}
-
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, bool canBranch) {
 
 	hitInfo hit = getHit(currRayPos, currRayDir);
 
@@ -486,6 +478,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 refracted = make_float3(0, 0, 0);
 		float3 nextPos = hit.pos;
 		float3 normal = hit.normal;
+
 
 		float extraReflection = 0;
 		float3 extraColor;
@@ -504,7 +497,14 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraPrevColor = prevColorMP * AIR_COLOR;
 		}
 
-		if (info.refractivity > 0.0001) {
+		if (prevColorMP > 0.98)
+			return extraPrevColor;
+
+		if (remainingDepth == 1)
+			return info.color * (1. - prevColorMP) + extraPrevColor;
+
+		bool refracGreatest = info.refractivity > info.reflectivity;
+		if (info.refractivity > 0.01 && (refracGreatest || canBranch)) {
 			float kr;
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
@@ -513,26 +513,31 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
-				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  hit);
+				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  hit, false);
 			}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
-		if (info.reflectivity + extraReflection > 0.00001) {
+		if (info.reflectivity + extraReflection > 0.01 && (!refracGreatest || canBranch)) {
 			float3 reflectDir = reflect(currRayDir, normal);
-			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;// nextPos + reflectNormal * 0.001;// : nextPos - reflectNormal * 0.01;//0.01;
+			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 
 
-			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, hitInfo());
+			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, false);
 		}
-		float3 color = ((1 - info.reflectivity - extraReflection - info.refractivity) * info.color);
+		float colorMultiplier = max(0.,(1. - info.reflectivity - extraReflection - info.refractivity));
+		float3 color = colorMultiplier* info.color;
 #ifdef USING_POINT_LIGHT
 		float3 light_dir = normalize(LIGHT_POS - nextPos);
 		return 10000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) *(0.2 + 0.8*getShadowTerm(nextPos + bias, scene)) * color + reflected + refracted;
 #else
 		float3 light_dir = STATIC_LIGHT_DIR;
 		float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
-		return (1. - prevColorMP) * ((0.8*getShadowTerm(nextPos + 0.01*inverse(currRayDir),normal)* angleFactor + 0.2)* 1.0 *color + reflected + refracted) + extraPrevColor;
+		float shadowFactor = 0;
+		if (colorMultiplier > 0.1) {
+			shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
+		}
+		return (1. - prevColorMP) * ((0.8* shadowFactor * angleFactor + 0.2)* 1.0 *color + reflected + refracted) + extraPrevColor;
 #endif
 	}
 
@@ -570,7 +575,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	currentTime = currTime;
 	scene = &pointers.scene;
-	float3 out = 255 * trace(firstPlanePos, dirVector, 10, hitInfo())*3;
+	float3 out = 255 * trace(firstPlanePos, dirVector, 4, hitInfo(), true)*3;
 
 	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }
