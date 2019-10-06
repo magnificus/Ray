@@ -86,7 +86,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 }
 
 // total size will be pow(GRID_SIZE,3) bc of xyz
-#define GRID_SIZE 15
+#define GRID_SIZE 10
 #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
 #define GRID_DEPTH 1
 
@@ -154,6 +154,10 @@ inline __device__ float3 operator+(const float3& a, const float3& b) {
 	return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
+inline __device__ float3 operator+(const float3& a, const float& b) {
+	return make_float3(a.x + b, a.y + b, a.z + b);
+}
+
 inline __device__ float3 operator*(const float3& a, const float3& b) {
 	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
 }
@@ -167,10 +171,21 @@ inline __device__ float3 operator*(const float& a, const float3& b) {
 	return make_float3(a * b.x, a * b.y, a * b.z);
 }
 
+inline __device__ float3 operator*(const float3& b, const float& a) {
+	return make_float3(a * b.x, a * b.y, a * b.z);
+}
+
 inline __device__ float3 operator-(const float3& a, const float3& b) {
 	return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
+inline __device__ float3 floor(const float3& a) {
+	return make_float3(floor(a.x), floor(a.y),floor(a.z));
+}
+
+inline __device__ float2 floor(const float2& a) {
+	return make_float2(floor(a.x), floor(a.y));
+}
 
 inline __device__  float dot(float3 v1, float3 v2)
 {

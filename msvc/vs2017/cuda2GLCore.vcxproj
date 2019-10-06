@@ -29,6 +29,7 @@
     <ClInclude Include="..\..\src\libs\helper_cuda.h" />
     <ClInclude Include="..\..\src\libs\helper_cuda_gl.h" />
     <ClInclude Include="..\..\src\libs\helper_string.h" />
+    <ClInclude Include="..\..\src\perlin.h" />
     <ClInclude Include="..\..\src\shader_tools\GLSLProgram.h" />
     <ClInclude Include="..\..\src\shader_tools\GLSLShader.h" />
     <ClInclude Include="..\..\src\shader_tools\shader_tools_common.h" />

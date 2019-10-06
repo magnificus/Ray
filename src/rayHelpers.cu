@@ -56,4 +56,3 @@ inline __device__ float rand(float2 co) {
 	float val= sinf(dot(make_float2(co.x, co.y), make_float2(12.9898, 78.233)) * 43758.5453);
 	return val - floor(val);
 }
-

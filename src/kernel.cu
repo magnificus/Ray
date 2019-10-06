@@ -1,23 +1,32 @@
 #pragma once
 #include "rayHelpers.cu"
+#include "perlin.h"
 
 
 #define USING_SHADOWS
 //#define USING_POINT_LIGHT
 //#define SOFT_SHADOWS
 #define STATIC_LIGHT_DIR make_float3(0.5,1,0.5)
-#define AMBIENT_OCCLUSION
+#define LIGHT_POS make_float3(1000,2000,1000)
+
+//#define AMBIENT_OCCLUSION
 
 //#define VISUALIZE_BOUNDS
 
 
-
+//#define USING_SHADOW_FALLOW
+#define SHADOW_FALLOW_FACTOR 0.95
 #define AIR_DENSITY 0.001
-#define AIR_COLOR 3.0*make_float3(53.0/255, 81.0/255, 98.0/255);
+#define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
 cudaError_t cuda();
 __global__ void kernel() {
 
 }
+
+
+__device__ float currentTime;
+__device__ sceneInfo *scene;
+//sceneInfo info;
 
 
 __device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
@@ -213,17 +222,33 @@ __device__ float3 reflect(const float3& I, const float3& N)
 struct hitInfo {
 	rayHitInfo info;
 	bool hit = false;
-	//int objectIndex = -1;
-	//bool hitMesh = false;
 	float3 pos;
 	float3 normal;
 
 };
 
-#define LIGHT_POS make_float3(0,100,20)
 
 
-__device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const sceneInfo scene) {
+
+__device__ float3 getWave(float3 pos, float xSpeed, float ySpeed, float xSize, float ySize) {
+
+	return make_float3(1, 1, 1);
+
+	//normal = normalize(info.normal + strength * make_float3(sinf(waveInput.x), 0, sinf(waveInput.z * 0.1)));
+
+}
+
+
+//float rayMarchUntilIntersection
+
+//#define rayMarchUntilIntersection(FUN, orig, dir, startDist, numIterations) \
+//float t = startDist; \
+//for (int i = 0; i < numIterations; i++) { \
+//	AA
+//
+//}
+
+__device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 	float closestDist = 1000000;
 	float3 normal;
 	hitInfo toReturn;
@@ -231,8 +256,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 
 
 	// mathematical objects
-	for (int i = 0; i < scene.numObjects; i++) {
-		const objectInfo& curr = scene.objects[i];
+	for (int i = 0; i < scene->numObjects; i++) {
+		const objectInfo& curr = scene->objects[i];
 		float currDist;
 
 
@@ -240,13 +265,42 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 		switch (curr.s) {
 		case water: {
 			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+
 				closestDist = currDist;
 				toReturn.info = curr.rayInfo;
-				float3 waveInput = 0.1*(currRayPos + currDist * currRayDir);
-				float strength = 0.1;
+				float3 waveInput = (currRayPos + currDist * currRayDir)*0.5 + make_float3(3*currentTime + 10000, 10000,10000);
+				float strength = 2000.;
 
+				float d = 0.01;
+				float h1 = perlin2d(waveInput.x - d, waveInput.z, 1, 3);
+				float h2 = perlin2d(waveInput.x + d, waveInput.z, 1, 3);
+				float h3 = perlin2d(waveInput.x, waveInput.z - d, 1, 3);
+				float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 3);
 
-				normal = normalize(info.normal + strength*make_float3(sinf(waveInput.x), 0, sinf(waveInput.z*0.1)));
+				// derivatives
+				float d1 = (h2 - h1) / 2*d; 
+				float d2 = (h4 - h3) / 2*d;
+
+				//float3 distortion = make_float3(perlin2d(waveInput.x+10000, 0.0, 1, 1)*2* - 1., 0, perlin2d(waveInput.z + 20000, waveInput.x + 30000, 1, 1)*2.-1.);
+				float3 rightDir = make_float3(0, 0, 1);
+				float3 otherDir1 = cross(rightDir, info.normal);
+				float3 otherDir2 = cross(otherDir1, info.normal);
+
+				//otherDir1 = dot(currRayDir, otherDir1) > 0.1 ? inverse(otherDir1) : otherDir1;
+				//otherDir2 = dot(currRayDir, otherDir2) > 0.1 ? inverse(otherDir2) : otherDir2;
+
+				float3 distortion = (otherDir1 * d1 +otherDir2 * d2);
+
+				//distortion = dot(distortion, currRayDir) <= -0.0000001 ? distortion : inverse(distortion);
+
+				//distortion = distortion * make_float3(currRayDir.x, currRayDir.y, currRayDir.z);
+
+				normal = normalize(info.normal + strength*distortion);
+				//normal = normalize(info.normal + strength*make_float3(sinf(waveInput.x+currentTime), 0, sinf(waveInput.z + currentTime)));
+				//normal = normalize(info.normal + strength * make_float3(sinf(waveInput.x + currentTime), 0, 0));
+				//normal = make_float3(currRayDir.x > 0 ? -abs(normal.x) : abs(normal.x), currRayDir.y > 0 ? -abs(normal.y) : abs(normal.y), currRayDir.z > 0 ? -abs(normal.z) : abs(normal.z));
+				//normal = dot(currRayDir, normal) < 0. ? inverse(normal) + 2 * normal : normal;
+
 				toReturn.hit = true;
 			}
 
@@ -278,8 +332,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 
 
 	// meshes
-	for (int i = 0; i < scene.numMeshes; i++) {
-		triangleMesh currMesh = scene.meshes[i];
+	for (int i = 0; i < scene->numMeshes; i++) {
+		triangleMesh currMesh = scene->meshes[i];
 
 		float tMin = 0;
 		float tMax;
@@ -338,13 +392,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, const
 }
 
 
-__device__ float3 getWave(float3 pos, float xSpeed, float ySpeed, float xSize, float ySize) {
 
-	return make_float3(1, 1, 1);
-}
-
-
-__device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene) {
+__device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 
 #ifndef USING_SHADOWS
 	return 1.0;
@@ -356,7 +405,7 @@ __device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene)
 #else 
 	float3 toLightVec = STATIC_LIGHT_DIR;
 #endif // USING_POINT_LIGHT
-	hitInfo hit = getHit(originalPos + 0.001 *toLightVec, toLightVec, scene);
+	hitInfo hit = getHit(originalPos + 0.001 *toLightVec, toLightVec);
 #ifdef USING_POINT_LIGHT
 	if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
 		toReturn = 1.;
@@ -365,41 +414,66 @@ __device__ float getShadowTerm(const float3 originalPos, const sceneInfo& scene)
 		toReturn = 0.0;
 	}
 #else 
-	if (!hit.hit || length(hit.pos - originalPos) > 100.0f) {
+	if (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) {
 		toReturn = 1.;
 	}
 	else {
+		#ifdef USING_SHADOW_FALLOW
+			toReturn = min(1.f, 1.-powf(SHADOW_FALLOW_FACTOR,length(hit.pos - originalPos)));
+		#else
 		toReturn = 0.0;
+		#endif
 	}
 #endif // USING_POINT_LIGHT
 
 #else // if soft shadows
 
 	int totalHits = 0;
-	for (int x = 0; x <= 1; x++) {
-		for (int y = 0; y <= 1; y++) {
+	for (int x = 0; x < 2; x++) {
+		for (int y = 0; y < 2; y++) {
 			float3 toLightVec = normalize(STATIC_LIGHT_DIR + 0.05*make_float3(x,0,y));
-			hitInfo hit = getHit(originalPos + 0.001 * toLightVec, toLightVec, scene);
+			hitInfo hit = getHit(originalPos + 0.001 * toLightVec, toLightVec);
 			if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS))
 				totalHits++;
 		}
 	}
 
-	toReturn = ((float)totalHits / 9.);
+	toReturn = ((float)totalHits / 4);
 #endif  // soft shadows
+
+#ifdef AMBIENT_OCCLUSION
+	float3 rightDir = make_float3(0, 0, 1);
+	float3 otherDir1 = cross(rightDir, normal);
+	float3 otherDir2 = cross(otherDir1, normal);
+
+	float maxLen = 0.2;
+	float minDist = maxLen;
+	for (int x = -5; x < 5; x++) {
+		for (int y = -5; y < 5; y++) {
+			float3 currDir = normal + otherDir1 * x + otherDir2 * y;
+			hitInfo hit = getHit(originalPos + 0.001 * currDir, currDir);
+			minDist = min(minDist, length(hit.pos - originalPos));
+			//if (!hit.hit || length(hit.pos - originalPos) > maxLen)
+			//	totalHits+;
+		}
+	}
+
+	toReturn *= (minDist / maxLen);
+
+#endif
 
 	return toReturn;
 
 }
 
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const sceneInfo& scene, const hitInfo prevHitToAddDepthFrom) {
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo prevHitToAddDepthFrom) {
 	if (remainingDepth <= 0) {
 		return AIR_COLOR;
 	}
 
 
-	hitInfo hit = getHit(currRayPos, currRayDir, scene);
+	hitInfo hit = getHit(currRayPos, currRayDir);
 
 	if (!hit.hit) {
 		return AIR_COLOR;
@@ -415,14 +489,14 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 		float extraReflection = 0;
 		float3 extraColor;
-		float3 bias = 0.0005 * normal;
+		float3 refractBias = 0.0005 * normal;
+		float3 reflectBias = 0.001 * normal;
 		float prevColorMP = 0;
 		float3 extraPrevColor = make_float3(0,0,0);
-		bool outside = dot(currRayDir, normal) < 0;
+		bool outside = dot(currRayDir, hit.normal) < 0;
 
 		if (prevHitToAddDepthFrom.hit && prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
 			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos));
-			//prevColorMP = min(1., length(nextPos - currRayPos) * prevHitToAddDepthFrom.info.insideColorDensity);
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
 		else if (!prevHitToAddDepthFrom.hit){
@@ -430,23 +504,26 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraPrevColor = prevColorMP * AIR_COLOR;
 		}
 
-		if (info.refractivity > 0.01) {
+		if (info.refractivity > 0.0001) {
 			float kr;
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
 			if (kr <= 1) {
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
-				float3 refractionRayOrig = outside ? nextPos - bias : nextPos + bias;
+				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
-				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, scene, hit);
+				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  hit);
 			}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
-		if (info.reflectivity + extraReflection > 0.01) {
+		if (info.reflectivity + extraReflection > 0.00001) {
 			float3 reflectDir = reflect(currRayDir, normal);
-			reflected = (info.reflectivity + extraReflection) * trace(nextPos + bias, reflectDir, remainingDepth - 1, scene, hitInfo());
+			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;// nextPos + reflectNormal * 0.001;// : nextPos - reflectNormal * 0.01;//0.01;
+
+
+			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, hitInfo());
 		}
 		float3 color = ((1 - info.reflectivity - extraReflection - info.refractivity) * info.color);
 #ifdef USING_POINT_LIGHT
@@ -454,8 +531,8 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		return 10000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) *(0.2 + 0.8*getShadowTerm(nextPos + bias, scene)) * color + reflected + refracted;
 #else
 		float3 light_dir = STATIC_LIGHT_DIR;
-		float angleFactor = (0.8 + 0.2 * max(0.0, dot(light_dir, normal)));
-		return (1. - prevColorMP) * ((0.8*getShadowTerm(nextPos + 0.01*inverse(currRayDir), scene) + 0.2)* 3.0* angleFactor *color + reflected + refracted) + extraPrevColor;
+		float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
+		return (1. - prevColorMP) * ((0.8*getShadowTerm(nextPos + 0.01*inverse(currRayDir),normal)* angleFactor + 0.2)* 1.0 *color + reflected + refracted) + extraPrevColor;
 #endif
 	}
 
@@ -490,7 +567,10 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	float3 dirVector = normalize(secondPlanePos - firstPlanePos);
 
-	float3 out = 255 * trace(firstPlanePos, dirVector, 5, pointers.scene, hitInfo());
+
+	currentTime = currTime;
+	scene = &pointers.scene;
+	float3 out = 255 * trace(firstPlanePos, dirVector, 10, hitInfo())*3;
 
 	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
 }

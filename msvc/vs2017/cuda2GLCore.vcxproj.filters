@@ -46,6 +46,7 @@
       <Filter>cuda</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\sharedStructs.h" />
+    <ClInclude Include="..\..\src\perlin.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />
