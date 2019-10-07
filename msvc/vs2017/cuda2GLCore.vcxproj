@@ -37,6 +37,7 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />
+    <CudaCompile Include="..\..\src\postprocessing.cu" />
     <CudaCompile Include="..\..\src\rayHelpers.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

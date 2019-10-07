@@ -43,6 +43,11 @@ GLFWwindow* window;
 int WIDTH = 1024;
 int HEIGHT = 1024;
 
+int num_texels = WIDTH * HEIGHT;
+int num_values = num_texels * 4;
+int size_tex_data = sizeof(GLuint) * num_values;
+
+
 // camera
 double currYaw = 270;
 double currPitch = 0;
@@ -58,6 +63,9 @@ GLSLProgram shdrawtex; // GLSLS program for textured draw
 
 // Cuda <-> OpenGl interop resources
 void* cuda_dev_render_buffer; // Cuda buffer for initial render
+void* cuda_dev_render_buffer_2; // Cuda buffer for initial render
+
+
 void* cuda_custom_objects_buffer; 
 void* cuda_mesh_buffer; 
 
@@ -65,13 +73,17 @@ void* cuda_mesh_buffer;
 struct cudaGraphicsResource* cuda_tex_resource;
 GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
 extern "C" void
+
+
 // Forward declaration of CUDA render
 launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
 
+
+extern "C" void
+// Forward declaration of CUDA bloom
+launch_cudaBloom(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
+
 // CUDA
-size_t size_tex_data;
-unsigned int num_texels;
-unsigned int num_values;
 
 size_t size_elements_data;
 unsigned int num_elements;
@@ -129,7 +141,7 @@ void createGLTextureForCUDA(GLuint* gl_tex, cudaGraphicsResource** cuda_tex, uns
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	// Specify 2D texture
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI_EXT, size_x, size_y, 0, GL_RGB_INTEGER_EXT, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI_EXT, size_x, size_y, 0, GL_RGB_INTEGER_EXT, GL_UNSIGNED_BYTE, NULL);
 	// Register this texture with CUDA
 	checkCudaErrors(cudaGraphicsGLRegisterImage(cuda_tex, *gl_tex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
 	SDK_CHECK_ERROR_GL();
@@ -415,16 +427,14 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
 void initCUDABuffers()
 {
 	// set up vertex data parameters
-	num_texels = WIDTH * HEIGHT;
-	num_values = num_texels * 4;
-	size_tex_data = sizeof(GLubyte) * num_values;
 
 
 	// We don't want to use cudaMallocManaged here - since we definitely want
 	cudaError_t stat;
-	size_t myStackSize = 8192;
+	size_t myStackSize = 16000;
 	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
+	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer_2, size_tex_data)); // Allocate CUDA memory for color output 2
 
 
 	#define NUM_ELEMENTS 7
@@ -446,7 +456,7 @@ void initCUDABuffers()
 
 	objectInfo objects[NUM_ELEMENTS];
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
-	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
+	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0); // reflective
 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.5, 0.0); // refractive
 	objects[2] = make_objectInfo(water, p1, 0.0, make_float3(0,0.0,0.1), 1.0, 1.33, 0.06); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
@@ -463,9 +473,9 @@ void initCUDABuffers()
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0))); // bark
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255))); // palm leaves
 
-	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.04, make_float3(50.0, -60, 30.0), false);
+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.05, make_float3(50.0, -70, 30.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.1*make_float3(215./255,198./255,171./255) )); //bunny
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255) )); //bunny
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();
@@ -477,7 +487,6 @@ void initCUDABuffers()
 	for (int i = 0; i < importedMeshes.size(); i++) {
 		triangleMesh curr = importedMeshes[i];
 		curr.rayInfo = infos[i];
-
 		meshesOnCuda[i] = prepareMeshForCuda(curr);
 	}
 
@@ -548,19 +557,18 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 
 	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
-	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, info };
+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, info };
 
 
 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
+	launch_cudaBloom(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
 	cudaArray* texture_ptr;
 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
 	/*checkCudaErrors(*/cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0);
 
 
-	int num_texels = WIDTH * HEIGHT;
-	int num_values = num_texels * 4;
-	int size_tex_data = sizeof(GLubyte) * num_values;
-	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
+
+	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer_2, size_tex_data, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
 
 	cudaDeviceSynchronize();

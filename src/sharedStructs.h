@@ -123,7 +123,8 @@ struct sceneInfo {
 
 
 struct inputPointers {
-	unsigned int* g_odata; // texture position
+	unsigned int* image1; // normal texture position
+	unsigned int* image2; // after post processing
 
 	sceneInfo scene;
 	//objectInfo* objects;

@@ -14,14 +14,22 @@ inline __device__ float clamp(float x, float a, float b)
 }
 
 // convert floating point rgb color to 8-bit integer
-inline __device__ int rgbToInt(float r, float g, float b)
+inline __device__ int rgbToInt(float3 rgb)
 {
-	r = clamp(r, 0.0f, 255.0f);
-	g = clamp(g, 0.0f, 255.0f);
-	b = clamp(b, 0.0f, 255.0f);
-	return (int(b) << 16) | (int(g) << 8) | int(r);
+	rgb.x = clamp(rgb.x, 0.0f, 65535.f);
+	rgb.y = clamp(rgb.y, 0.0f, 65535.f);
+	rgb.z = clamp(rgb.z, 0.0f, 65535.f);
+	return (int(rgb.z) << 16) | (int(rgb.y) << 8) | int(rgb.x);
 }
 
+// the reverse
+inline __device__ float3 intToRgb(int val)
+{
+	float r =  val % 256;
+	float g = (val % (256*256)) / 256;
+	float b = val / (256 * 256); 
+	return make_float3(r, g, b);
+}
 
 
 inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 

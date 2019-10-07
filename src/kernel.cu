@@ -522,9 +522,9 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			float3 reflectDir = reflect(currRayDir, normal);
 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 
-
 			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, false);
 		}
+
 		float colorMultiplier = max(0.,(1. - info.reflectivity - extraReflection - info.refractivity));
 		float3 color = colorMultiplier* info.color;
 #ifdef USING_POINT_LIGHT
@@ -542,6 +542,20 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 	}
 
 }
+
+
+
+//__device__ float floatToSRGB(float C) {
+//	if (C <= 0.0404482362771082)
+//		C = C / 12.92;
+//	else
+//		C = powf(((C + 0.055) / 1.055), 2.4);
+//	return C;
+//}
+//
+//__device__ float3 float3ToSRGB(float3 in) {
+//	return make_float3(floatToSRGB(in.x), floatToSRGB(in.y), floatToSRGB(in.z));
+//}
 
 __global__ void
 cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
@@ -575,9 +589,15 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	currentTime = currTime;
 	scene = &pointers.scene;
-	float3 out = 255 * trace(firstPlanePos, dirVector, 4, hitInfo(), true)*3;
+	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 4, hitInfo(), true);
 
-	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
+	//out = float3ToSRGB(out);
+
+
+	int firstPos = (y * imgw + x) * 4;
+	pointers.image1[firstPos] = out.x;
+	pointers.image1[firstPos+1] = out.y;
+	pointers.image1[firstPos+2] = out.z;
 }
 extern "C" void
 launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
@@ -585,4 +605,5 @@ launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int
 
 	cudaRender << < grid, block, sbytes >> > (pointers, imgw, imgh, currTime, input);
 }
+
 

@@ -51,5 +51,6 @@
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />
     <CudaCompile Include="..\..\src\rayHelpers.cu" />
+    <CudaCompile Include="..\..\src\postprocessing.cu" />
   </ItemGroup>
 </Project>
