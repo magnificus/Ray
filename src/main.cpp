@@ -458,7 +458,7 @@ void initCUDABuffers()
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0); // reflective
 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.5, 0.0); // refractive
-	objects[2] = make_objectInfo(water, p1, 0.0, make_float3(0,0.0,0.1), 1.0, 1.33, 0.06); // water top
+	objects[2] = make_objectInfo(water, p1, 0.0, make_float3(0,0.0,0.1), 0.9, 1.33, 0.06); // water top
 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
 	objects[5] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.0, 1.33, 0.0); // sun
@@ -473,9 +473,13 @@ void initCUDABuffers()
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0))); // bark
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255))); // palm leaves
 
-	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.05, make_float3(50.0, -70, 30.0), false);
+	std::vector<triangleMesh> rockMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.05, make_float3(50.0, -70, 30.0), false);
+	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255) )); //rock
+
+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 500, make_float3(0.0, -70, -200.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255) )); //bunny
+	infos.push_back(make_rayHitInfo(0.0, 0.0, 1.5, 0.0, make_float3(1,0,0.0))); //le bun
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();

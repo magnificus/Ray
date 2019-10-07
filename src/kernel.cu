@@ -483,7 +483,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float extraReflection = 0;
 		float3 extraColor;
 		float3 refractBias = 0.0005 * normal;
-		float3 reflectBias = 0.001 * normal;
+		float3 reflectBias = 0.01 * normal;
 		float prevColorMP = 0;
 		float3 extraPrevColor = make_float3(0,0,0);
 		bool outside = dot(currRayDir, hit.normal) < 0;

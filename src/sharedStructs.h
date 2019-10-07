@@ -86,7 +86,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 }
 
 // total size will be pow(GRID_SIZE,3) bc of xyz
-#define GRID_SIZE 10
+#define GRID_SIZE 15
 #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
 #define GRID_DEPTH 1
 
