@@ -451,7 +451,7 @@ void initCUDABuffers()
 	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
 	//shapeInfo s4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
-	shapeInfo sun = make_shapeInfo(make_float3(1000, 2000, 1000), make_float3(1, 0, 0), 100);
+	shapeInfo sun = make_shapeInfo(make_float3(1000, 2000, 1000), make_float3(1, 0, 0), 200);
 
 
 	objectInfo objects[NUM_ELEMENTS];
@@ -477,7 +477,7 @@ void initCUDABuffers()
 	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255) )); //rock
 
-	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 500, make_float3(0.0, -70, -200.0), false);
+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 500, make_float3(0.0, -70, 200.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
 	infos.push_back(make_rayHitInfo(0.0, 0.0, 1.5, 0.0, make_float3(1,0,0.0))); //le bun
 
