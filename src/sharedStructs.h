@@ -56,16 +56,18 @@ struct rayHitInfo {
 	float refractiveIndex;
 	float insideColorDensity;
 	float3 color;
+	float roughness;
 };
 
 
-inline __device__ rayHitInfo make_rayHitInfo(float inReflectivity, float inRefractivity, float inRefractiveIndex, float inInsideColorDensity, float3 inColor) {
+inline __device__ rayHitInfo make_rayHitInfo(float inReflectivity, float inRefractivity, float inRefractiveIndex, float inInsideColorDensity, float3 inColor, float roughness) {
 	rayHitInfo r;
 	r.reflectivity = inReflectivity;
 	r.refractivity = inRefractivity;
 	r.refractiveIndex = inRefractiveIndex;
 	r.insideColorDensity = inInsideColorDensity;
 	r.color = inColor;
+	r.roughness = roughness;
 	return r;
 }
 
@@ -76,15 +78,12 @@ struct objectInfo {
 
 };
 
-inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex, float insideColorDensity) {
+inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float reflectivity, float3 color, float refractivity, float refractiveIndex, float insideColorDensity, float roughness) {
 	objectInfo o;
 	o.s = s;
 	o.shapeData = shapeData;
-	o.rayInfo.reflectivity = reflectivity;
-	o.rayInfo.color = color;
-	o.rayInfo.refractivity = refractivity;
-	o.rayInfo.refractiveIndex = refractiveIndex;
-	o.rayInfo.insideColorDensity = insideColorDensity;
+
+	o.rayInfo = make_rayHitInfo(reflectivity, refractivity, refractiveIndex, insideColorDensity, color, roughness);
 	return o;
 }
 
@@ -124,10 +123,16 @@ struct sceneInfo {
 	int numMeshes;
 };
 
+struct PostProcessPointers {
+	unsigned int *inputImage;
+	unsigned int *processRead;
+	unsigned int *processWrite;
+	unsigned int *finalOut;
+};
+
 
 struct inputPointers {
 	unsigned int* image1; // normal texture position
-	unsigned int* image2; // after post processing
 
 	sceneInfo scene;
 	//objectInfo* objects;

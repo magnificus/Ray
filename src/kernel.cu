@@ -11,7 +11,6 @@
 #define LIGHT_POS make_float3(1000,2000,1000)
 
 //#define AMBIENT_OCCLUSION
-
 //#define VISUALIZE_BOUNDS
 
 
@@ -231,14 +230,29 @@ __device__ float3 getWave(float3 pos, float xSpeed, float ySpeed, float xSize, f
 }
 
 
-//float rayMarchUntilIntersection
+__device__ float3 getDistortion(const float3 normal,const float3 inputPos,const int perlinDepth) {
 
-//#define rayMarchUntilIntersection(FUN, orig, dir, startDist, numIterations) \
-//float t = startDist; \
-//for (int i = 0; i < numIterations; i++) { \
-//	AA
-//
-//}
+	float d = 0.01;
+	float3 rightDir = make_float3(0, 0, 1);
+	float3 otherDir1 = cross(rightDir, normal);
+	float3 otherDir2 = cross(otherDir1, normal);
+
+	
+
+	float h1 = perlin2d(inputPos.x - d, inputPos.z, 1, perlinDepth);
+	float h2 = perlin2d(inputPos.x + d, inputPos.z, 1, perlinDepth);
+	float h3 = perlin2d(inputPos.x, inputPos.z - d, 1, perlinDepth);
+	float h4 = perlin2d(inputPos.x, inputPos.z + d, 1, perlinDepth);
+
+	//// derivatives
+	float d1 = (h2 - h1) / 2 * d;
+	float d2 = (h4 - h3) / 2 * d;
+
+
+	return (otherDir1 * d1 + otherDir2 * d2);
+
+	//normal = normalize(normal + intensity * distortion);
+}
 
 __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 	float closestDist = 1000000;
@@ -273,33 +287,35 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				float3 waveInput = (currRayPos + currDist * currRayDir) * 0.3 + make_float3(2 * currentTime + 10000, 10000, 10000);
 				float strength = 2000;
 
-				float d = 0.01;
-				float h1 = perlin2d(waveInput.x - d, waveInput.z, 1, 4);
-				float h2 = perlin2d(waveInput.x + d, waveInput.z, 1, 4);
-				float h3 = perlin2d(waveInput.x, waveInput.z - d, 1, 4);
-				float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 4);
-
-				//// derivatives
-				float d1 = (h2 - h1) / 2 * d;
-				float d2 = (h4 - h3) / 2 * d;
-
-
-				//float d1 = perlin2d(waveInput.x, waveInput.z, 1, 5)*2.-1;
-				//float d2 = perlin2d(waveInput.z, waveInput.x, 1, 5)*2.-1;
-
-
-				float3 rightDir = make_float3(0, 0, 1);
-				float3 otherDir1 = cross(rightDir, normalToUse);
-				float3 otherDir2 = cross(otherDir1, normalToUse);
-
-				//otherDir1 = dot(currRayDir, otherDir1) > -0.0001 ? inverse(otherDir1) : otherDir1;
-				//otherDir2 = dot(currRayDir, otherDir2) > -0.0001 ? inverse(otherDir2) : otherDir2;
-
-				float3 distortion = (otherDir1 * d1 + otherDir2 * d2);
-
+				float3 distortion = getDistortion(normalToUse, waveInput, 4);
 				normal = normalize(info.normal + strength * distortion);
-
 				toReturn.hit = true;
+
+				//float d = 0.01;
+				//float h1 = perlin2d(waveInput.x - d, waveInput.z, 1, 4);
+				//float h2 = perlin2d(waveInput.x + d, waveInput.z, 1, 4);
+				//float h3 = perlin2d(waveInput.x, waveInput.z - d, 1, 4);
+				//float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 4);
+
+				////// derivatives
+				//float d1 = (h2 - h1) / 2 * d;
+				//float d2 = (h4 - h3) / 2 * d;
+
+
+				////float d1 = perlin2d(waveInput.x, waveInput.z, 1, 5)*2.-1;
+				////float d2 = perlin2d(waveInput.z, waveInput.x, 1, 5)*2.-1;
+
+
+				//float3 rightDir = make_float3(0, 0, 1);
+				//float3 otherDir1 = cross(rightDir, normalToUse);
+				//float3 otherDir2 = cross(otherDir1, normalToUse);
+
+				////otherDir1 = dot(currRayDir, otherDir1) > -0.0001 ? inverse(otherDir1) : otherDir1;
+				////otherDir2 = dot(currRayDir, otherDir2) > -0.0001 ? inverse(otherDir2) : otherDir2;
+
+				//float3 distortion = (otherDir1 * d1 + otherDir2 * d2);
+
+
 			}
 
 			break;
@@ -340,8 +356,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 		gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
 
 		bool isAlreadyInside = max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0;
-		/*intersectsSphere(currRayPos, currRayDir, 0.5 * (currMesh.bbMin + currMesh.bbMax), currMesh.rad, tMin);*/
-		if (isAlreadyInside || intersectsSphere(currRayPos, currRayDir, 0.5 * (currMesh.bbMin + currMesh.bbMax), currMesh.rad, tMin) && (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0)) {
+		if (isAlreadyInside || (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0)) {
 
 			// engage the GRID
 			float3 currPos = currRayPos + (tMin + 0.001)*currRayDir;
@@ -492,6 +507,11 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 nextPos = hit.pos;
 		float3 normal = hit.normal;
 
+		if (hit.info.roughness > 0.0001) {
+			float3 distortion = getDistortion(normal, nextPos + make_float3(10000,10000,10000), 3);
+			normal = normalize(normal + distortion * hit.info.roughness);
+		}
+
 
 		float extraReflection = 0;
 		float3 extraColor;
@@ -547,7 +567,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 light_dir = STATIC_LIGHT_DIR;
 		float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
 		float shadowFactor = 0;
-		if (colorMultiplier > 0.1) {
+		if (colorMultiplier * (1.-prevColorMP) > 0.1) {
 			shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
 		}
 		return (1. - prevColorMP) * ((0.8* shadowFactor * angleFactor + 0.2)* 1.0 *color + reflected + refracted) + extraPrevColor;
