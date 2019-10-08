@@ -14,7 +14,7 @@ cudaBloom(inputPointers pointers, int imgw, int imgh, float currTime, inputStruc
 	int y = blockIdx.y * bh + ty;
 
 	float bloomThreshold = 255;
-	float bloomStrength = 0.005;
+	float bloomStrength = 0.01;
 
 
 	float weights[] =

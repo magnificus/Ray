@@ -4,6 +4,7 @@
 
 
 #define USING_SHADOWS
+//#define USING_DOUBLE_TAP_SHADOWS
 //#define USING_POINT_LIGHT
 //#define SOFT_SHADOWS
 #define STATIC_LIGHT_DIR make_float3(0.5,1,0.5)
@@ -16,8 +17,7 @@
 
 //#define USING_SHADOW_FALLOW
 #define SHADOW_FALLOW_FACTOR 0.95
-#define AIR_DENSITY 0.001
-#define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
+
 cudaError_t cuda();
 __global__ void kernel() {
 
@@ -219,14 +219,6 @@ __device__ float3 reflect(const float3& I, const float3& N)
 	return I - 2 * dot(I, N) * N;
 }
 
-struct hitInfo {
-	rayHitInfo info;
-	bool hit = false;
-	float3 pos;
-	float3 normal;
-
-};
-
 
 
 
@@ -264,11 +256,21 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 		shapeInfo info = curr.shapeData;
 		switch (curr.s) {
 		case water: {
-			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+			shapeInfo otherInfo = info;
+			otherInfo.normal = inverse(otherInfo.normal);
+			float3 normalToUse = info.normal;
+			bool intersected = intersectPlane(info, currRayPos, currRayDir, currDist);
+			if (!intersected) {
+				intersected = intersectPlane(otherInfo, currRayPos, currRayDir, currDist);
+				normalToUse = otherInfo.normal;
+			}
 
+
+			
+			if (intersected && currDist < closestDist) {
 				closestDist = currDist;
 				toReturn.info = curr.rayInfo;
-				float3 waveInput = (currRayPos + currDist * currRayDir)*0.3 + make_float3(2*currentTime + 10000, 10000,10000);
+				float3 waveInput = (currRayPos + currDist * currRayDir) * 0.3 + make_float3(2 * currentTime + 10000, 10000, 10000);
 				float strength = 2000;
 
 				float d = 0.01;
@@ -278,8 +280,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 4);
 
 				//// derivatives
-				float d1 = (h2 - h1) / 2*d; 
-				float d2 = (h4 - h3) / 2*d;
+				float d1 = (h2 - h1) / 2 * d;
+				float d2 = (h4 - h3) / 2 * d;
 
 
 				//float d1 = perlin2d(waveInput.x, waveInput.z, 1, 5)*2.-1;
@@ -287,15 +289,15 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 
 
 				float3 rightDir = make_float3(0, 0, 1);
-				float3 otherDir1 = cross(rightDir, info.normal);
-				float3 otherDir2 = cross(otherDir1, info.normal);
+				float3 otherDir1 = cross(rightDir, normalToUse);
+				float3 otherDir2 = cross(otherDir1, normalToUse);
 
 				//otherDir1 = dot(currRayDir, otherDir1) > -0.0001 ? inverse(otherDir1) : otherDir1;
 				//otherDir2 = dot(currRayDir, otherDir2) > -0.0001 ? inverse(otherDir2) : otherDir2;
 
-				float3 distortion = (otherDir1 * d1 +otherDir2 * d2);
+				float3 distortion = (otherDir1 * d1 + otherDir2 * d2);
 
-				normal = normalize(info.normal + strength*distortion);
+				normal = normalize(info.normal + strength * distortion);
 
 				toReturn.hit = true;
 			}
@@ -414,11 +416,22 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 		toReturn = 1.;
 	}
 	else {
-		#ifdef USING_SHADOW_FALLOW
-			toReturn = min(1.f, 1.-powf(SHADOW_FALLOW_FACTOR,length(hit.pos - originalPos)));
-		#else
-		toReturn = 0.0;
-		#endif
+		if (hit.info.insideColorDensity > 0.001) {
+			// hack
+			toReturn = powf(1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
+			toReturn = max(0.,toReturn);
+#ifdef USING_DOUBLE_TAP_SHADOWS
+			hitInfo hit = getHit(hit.pos + 0.01 * toLightVec, toLightVec);
+			toReturn = (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) ? toReturn : 0;
+#endif
+
+			//toReturn = 1;
+
+		}
+		else {
+			toReturn = 0.0;
+
+		}
 	}
 #endif // USING_POINT_LIGHT
 
@@ -488,14 +501,14 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 extraPrevColor = make_float3(0,0,0);
 		bool outside = dot(currRayDir, hit.normal) < 0;
 
-		if (prevHitToAddDepthFrom.hit && prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
+		if (prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
 			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos));
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
-		else if (!prevHitToAddDepthFrom.hit){
-			prevColorMP = 1 - powf(1. - AIR_DENSITY, length(nextPos - currRayPos));
-			extraPrevColor = prevColorMP * AIR_COLOR;
-		}
+		//else if (!prevHitToAddDepthFrom.hit){
+		//	prevColorMP = 1 - powf(1. - AIR_DENSITY, length(nextPos - currRayPos));
+		//	extraPrevColor = prevColorMP * AIR_COLOR;
+		//}
 
 		if (prevColorMP > 0.98)
 			return extraPrevColor;
@@ -513,7 +526,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
-				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  hit, false);
+				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ? hit : hitInfo(), false);
 			}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
@@ -589,7 +602,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	currentTime = currTime;
 	scene = &pointers.scene;
-	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 4, hitInfo(), true);
+	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 7, input.beginMedium, true);
 
 	//out = float3ToSRGB(out);
 

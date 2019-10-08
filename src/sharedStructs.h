@@ -2,7 +2,10 @@
 
 #include "cuda_runtime.h"
 
-
+#define AIR_DENSITY 0.001
+#define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
+#define WATER_COLOR make_float3(0,0.0,0.1)
+#define WATER_DENSITY 0.06
 
 struct shapeInfo {
 	float3 pos;
@@ -86,7 +89,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 }
 
 // total size will be pow(GRID_SIZE,3) bc of xyz
-#define GRID_SIZE 15
+#define GRID_SIZE 10
 #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
 #define GRID_DEPTH 1
 
@@ -135,6 +138,13 @@ struct inputPointers {
 
 };
 
+struct hitInfo {
+	rayHitInfo info;
+	bool hit = false;
+	float3 pos;
+	float3 normal;
+};
+
 
 struct inputStruct {
 	float currPosX;
@@ -148,6 +158,8 @@ struct inputStruct {
 	float upX;
 	float upY;
 	float upZ;
+
+	hitInfo beginMedium;
 };
 
 
