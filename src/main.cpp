@@ -88,7 +88,8 @@ extern "C" void
 launch_cudaBloomOutput(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, PostProcessPointers pointers);
 extern "C" void
 launch_cudaBlur(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, PostProcessPointers pointers);
-
+extern "C" void
+launch_cudaDownSampleToHalfRes(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, PostProcessPointers pointers);
 
 size_t size_elements_data;
 unsigned int num_elements;
@@ -580,10 +581,21 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
 	launch_cudaBloomSample(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_pong_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_pong_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_pong_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	//launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_pong_buffer, (unsigned int*)cuda_ping_buffer, }); // launch with 0 additional shared memory allocated
-	launch_cudaBloomOutput(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_pong_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+
+	dim3 grid2((WIDTH /2)/ block.x, (HEIGHT / 2) / block.y, 1); // 2D grid, every thread will compute a pixel
+	//launch_cudaDownSampleToHalfRes(grid2, block, 0, WIDTH / 2, HEIGHT / 2, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2 });
+	launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+
+	launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+	//launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+
+	//launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+	//launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+	//launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+	//launch_cudaBlur(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+
+	launch_cudaBloomOutput(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+	//launch_cudaBloomOutput(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_pong_buffer, (unsigned int*)cuda_pong_buffer, }); // launch with 0 additional shared memory allocated
 	cudaArray* texture_ptr;
 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
 	/*checkCudaErrors(*/cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0);

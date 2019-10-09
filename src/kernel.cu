@@ -183,7 +183,7 @@ __device__ void fresnel(const float3& I, const float3& N, const float& ior, floa
 {
 	float cosi = clamp(-1, 1, dot(I, N));
 	float etai = 1, etat = ior;
-	if (cosi > 0) { float temp = etai; etai = etat; etat = temp; }
+	if (cosi > 0) { float temp = etai; etai = etat; etat = temp; }// std::swap(etai, etat);
 	// Compute sini using Snell's law
 	float sint = etai / etat * sqrtf(max(0.f, 1 - cosi * cosi));
 	// Total internal reflection
@@ -192,12 +192,13 @@ __device__ void fresnel(const float3& I, const float3& N, const float& ior, floa
 	}
 	else {
 		float cost = sqrtf(max(0.f, 1 - sint * sint));
-		cosi = abs(cosi);
+		cosi = fabsf(cosi);
 		float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
 		float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
 		kr = (Rs * Rs + Rp * Rp) / 2;
 	}
-
+	// As a consequence of the conservation of energy, transmittance is given by:
+	// kt = 1 - kr;
 }
 
 
@@ -501,7 +502,6 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 	else {
 
 		rayHitInfo info = hit.info;
-		//objectInfo currObject = scene.objects[hit.objectIndex];
 		float3 reflected = make_float3(0, 0, 0);
 		float3 refracted = make_float3(0, 0, 0);
 		float3 nextPos = hit.pos;
@@ -516,7 +516,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float extraReflection = 0;
 		float3 extraColor;
 		float3 refractBias = 0.0005 * normal;
-		float3 reflectBias = 0.01 * normal;
+		float3 reflectBias = 0.001 * normal;
 		float prevColorMP = 0;
 		float3 extraPrevColor = make_float3(0,0,0);
 		bool outside = dot(currRayDir, hit.normal) < 0;
@@ -525,10 +525,6 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos));
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
-		//else if (!prevHitToAddDepthFrom.hit){
-		//	prevColorMP = 1 - powf(1. - AIR_DENSITY, length(nextPos - currRayPos));
-		//	extraPrevColor = prevColorMP * AIR_COLOR;
-		//}
 
 		if (prevColorMP > 0.98)
 			return extraPrevColor;
@@ -551,7 +547,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
-		if (info.reflectivity + extraReflection > 0.01 && (!refracGreatest || canBranch)) {
+		if ((info.reflectivity + extraReflection) > 0.01 && (!refracGreatest || canBranch)) {
 			float3 reflectDir = reflect(currRayDir, normal);
 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 
