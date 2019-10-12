@@ -466,7 +466,7 @@ void initCUDABuffers()
 	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
 	//shapeInfo s4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
 
-	shapeInfo sun = make_shapeInfo(make_float3(0, 2000, 2000), make_float3(1, 0, 0), 150);
+	shapeInfo sun = make_shapeInfo(make_float3(0, 2000, 2000), make_float3(1, 0, 0), 200);
 
 
 	objectInfo objects[NUM_ELEMENTS];

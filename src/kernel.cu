@@ -7,7 +7,6 @@
 #define USING_DOUBLE_TAP_SHADOWS
 #define USING_PHOTON_MAPPED_SHADOWS
 //#define USING_POINT_LIGHT
-//#define SOFT_SHADOWS
 #define STATIC_LIGHT_DIR make_float3(0.0,1.0,1.0)
 #define LIGHT_POS make_float3(0,2000,2000)
 
@@ -150,20 +149,22 @@ __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 	f = 1.0 / a;
 	s = rayOrigin - vertex0;
 	u = f * dot(s, h);
-	//if (u < 0.0 || u > 1.0)
-	//	return false;
+	if (u < 0.0 || u > 1.0)
+		return false;
 	q = cross(s, edge1);
 	v = f * dot(rayVector, q);
-	//if (v < 0.0 || u + v > 1.0)
-	//	return false;
+	if (v < 0.0 || u + v > 1.0)
+		return false;
 	// At this stage we can compute t to find out where the intersection point is on the line.
 	t = f * dot(edge2, q);
-	if (t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0))) // ray intersection
-	{
-		return true;
-	}
-	else // This means that there is a line intersection but not a ray intersection.
-		return false;
+
+	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
+	//if (t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0))) // ray intersection
+	//{
+	//	return true;
+	//}
+	//else // This means that there is a line intersection but not a ray intersection.
+	//	return false;
 }
 
 
@@ -206,18 +207,6 @@ __device__ float3 reflect(const float3& I, const float3& N)
 {
 	return I - 2 * dot(I, N) * N;
 }
-
-
-
-
-__device__ float3 getWave(float3 pos, float xSpeed, float ySpeed, float xSize, float ySize) {
-
-	return make_float3(1, 1, 1);
-
-	//normal = normalize(info.normal + strength * make_float3(sinf(waveInput.x), 0, sinf(waveInput.z * 0.1)));
-
-}
-
 
 __device__ float3 getDistortion(const float3 normal,const float3 inputPos,const int perlinDepth) {
 
@@ -301,32 +290,6 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
 				normal = normalize(info.normal + strength * distortion);
 				toReturn.hit = true;
-
-				//float d = 0.01;
-				//float h1 = perlin2d(waveInput.x - d, waveInput.z, 1, 4);
-				//float h2 = perlin2d(waveInput.x + d, waveInput.z, 1, 4);
-				//float h3 = perlin2d(waveInput.x, waveInput.z - d, 1, 4);
-				//float h4 = perlin2d(waveInput.x, waveInput.z + d, 1, 4);
-
-				////// derivatives
-				//float d1 = (h2 - h1) / 2 * d;
-				//float d2 = (h4 - h3) / 2 * d;
-
-
-				////float d1 = perlin2d(waveInput.x, waveInput.z, 1, 5)*2.-1;
-				////float d2 = perlin2d(waveInput.z, waveInput.x, 1, 5)*2.-1;
-
-
-				//float3 rightDir = make_float3(0, 0, 1);
-				//float3 otherDir1 = cross(rightDir, normalToUse);
-				//float3 otherDir2 = cross(otherDir1, normalToUse);
-
-				////otherDir1 = dot(currRayDir, otherDir1) > -0.0001 ? inverse(otherDir1) : otherDir1;
-				////otherDir2 = dot(currRayDir, otherDir2) > -0.0001 ? inverse(otherDir2) : otherDir2;
-
-				//float3 distortion = (otherDir1 * d1 + otherDir2 * d2);
-
-
 			}
 
 			break;
@@ -423,7 +386,6 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 	return 1.0;
 #endif
 	float toReturn;
-#ifndef SOFT_SHADOWS
 #ifdef USING_POINT_LIGHT
 	float3 toLightVec = normalize(LIGHT_POS - originalPos);
 #else 
@@ -442,14 +404,14 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 		toReturn = 1.;
 	}
 	else {
-		if (hit.info.insideColorDensity > 0.001) {
+		if (hit.info.insideColorDensity > 0.0001) {
 			// hack
 			toReturn = powf(1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
 			//toReturn = (1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
 			toReturn = max(0.,toReturn);
 			#ifdef USING_DOUBLE_TAP_SHADOWS
 			hit = getHit(hit.pos + 0.01 * toLightVec, toLightVec);
-			toReturn = (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) ? toReturn : 0./*max(0., toReturn - hit.info.refractivity)*/;
+			toReturn = (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) ? toReturn : 0.;// max(0., toReturn - hit.info.refractivity);
 			#endif
 
 			//toReturn = 1;
@@ -462,41 +424,6 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 	}
 #endif // USING_POINT_LIGHT
 
-#else // if soft shadows
-
-	int totalHits = 0;
-	for (int x = 0; x < 2; x++) {
-		for (int y = 0; y < 2; y++) {
-			float3 toLightVec = normalize(STATIC_LIGHT_DIR + 0.05*make_float3(x,0,y));
-			hitInfo hit = getHit(originalPos + 0.001 * toLightVec, toLightVec);
-			if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS))
-				totalHits++;
-		}
-	}
-
-	toReturn = ((float)totalHits / 4);
-#endif  // soft shadows
-
-#ifdef AMBIENT_OCCLUSION
-	float3 rightDir = make_float3(0, 0, 1);
-	float3 otherDir1 = cross(rightDir, normal);
-	float3 otherDir2 = cross(otherDir1, normal);
-
-	float maxLen = 0.2;
-	float minDist = maxLen;
-	for (int x = -5; x < 5; x++) {
-		for (int y = -5; y < 5; y++) {
-			float3 currDir = normal + otherDir1 * x + otherDir2 * y;
-			hitInfo hit = getHit(originalPos + 0.001 * currDir, currDir);
-			minDist = min(minDist, length(hit.pos - originalPos));
-			//if (!hit.hit || length(hit.pos - originalPos) > maxLen)
-			//	totalHits+;
-		}
-	}
-
-	toReturn *= (minDist / maxLen);
-
-#endif
 
 	return toReturn;
 
@@ -537,22 +464,21 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
 
-		if (prevColorMP > 0.98 || remainingDepth == 1 || totalContributionRemaining < 0.01)
+		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.01)
 			return info.color * (1. - prevColorMP) + extraPrevColor;
 
-		bool refracGreatest = info.refractivity > info.reflectivity;
 		if (info.refractivity > 0.001) {
 			float kr = 1.0;;
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
-			if (kr < 1) {
+			//if (kr < 1) {
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
 				float refracMP = max(0., (1 - kr));
 				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ? hit : hitInfo(), totalContributionRemaining* refracMP);
-			}
+			//}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
@@ -573,9 +499,9 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 light_dir = STATIC_LIGHT_DIR;
 		float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
 		float shadowFactor = 0;
-		if (colorMultiplier * (1.-prevColorMP) > 0.1) {
+		//if (colorMultiplier * (1.-prevColorMP) > 0.1) {
 			shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
-		}
+		//}
 		return (1. - prevColorMP) * ((0.8* shadowFactor * angleFactor + 0.2)* 1.0 *color + reflected + refracted) + extraPrevColor;
 #endif
 	}
