@@ -48,16 +48,6 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 	  0.01, 0.02, 0.04, 0.02, 0.01
 	};
 
-	//float weights2[] =
-	//{
-	//  0.005, 0.01, 0.02, 0.01, 0.005,
-	//  0.01, 0.02, 0.04, 0.02, 0.01,
-	//  0.02, 0.04, 0.58, 0.04, 0.02,
-	//  0.01, 0.02, 0.04, 0.02, 0.01,
-	//  0.005, 0.01, 0.02, 0.01, 0.005
-	//};
-
-
 	int firstPos = (y * imgw * currRatio + x) * 4;
 	float3 next = make_float3(0,0,0);
 	for (int xD = -2; xD <= 2; xD++) {

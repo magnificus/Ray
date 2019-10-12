@@ -3,7 +3,7 @@
 #include "perlin.h"
 
 
-//#define USING_SHADOWS
+#define USING_SHADOWS
 #define USING_DOUBLE_TAP_SHADOWS
 #define USING_PHOTON_MAPPED_SHADOWS
 //#define USING_POINT_LIGHT
@@ -25,6 +25,7 @@ __global__ void kernel() {
 
 __device__ float currentTime;
 __device__ sceneInfo *scene;
+__device__ unsigned int* lightImage;
 //sceneInfo info;
 
 
@@ -168,7 +169,7 @@ __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 }
 
 
-__device__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
+__device__ __forceinline__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
 {
 	float cosi = clamp(-1, 1, dot(I, N));
 	float etai = 1, etat = ior;
@@ -191,7 +192,7 @@ __device__ void fresnel(const float3& I, const float3& N, const float& ior, floa
 }
 
 
-__device__ float3 refract(const float3& I, const float3& N, const float& ior)
+__device__ __forceinline__ float3 refract(const float3& I, const float3& N, const float& ior)
 {
 	float cosi = clamp(-1, 1, dot(I, N));
 	float etai = 1, etat = ior;
@@ -203,7 +204,7 @@ __device__ float3 refract(const float3& I, const float3& N, const float& ior)
 	return eta * I + (eta * cosi - sqrtf(k)) * n;
 }
 
-__device__ float3 reflect(const float3& I, const float3& N)
+__device__ __forceinline__ float3 reflect(const float3& I, const float3& N)
 {
 	return I - 2 * dot(I, N) * N;
 }
@@ -287,7 +288,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				closestDist = currDist;
 				toReturn.info = curr.rayInfo;
 				float3 waveInput = (currRayPos + currDist * currRayDir) * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
-				float strength = 2000;
+				float strength = 1500;
 
 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
 				normal = normalize(normalToUse + strength * distortion);
@@ -433,7 +434,7 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 }
 
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, float totalContributionRemaining = 1.0) {
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, float totalContributionRemaining = 1.0, bool isLightPass = false) {
 
 	hitInfo hit = getHit(currRayPos, currRayDir);
 
@@ -480,7 +481,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
 				float refracMP = max(0., (1 - kr));
-				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP);
+				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP, isLightPass);
 			//}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
@@ -490,23 +491,24 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 			float reflecMP = info.reflectivity + extraReflection;
 
-			reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP*totalContributionRemaining);
+			reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP*totalContributionRemaining, isLightPass);
 		}
 
-		float colorMultiplier = max(0.,(1. - info.reflectivity - extraReflection - info.refractivity));
-		float3 color = colorMultiplier* info.color;
-#ifdef USING_POINT_LIGHT
-		float3 light_dir = normalize(LIGHT_POS - nextPos);
-		return 10000 * (1 / powf(length(nextPos - LIGHT_POS), 2)) *(0.2 + 0.8*getShadowTerm(nextPos + bias, scene)) * color + reflected + refracted;
-#else
-		float3 light_dir = STATIC_LIGHT_DIR;
-		float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
-		float shadowFactor = 0;
-		//if (colorMultiplier * (1.-prevColorMP) > 0.1) {
+		if (!isLightPass) {
+			float colorMultiplier = max(0., (1. - info.reflectivity - extraReflection - info.refractivity));
+			float3 color = colorMultiplier * info.color;
+			float3 light_dir = STATIC_LIGHT_DIR;
+			float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
+			float shadowFactor = 0;
+			//if (colorMultiplier * (1.-prevColorMP) > 0.1) {
 			shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
-		//}
-		return (1. - prevColorMP) * ((0.8* shadowFactor * angleFactor + 0.2)* 1.0 *color + reflected + refracted) + extraPrevColor;
-#endif
+			//}
+			return (1. - prevColorMP) * ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color + reflected + refracted) + extraPrevColor;
+		}
+		else {
+
+			return currRayPos;
+		}
 	}
 
 }
@@ -577,7 +579,7 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 
 	currentTime = currTime;
 	scene = &pointers.scene;
-	float3 out = 255 * 3 * trace(startPos, dirVector, 10, input.beginMedium, 1.0);
+	float3 out = 255 * 3 * trace(startPos, dirVector, 10, input.beginMedium, 1.0, true);
 
 
 	int firstPos = (y * imgw + x) * 4;

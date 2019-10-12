@@ -138,6 +138,7 @@ struct PostProcessPointers {
 
 struct inputPointers {
 	unsigned int* image1; // normal texture position
+	unsigned int* lightImage; // light texture position
 
 	sceneInfo scene;
 	//objectInfo* objects;

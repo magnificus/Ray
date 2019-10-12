@@ -473,7 +473,7 @@ void initCUDABuffers()
 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
 	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0, 0.0); // reflective
 	objects[2] = make_objectInfo(water, p1, 0.0, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0); // water top
-	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 200); // sand ocean floor
+	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 0); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 200); // island
 	objects[5] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.0, 1.33, 0.0, 0.0); // sun
 	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.3, 0.3, 0), 0.0, 1.4, 0, 1.0); // yellow boi
@@ -483,18 +483,18 @@ void initCUDABuffers()
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
 
-	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palmera.obj", 10, make_float3(0, 0, 0), true);
+	std::vector<triangleMesh> importedMeshes = importModel("../../meshes/palmera.obj", 10, make_float3(0, 0, 0), true);
 	std::vector<rayHitInfo> infos;
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 5000)); // bark
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 2000)); // palm leaves
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 0)); // bark
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 0)); // palm leaves
 
-	std::vector<triangleMesh> rockMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.05, make_float3(90.0, -70, 30.0), false);
+	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(90.0, -70, 30.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 2000 )); //rock
 
-	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
+	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo(0.0, 0.0, 1.5, 0.0, make_float3(10,0,0.0), 0)); //le bun
+	infos.push_back(make_rayHitInfo(0.0, 0.0, 1.5, 0.0, make_float3(15,0,0.0), 0)); //le bun
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();
@@ -583,7 +583,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 
 	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
-	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, info };
+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*) cuda_light_buffer, info };
 
 
 	// main render
