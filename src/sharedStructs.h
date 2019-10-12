@@ -7,6 +7,11 @@
 #define WATER_COLOR make_float3(0,0.0,0.1)
 #define WATER_DENSITY 0.06
 
+
+#define LIGHT_BUFFER_WORLD_SIZE = 100
+#define LIGHT_PLANE_SIZE 100
+#define LIGHT_BUFFER_WIDTH 1024
+
 struct shapeInfo {
 	float3 pos;
 	float3 normal;

@@ -5,6 +5,7 @@
 
 #define USING_SHADOWS
 #define USING_DOUBLE_TAP_SHADOWS
+#define USING_PHOTON_MAPPED_SHADOWS
 //#define USING_POINT_LIGHT
 //#define SOFT_SHADOWS
 #define STATIC_LIGHT_DIR make_float3(0.0,1.0,1.0)
@@ -70,18 +71,6 @@ __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float
 	return false;
 }
 
-__device__ bool intersectWater(const shapeInfo& p, const float3& l0, const float3& l, float& t)
-{
-	// assuming vectors are all normalized
-	float denom = dot(p.normal, l);
-	if (denom < -1e-8) {
-		float3 p0l0 = p.pos - l0;
-		t = dot(p0l0, p.normal) / denom;
-		return (t >= 0);
-	}
-	return false;
-}
-
 __device__ bool rayTriangleIntersect(
 	float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
 	float& t, float& u, float& v)
@@ -90,7 +79,6 @@ __device__ bool rayTriangleIntersect(
 	float3 v0v1 = v1 - v0;
 	float3 v0v2 = v2 - v0;
 
-	//orig = orig - 2*
 	//// no need to normalize
 	float3 N = cross(v0v1, v0v2); // N 
 	float denom = dot(N, N);
@@ -242,7 +230,7 @@ __device__ float3 getDistortion(const float3 normal,const float3 inputPos,const 
 	float axis2;
 
 	if (fabs(normal.x) > fabs(normal.y) && fabs(normal.x) > fabs(normal.z)) {
-		axis1 = inputPos.x;
+		axis1 = inputPos.y;
 		axis2 = inputPos.z;
 
 	}
@@ -307,7 +295,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 			if (intersected && currDist < closestDist) {
 				closestDist = currDist;
 				toReturn.info = curr.rayInfo;
-				float3 waveInput = (currRayPos + currDist * currRayDir) * 0.3 + make_float3(2 * currentTime + 10000, 10000, 10000);
+				float3 waveInput = (currRayPos + currDist * currRayDir) * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
 				float strength = 2000;
 
 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
@@ -441,7 +429,7 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 #else 
 	float3 toLightVec = STATIC_LIGHT_DIR;
 #endif // USING_POINT_LIGHT
-	hitInfo hit = getHit(originalPos + 0.001 *toLightVec, toLightVec);
+	hitInfo hit = getHit(originalPos + 0.01 *toLightVec, toLightVec);
 #ifdef USING_POINT_LIGHT
 	if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
 		toReturn = 1.;
@@ -457,10 +445,11 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 		if (hit.info.insideColorDensity > 0.001) {
 			// hack
 			toReturn = powf(1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
+			//toReturn = (1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
 			toReturn = max(0.,toReturn);
 			#ifdef USING_DOUBLE_TAP_SHADOWS
 			hit = getHit(hit.pos + 0.01 * toLightVec, toLightVec);
-			toReturn = (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) ? toReturn : 0;
+			toReturn = (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) ? toReturn : 0./*max(0., toReturn - hit.info.refractivity)*/;
 			#endif
 
 			//toReturn = 1;
@@ -544,7 +533,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		bool outside = dot(currRayDir, hit.normal) < 0;
 
 		if (prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
-			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos));
+			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos)+1);
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
 
@@ -634,6 +623,49 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	pointers.image1[firstPos+1] = out.y;
 	pointers.image1[firstPos+2] = out.z;
 }
+
+__global__ void
+cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
+{
+	extern __shared__ uchar4 sdata[];
+
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x * bw + tx;
+	int y = blockIdx.y * bh + ty;
+
+	float3 forwardV = STATIC_LIGHT_DIR;
+	float3 upV = make_float3(input.upX, input.upY, input.upZ);
+	float3 rightV = normalize(cross(upV, forwardV));
+
+	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
+	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
+	float3 startPos = distFromCenter * LIGHT_PLANE_SIZE;
+	float3 dirVector = STATIC_LIGHT_DIR;
+
+
+	currentTime = currTime;
+	scene = &pointers.scene;
+	float3 out = 255 * 3 * trace(startPos, dirVector, 10, input.beginMedium, 1.0);
+
+
+	int firstPos = (y * imgw + x) * 4;
+	pointers.image1[firstPos] = out.x;
+	pointers.image1[firstPos + 1] = out.y;
+	pointers.image1[firstPos + 2] = out.z;
+}
+
+extern "C" void
+launch_cudaLight(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
+{
+
+	cudaLightRender << < grid, block, sbytes >> > (pointers, imgw, imgh, currTime, input);
+}
+
+
+
 extern "C" void
 launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
 {

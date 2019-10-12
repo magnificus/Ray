@@ -14,12 +14,12 @@ cudaBloomSample(PostProcessPointers pointers, int imgw, int imgh)
 	int y = blockIdx.y * bh + ty;
 
 	float bloomThreshold = 255;
-	float bloomStrength = 0.01;
+	float bloomStrength = 0.0001;
 
 	int firstPos = (y * imgw + x) * 4;
 	float3 CurrC = make_float3(pointers.inputImage[firstPos], pointers.inputImage[firstPos + 1], pointers.inputImage[firstPos + 2]);
 	float luma = (CurrC.x + CurrC.y + CurrC.z) / 3;
-	CurrC = max(0., powf(luma - bloomThreshold, 0.5))*bloomStrength * CurrC;
+	CurrC = max(0., powf(luma - bloomThreshold, 1))*bloomStrength * CurrC;
 
 
 	pointers.processWrite[firstPos] =  CurrC.x;
@@ -48,14 +48,14 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 	  0.01, 0.02, 0.04, 0.02, 0.01
 	};
 
-	float weights2[] =
-	{
-	  0.005, 0.01, 0.02, 0.01, 0.005,
-	  0.01, 0.02, 0.04, 0.02, 0.01,
-	  0.02, 0.04, 0.58, 0.04, 0.02,
-	  0.01, 0.02, 0.04, 0.02, 0.01,
-	  0.005, 0.01, 0.02, 0.01, 0.005
-	};
+	//float weights2[] =
+	//{
+	//  0.005, 0.01, 0.02, 0.01, 0.005,
+	//  0.01, 0.02, 0.04, 0.02, 0.01,
+	//  0.02, 0.04, 0.58, 0.04, 0.02,
+	//  0.01, 0.02, 0.04, 0.02, 0.01,
+	//  0.005, 0.01, 0.02, 0.01, 0.005
+	//};
 
 
 	int firstPos = (y * imgw * currRatio + x) * 4;
@@ -63,7 +63,7 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 	for (int xD = -2; xD <= 2; xD++) {
 		for (int yD = -2; yD <= 2; yD++) {
 
-			float factor = weights2[(yD + 2) *5 + xD + 2];
+			float factor = weights[(yD + 2) *5 + xD + 2];
 			int xToUse = max(0, min(x + xD,imgw-1));
 			int YToUse = max(0, min(y + yD,imgh-1));
 			int currPos = 4 * (YToUse * imgw * currRatio + xToUse);
@@ -78,6 +78,50 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 	pointers.processWrite[firstPos + 1] = next.y;
 	pointers.processWrite[firstPos + 2] = next.z;
 }
+
+#define BLOOM_KERNEL_SIZE 5
+
+__global__ void
+cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio)
+{
+	extern __shared__ uchar4 sdata[];
+
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x * bw + tx;
+	int y = blockIdx.y * bh + ty;
+
+	float weight[BLOOM_KERNEL_SIZE] = {0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216}; // 5
+	//float weight[BLOOM_KERNEL_SIZE] = { 0.104379, 	0.075216, 0.02812, 	0.005441, 0.000543 , 0.000028 , 0.000001 }; // 7
+
+	//currRatio = 1;
+
+	int firstPos = (y * imgw *currRatio + x) * 4;
+
+	float3 result = make_float3(pointers.processRead[firstPos], pointers.processRead[firstPos + 1], pointers.processRead[firstPos + 2]) * weight[0]; 
+	if (isHorizontal) {
+		for (int i = 1; i < min(BLOOM_KERNEL_SIZE, imgw - 1 - x); ++i)
+		{
+			result = result + make_float3(pointers.processRead[firstPos + i*4], pointers.processRead[firstPos + i*4 + 1], pointers.processRead[firstPos + i*4 + 2])*weight[i];
+			result = result + make_float3(pointers.processRead[firstPos - i*4], pointers.processRead[firstPos - i*4 + 1], pointers.processRead[firstPos - i*4 + 2])*weight[i];
+		}
+	}
+	else {
+		for (int i = 1; i < min(BLOOM_KERNEL_SIZE, imgh -i - y); ++i)
+		{
+			result = result + make_float3(pointers.processRead[firstPos + i * imgw *currRatio * 4], pointers.processRead[firstPos + i * imgw * currRatio * 4 + 1], pointers.processRead[firstPos + i * imgw * currRatio * 4 + 2]) * weight[i];
+			result = result + make_float3(pointers.processRead[firstPos - i * imgw * currRatio * 4], pointers.processRead[firstPos - i * imgw * currRatio * 4 + 1], pointers.processRead[firstPos - i * imgw * currRatio * 4 + 2]) * weight[i];
+		}
+	}
+
+	pointers.processWrite[firstPos] = result.x;
+	pointers.processWrite[firstPos + 1] = result.y;
+	pointers.processWrite[firstPos + 2] = result.z;
+}
+
+
 
 
 __global__ void
@@ -193,11 +237,20 @@ launch_cudaBloomOutput(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, Po
 }
 
 
+
+
 extern "C" void
 launch_cudaBlur(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers)
 {
 
 	cudaBlur << < grid, block, sbytes >> > (pointers, imgw, imgh, currRatio);
+}
+
+extern "C" void
+launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers)
+{
+
+	cudaBlur2 << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio);
 }
 
 extern "C" void
