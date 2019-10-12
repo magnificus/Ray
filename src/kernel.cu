@@ -4,11 +4,11 @@
 
 
 #define USING_SHADOWS
-//#define USING_DOUBLE_TAP_SHADOWS
+#define USING_DOUBLE_TAP_SHADOWS
 //#define USING_POINT_LIGHT
 //#define SOFT_SHADOWS
-#define STATIC_LIGHT_DIR make_float3(0.5,1,0.5)
-#define LIGHT_POS make_float3(1000,2000,1000)
+#define STATIC_LIGHT_DIR make_float3(0.0,1.0,1.0)
+#define LIGHT_POS make_float3(0,2000,2000)
 
 //#define AMBIENT_OCCLUSION
 //#define VISUALIZE_BOUNDS
@@ -238,21 +238,43 @@ __device__ float3 getDistortion(const float3 normal,const float3 inputPos,const 
 	float3 otherDir1 = cross(rightDir, normal);
 	float3 otherDir2 = cross(otherDir1, normal);
 
+	float axis1;
+	float axis2;
+
+	if (fabs(normal.x) > fabs(normal.y) && fabs(normal.x) > fabs(normal.z)) {
+		axis1 = inputPos.x;
+		axis2 = inputPos.z;
+
+	}
+	else if (fabs(normal.y) > fabs(normal.z)) {
+		axis1 = inputPos.x;
+		axis2 = inputPos.z;
+	}
+	else {
+		axis1 = inputPos.x;
+		axis2 = inputPos.y;
+	}
+
 	
 
-	float h1 = perlin2d(inputPos.x - d, inputPos.z, 1, perlinDepth);
-	float h2 = perlin2d(inputPos.x + d, inputPos.z, 1, perlinDepth);
-	float h3 = perlin2d(inputPos.x, inputPos.z - d, 1, perlinDepth);
-	float h4 = perlin2d(inputPos.x, inputPos.z + d, 1, perlinDepth);
+	float sample1 = perlin2d(axis1,  axis2, 1, perlinDepth);
+	float sample2 = perlin2d(axis1 + 10000,  axis2 + 100000, 1, perlinDepth);
+
+	float h1 = perlin2d(axis1 - d, axis2, 1, perlinDepth);
+	float h2 = perlin2d(axis1 + d, axis2, 1, perlinDepth);
+	float h3 = perlin2d(axis1, axis2 - d, 1, perlinDepth);
+	float h4 = perlin2d(axis1, axis2 + d, 1, perlinDepth);
 
 	//// derivatives
-	float d1 = (h2 - h1) / 2 * d;
-	float d2 = (h4 - h3) / 2 * d;
+	//float d1 = sample1;// (h2 - h1) / 2 * d;
+	//float d2 = sample2; //(h4 - h3) / 2 * d;
+
+	float d1 =  (h2 - h1) / 2 * d;
+	float d2 =  (h4 - h3) / 2 * d;
 
 
-	return (otherDir1 * d1 + otherDir2 * d2);
+	return (otherDir1 * d1 + otherDir2 * d2)/**0.0002*/;
 
-	//normal = normalize(normal + intensity * distortion);
 }
 
 __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
@@ -436,10 +458,10 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 			// hack
 			toReturn = powf(1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
 			toReturn = max(0.,toReturn);
-#ifdef USING_DOUBLE_TAP_SHADOWS
-			hitInfo hit = getHit(hit.pos + 0.01 * toLightVec, toLightVec);
+			#ifdef USING_DOUBLE_TAP_SHADOWS
+			hit = getHit(hit.pos + 0.01 * toLightVec, toLightVec);
 			toReturn = (!hit.hit || length(hit.pos - LIGHT_POS) < 2001.0f) ? toReturn : 0;
-#endif
+			#endif
 
 			//toReturn = 1;
 
@@ -492,7 +514,7 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 }
 
 
-__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, bool canBranch) {
+__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, float totalContributionRemaining = 1.0) {
 
 	hitInfo hit = getHit(currRayPos, currRayDir);
 
@@ -508,7 +530,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 normal = hit.normal;
 
 		if (hit.info.roughness > 0.0001) {
-			float3 distortion = getDistortion(normal, nextPos + make_float3(10000,10000,10000), 3);
+			float3 distortion = getDistortion(normal, nextPos + make_float3(10000,10000,10000), 4);
 			normal = normalize(normal + distortion * hit.info.roughness);
 		}
 
@@ -526,32 +548,31 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
 
-		if (prevColorMP > 0.98)
-			return extraPrevColor;
-
-		if (remainingDepth == 1)
+		if (prevColorMP > 0.98 || remainingDepth == 1 || totalContributionRemaining < 0.01)
 			return info.color * (1. - prevColorMP) + extraPrevColor;
 
 		bool refracGreatest = info.refractivity > info.reflectivity;
-		if (info.refractivity > 0.01 && (refracGreatest || canBranch)) {
-			float kr;
+		if (info.refractivity > 0.001) {
+			float kr = 1.0;;
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
-			if (kr <= 1) {
+			if (kr < 1) {
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
-				refracted = info.refractivity * max(0.,(1 - kr)) * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ? hit : hitInfo(), false);
+				float refracMP = max(0., (1 - kr));
+				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ? hit : hitInfo(), totalContributionRemaining* refracMP);
 			}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
-		if ((info.reflectivity + extraReflection) > 0.01 && (!refracGreatest || canBranch)) {
+		if ((info.reflectivity + extraReflection) > 0.001) {
 			float3 reflectDir = reflect(currRayDir, normal);
 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
+			float reflecMP = info.reflectivity + extraReflection;
 
-			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, false);
+			reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP*totalContributionRemaining);
 		}
 
 		float colorMultiplier = max(0.,(1. - info.reflectivity - extraReflection - info.refractivity));
@@ -572,19 +593,6 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 }
 
-
-
-//__device__ float floatToSRGB(float C) {
-//	if (C <= 0.0404482362771082)
-//		C = C / 12.92;
-//	else
-//		C = powf(((C + 0.055) / 1.055), 2.4);
-//	return C;
-//}
-//
-//__device__ float3 float3ToSRGB(float3 in) {
-//	return make_float3(floatToSRGB(in.x), floatToSRGB(in.y), floatToSRGB(in.z));
-//}
 
 __global__ void
 cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
@@ -618,9 +626,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	currentTime = currTime;
 	scene = &pointers.scene;
-	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 7, input.beginMedium, true);
-
-	//out = float3ToSRGB(out);
+	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
 
 
 	int firstPos = (y * imgw + x) * 4;
