@@ -3,7 +3,7 @@
 #include "perlin.h"
 
 
-#define USING_SHADOWS
+//#define USING_SHADOWS
 #define USING_DOUBLE_TAP_SHADOWS
 #define USING_PHOTON_MAPPED_SHADOWS
 //#define USING_POINT_LIGHT
@@ -273,10 +273,12 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 			shapeInfo otherInfo = info;
 			otherInfo.normal = inverse(otherInfo.normal);
 			float3 normalToUse = info.normal;
+			bool needsToCommunicateInversion = false;
 			bool intersected = intersectPlane(info, currRayPos, currRayDir, currDist);
 			if (!intersected) {
 				intersected = intersectPlane(otherInfo, currRayPos, currRayDir, currDist);
 				normalToUse = otherInfo.normal;
+				needsToCommunicateInversion = true;
 			}
 
 
@@ -288,8 +290,9 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				float strength = 2000;
 
 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
-				normal = normalize(info.normal + strength * distortion);
+				normal = normalize(normalToUse + strength * distortion);
 				toReturn.hit = true;
+				toReturn.normalIsInversed = needsToCommunicateInversion;
 			}
 
 			break;
@@ -457,7 +460,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		float3 reflectBias = 0.001 * normal;
 		float prevColorMP = 0;
 		float3 extraPrevColor = make_float3(0,0,0);
-		bool outside = dot(currRayDir, hit.normal) < 0;
+		bool outside = dot(currRayDir, normal) < 0;
 
 		if (prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
 			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos)+1);
@@ -477,7 +480,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
 				float refracMP = max(0., (1 - kr));
-				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ? hit : hitInfo(), totalContributionRemaining* refracMP);
+				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP);
 			//}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
