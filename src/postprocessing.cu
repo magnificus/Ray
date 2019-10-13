@@ -56,7 +56,6 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 	float3 next = make_float3(0,0,0);
 	for (int xD = -2; xD <= 2; xD++) {
 		for (int yD = -2; yD <= 2; yD++) {
-
 			float factor = weights[(yD + 2) *5 + xD + 2];
 			int xToUse = max(0, min(x + xD,imgw-1));
 			int YToUse = max(0, min(y + yD,imgh-1));

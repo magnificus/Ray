@@ -11,8 +11,8 @@
 #define WIDTH 1024
 #define HEIGHT 1024
 
-#define LIGHT_BUFFER_WORLD_SIZE 128
-#define LIGHT_PLANE_SIZE 128
+#define LIGHT_BUFFER_WORLD_SIZE 140
+#define LIGHT_PLANE_SIZE 140
 #define LIGHT_BUFFER_WIDTH WIDTH
 #define LIGHT_BUFFER_THICKNESS 4
 #define LIGHT_BUFFER_THICKNESS_SIZE 150
@@ -108,6 +108,8 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 
 #define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
 
+#define GLOBAL_GRID_SIZE 4
+
 struct triangleMesh {
 	float3* vertices; 
 	float3* normals; 
@@ -129,12 +131,13 @@ struct triangleMesh {
 struct sceneInfo {
 
 	// objects are pure mathematical objects, while meshes are triangle meshes
-	const float currTime;
+	float currTime;
 	objectInfo* objects;
 	int numObjects;
 
-	const triangleMesh* meshes;
+	triangleMesh* meshes;
 	int numMeshes;
+
 };
 
 struct PostProcessPointers {
@@ -150,11 +153,6 @@ struct inputPointers {
 	unsigned int* lightImage; // light texture position
 
 	sceneInfo scene;
-	//objectInfo* objects;
-	//int numObjects;
-
-	//triangleMesh* meshes;
-	//int numMeshes;
 
 };
 
