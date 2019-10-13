@@ -75,6 +75,11 @@ void* cuda_light_buffer_2; // result of the light pass
 void* cuda_custom_objects_buffer; 
 void* cuda_mesh_buffer; 
 
+unsigned int** gridMeshes;
+unsigned int** gridObjects;
+unsigned int* gridMeshesSizes;
+unsigned int* gridObjectsSizes;
+
 
 struct cudaGraphicsResource* cuda_tex_resource;
 GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
@@ -424,8 +429,6 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
 
-
-
 		free(CudaGridPointer);
 
 	}
@@ -490,13 +493,16 @@ void initCUDABuffers()
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 
 
+
+	// add meshes
 	std::vector<triangleMesh> importedMeshes;
 	std::vector<rayHitInfo> infos;
 
-	auto tree = importModel("../../meshes/Palmera.obj", 10, make_float3(0, 0, 0), true);
+	auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 0)); // bark
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 0)); // palm leaves
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 1000)); // bark
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 500)); // palm leaves
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.7*make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
 
 	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(100.0, -80, 50.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
@@ -518,6 +524,8 @@ void initCUDABuffers()
 		curr.rayInfo = infos[i];
 		meshesOnCuda[i] = prepareMeshForCuda(curr);
 	}
+	// setup the global grid
+
 
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
 	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
@@ -590,28 +598,19 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.beginMedium = hitInfo{ prevMedium, true, float3(), float3() };
 
 
-
-
-	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
+	sceneInfo info{gridMeshes, gridObjects, gridMeshesSizes, gridObjectsSizes,totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
 	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, info };
 	//inputPointers pointers2{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer_2, info };
 
 	// draw light
 	dim3 lightGridDraw(LIGHT_BUFFER_WIDTH / block.x, LIGHT_BUFFER_WIDTH / block.y, 1); // 2D grid, every thread will compute a pixel
 	dim3 lightGrid(LIGHT_BUFFER_WIDTH / block.x, LIGHT_BUFFER_WIDTH / block.y, LIGHT_BUFFER_THICKNESS / block.z); // 2D grid, every thread will compute a pixel
-	//dim3 lightGrid2((LIGHT_BUFFER_WIDTH/2) / block.x, (LIGHT_BUFFER_WIDTH/2) / block.y, (LIGHT_BUFFER_THICKNESS/2) / block.z); // 2D grid, every thread will compute a pixel
 	launch_cudaClear(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, (unsigned int*)cuda_light_buffer);
 	launch_cudaLight(lightGridDraw, block, 0, pointers, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, totalTime.count(), input);
-	//launch_cudaDownSampleToHalfRes(lightGrid2, block, 0, LIGHT_BUFFER_WIDTH/2, LIGHT_BUFFER_WIDTH/2, 2, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, });
-	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
 	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
 	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
 
 	//launch_cudaBlur(lightGridDraw, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, });
-	//launch_cudaBlur(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, });
 
 	// main render
 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated

@@ -108,7 +108,8 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 
 #define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
 
-#define GLOBAL_GRID_SIZE 4
+#define GLOBAL_GRID_SIZE 2
+#define GLOBAL_GRID_CHUNK_SIZE 500
 
 struct triangleMesh {
 	float3* vertices; 
@@ -129,6 +130,11 @@ struct triangleMesh {
 };
 
 struct sceneInfo {
+
+	unsigned int** gridMeshes;
+	unsigned int** gridObjects;
+	unsigned int* gridMeshesSizes;
+	unsigned int* gridObjectsSizes;
 
 	// objects are pure mathematical objects, while meshes are triangle meshes
 	float currTime;
