@@ -265,19 +265,19 @@ __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
 	bool OK = getTranslatedPos(position, translatedPos);
 
 	if (OK) {
-		int currZ = floor(translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH * 4;
+		int currZ = floor(translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
 
 		int currY = floor(translatedPos.y);
 		int currX = floor(translatedPos.x);
-		int nextY = min(currY + 1, imageHeight-1);
-		int nextX = min(currX + 1, imageWidth-1);
+		int nextY = min(currY + 1, LIGHT_BUFFER_WIDTH -1);
+		int nextX = min(currX + 1, LIGHT_BUFFER_WIDTH -1);
 
 
 
-		int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX) * 4;
-		int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX) * 4;
-		int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX) * 4;
-		int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX) * 4;
+		int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
+		int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX);
+		int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
+		int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
 		float xFactor = translatedPos.x - floor(translatedPos.x);
 		float yFactor = translatedPos.y - floor(translatedPos.y);
@@ -292,12 +292,12 @@ __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
 
 
 
-__device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
-	float3 translatedPos;
-	bool res = getTranslatedPos(position, translatedPos);
-	out = (((int)(translatedPos.z)) * LIGHT_BUFFER_WIDTH*LIGHT_BUFFER_WIDTH + ((int)translatedPos.y) * LIGHT_BUFFER_WIDTH + (int)(translatedPos.x)) * 4;
-	return res;
-}
+//__device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
+//	float3 translatedPos;
+//	bool res = getTranslatedPos(position, translatedPos);
+//	out = (((int)(translatedPos.z)) * LIGHT_BUFFER_WIDTH*LIGHT_BUFFER_WIDTH + ((int)translatedPos.y) * LIGHT_BUFFER_WIDTH + (int)(translatedPos.x));
+//	return res;
+//}
 
 
 __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
@@ -438,11 +438,8 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 
 	float val;
 	bool valid = worldPositionToLerpedValue(originalPos, val);
-	//int pos;
-	//bool valid = worldPositionToTextureCoordinate(originalPos, pos);
 	if (valid) {
 		return val*0.01;
-		//return lightImage[pos]*0.03;
 	}
 	//else {
 	//	return 0;
@@ -557,7 +554,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.01)
 			return info.color * (1. - prevColorMP) + extraPrevColor;
 
-		if (info.refractivity > 0.001) {
+		if (info.refractivity* totalContributionRemaining > 0.001) {
 			float kr = 1.0;;
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
@@ -572,7 +569,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
-		if ((info.reflectivity + extraReflection) > 0.001 && !isLightPass) {
+		if ((info.reflectivity + extraReflection)* totalContributionRemaining > 0.001 && !isLightPass) {
 			float3 reflectDir = reflect(currRayDir, normal);
 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 			float reflecMP = info.reflectivity + extraReflection;
@@ -597,17 +594,17 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			float3 translatedPos;
 			bool OK = getTranslatedPos(nextPos, translatedPos);
 			if (OK) {
-				int currZ = ((int)translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH * 4;
+				int currZ = ((int)translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
 
 				int currY = floor(translatedPos.y);
 				int currX = floor(translatedPos.x);
 				int nextY = min(currY + 1, imageWidth - 1);
 				int nextX = min(currX + 1, imageWidth - 1);
 
-				int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX) * 4;
-				int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX) * 4;
-				int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX) * 4;
-				int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX) * 4;
+				int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
+				int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX);
+				int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
+				int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
 				float xFactor = fmod(translatedPos.x, 1.f);// -floor(translatedPos.x);
 				float yFactor = fmod(translatedPos.y,1.f);
@@ -617,25 +614,8 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				atomicAdd(&lightImage[outUR], strength*(xFactor) * (yFactor));
 				atomicAdd(&lightImage[outLR], strength*(xFactor) * (1. - yFactor));
 
-				//float combinedUpper = lightImage[outUL] * (1. - xFactor) + lightImage[outUR] * (xFactor);
-				//float combinedDown = lightImage[outLR] * xFactor + lightImage[outLL] * (1. - xFactor);
-				//float result = combinedUpper * yFactor + (1. - yFactor) * combinedDown;
-				//return true;
 			}
 
-			//int pos;
-			//bool OK = worldPositionToTextureCoordinate(nextPos, pos);
-			//if (OK)
-			//	lightImage[pos] += strength;
-
-
-
-			//int out;
-			//if (worldPositionToTextureCoordinate(nextPos, out)) {
-			//	lightImage[out] += (1. - prevColorMP)*colorMultiplier*1000;
-			//	//lightImage[out + 1] += (1. - prevColorMP)*colorMultiplier*10;
-			//	//lightImage[out + 2] += (1. - prevColorMP)*colorMultiplier*10;
-			//}
 			return currRayPos;
 		}
 	}
@@ -722,7 +702,7 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 	lightImage = pointers.lightImage;
 	imageWidth = imgw;
 	imageHeight = imgh;
-	trace(startPos, dirVector, 5, hitInfo(), 1.0, true);
+	trace(startPos, dirVector, 10, hitInfo(), 1.0, true);
 
 }
 
@@ -742,10 +722,10 @@ cudaClear(unsigned int* buffer, int imgw)
 	int y = blockIdx.y * bh + ty;
 	int z = blockIdx.z + bt * tz;
 
-	int firstPos = (z * (imgw*imgw) + y * imgw + x) * 4;
+	int firstPos = (z * (imgw*imgw) + y * imgw + x);
 	buffer[firstPos] = 0;
-	buffer[firstPos + 1] = 0;
-	buffer[firstPos + 2] = 0;
+	//buffer[firstPos + 1] = 0;
+	//buffer[firstPos + 2] = 0;
 }
 
 extern "C" void

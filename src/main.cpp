@@ -48,7 +48,7 @@ int num_values = num_texels * 4;
 int size_tex_data = sizeof(GLuint) * num_values;
 
 
-int size_light_data = sizeof(GLuint) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH * 4 * LIGHT_BUFFER_THICKNESS;
+int size_light_data = sizeof(GLuint) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_THICKNESS;
 
 
 // camera
@@ -595,7 +595,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
 	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, info };
-	inputPointers pointers2{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer_2, info };
+	//inputPointers pointers2{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer_2, info };
 
 	// draw light
 	dim3 lightGridDraw(LIGHT_BUFFER_WIDTH / block.x, LIGHT_BUFFER_WIDTH / block.y, 1); // 2D grid, every thread will compute a pixel
