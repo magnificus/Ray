@@ -6,7 +6,7 @@
 
 
 #define USING_SHADOWS
-#define USING_DOUBLE_TAP_SHADOWS
+//#define USING_DOUBLE_TAP_SHADOWS
 #define USING_PHOTON_MAPPED_SHADOWS
 //#define USING_POINT_LIGHT
 //#define STATIC_LIGHT_DIR make_float3(0.0,.71,0.71)
@@ -250,7 +250,7 @@ __device__ float3 getDistortion(const float3 normal,const float3 inputPos,const 
 }
 
 __device__ bool getTranslatedPos(float3 position, float3 &translatedPos) {
-	float3 beforeTranslation = make_float3(LIGHT_BUFFER_WORLD_RATIO * position.x, LIGHT_BUFFER_WORLD_RATIO * position.z, LIGHT_BUFFER_THICKNESS_WORLD_RATIO * (position.y +50));
+	float3 beforeTranslation = make_float3(LIGHT_BUFFER_WORLD_RATIO * position.x, LIGHT_BUFFER_WORLD_RATIO * position.z, LIGHT_BUFFER_THICKNESS_WORLD_RATIO * (position.y +65));
 	translatedPos = beforeTranslation + make_float3(0.5, 0.5, 0.5);
 	translatedPos = translatedPos * make_float3(LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_THICKNESS);
 	if (translatedPos.x >= 0 && translatedPos.x < LIGHT_BUFFER_WIDTH && translatedPos.y >= 0 && translatedPos.y < LIGHT_BUFFER_WIDTH && translatedPos.z >= 0 && translatedPos.z < LIGHT_BUFFER_THICKNESS) {
@@ -331,6 +331,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				needsToCommunicateInversion = true;
 			}
 
+
+
 			
 			if (intersected && currDist < closestDist) {
 				closestDist = currDist;
@@ -342,7 +344,24 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				normal = normalize(normalToUse + strength * distortion);
 				toReturn.hit = true;
 				toReturn.normalIsInversed = needsToCommunicateInversion;
+
+				//if (!needsToCommunicateInversion) {
+				//	// possible optimization here
+				//	float dotRes = dot(STATIC_LIGHT_DIR, reflect(currRayDir, needsToCommunicateInversion ? inverse(normal) : normal));
+				//	if (dotRes > 0.99) {
+				//		toReturn.info.refractivity = 0.;
+				//		toReturn.info.reflectivity = 0.0;
+				//		toReturn.info.color = 5 * make_float3(1, 1, 1);
+				//	}
+				//	else {
+				//		toReturn.info.reflectivity = -5;
+				//	}
+				//}
 			}
+
+
+
+
 
 			break;
 		}
@@ -457,7 +476,7 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 #else 
 	float3 toLightVec = STATIC_LIGHT_DIR;
 #endif // USING_POINT_LIGHT
-	hitInfo hit = getHit(originalPos + 0.01 *toLightVec, toLightVec);
+	hitInfo hit = getHit(originalPos + 0.001 *toLightVec, toLightVec);
 #ifdef USING_POINT_LIGHT
 	if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
 		toReturn = 1.;
@@ -577,15 +596,15 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP*totalContributionRemaining, isLightPass);
 		}
 
-		float colorMultiplier = max(0., (1. - info.reflectivity - extraReflection - info.refractivity));
+		float colorMultiplier = max(0., (1. - max(0.f,info.reflectivity) - extraReflection - info.refractivity));
 		if (!isLightPass) {
 			float3 color = colorMultiplier * info.color;
 			float3 light_dir = STATIC_LIGHT_DIR;
-			float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
+			float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
 			float shadowFactor = 0;
-			//if (colorMultiplier * (1.-prevColorMP) > 0.1) {
-			shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
-			//}
+			if (colorMultiplier * (1.-prevColorMP) > 0.1) {
+				shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
+			}
 			return (1. - prevColorMP) * ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color + reflected + refracted) + extraPrevColor;
 		}
 		else {

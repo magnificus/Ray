@@ -40,8 +40,7 @@ using namespace std;
 
 // GLFW
 GLFWwindow* window;
-int WIDTH = 1024;
-int HEIGHT = 1024;
+
 
 int num_texels = WIDTH * HEIGHT;
 int num_values = num_texels * 4;
@@ -483,7 +482,7 @@ void initCUDABuffers()
 	objects[2] = make_objectInfo(water, p1, 0.0, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0); // water top
 	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 0); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 200); // island
-	objects[5] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.0, 1.33, 0.0, 0.0); // sun
+	objects[5] = make_objectInfo(sphere, sun, 0.0, 5000*make_float3(1,1,1), 0.0, 1.33, 0.0, 0.0); // sun
 	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0); // yellow boi
 	objects[7] = make_objectInfo(sphere, s5, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0, 0.0); // refractive 2
 	objects[1] = make_objectInfo(sphere, s6, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.6, 0.0, 0.0); // refractive 3
@@ -505,7 +504,7 @@ void initCUDABuffers()
 
 	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo(0.0, 0.0, 1.5, 0.0, make_float3(15,0,0.0), 0)); //le bun
+	infos.push_back(make_rayHitInfo(0.0, 0.0, 0., 0.0, make_float3(20,0,0.0), 0)); //le bun
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();

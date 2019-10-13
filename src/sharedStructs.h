@@ -8,11 +8,14 @@
 #define WATER_DENSITY 0.1
 
 
+#define WIDTH 1024
+#define HEIGHT 1024
+
 #define LIGHT_BUFFER_WORLD_SIZE 128
 #define LIGHT_PLANE_SIZE 128
-#define LIGHT_BUFFER_WIDTH 1024
-#define LIGHT_BUFFER_THICKNESS 5
-#define LIGHT_BUFFER_THICKNESS_SIZE 200
+#define LIGHT_BUFFER_WIDTH WIDTH
+#define LIGHT_BUFFER_THICKNESS 4
+#define LIGHT_BUFFER_THICKNESS_SIZE 150
 
 #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
 #define LIGHT_BUFFER_THICKNESS_WORLD_RATIO (1. / LIGHT_BUFFER_THICKNESS_SIZE)
@@ -99,7 +102,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 }
 
 // total size will be pow(GRID_SIZE,3) bc of xyz
-#define GRID_SIZE 10
+#define GRID_SIZE 15
 #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
 #define GRID_DEPTH 1
 
