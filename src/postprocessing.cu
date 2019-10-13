@@ -34,10 +34,15 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 
 	int tx = threadIdx.x;
 	int ty = threadIdx.y;
+	int tz = threadIdx.z;
 	int bw = blockDim.x;
 	int bh = blockDim.y;
+	int bt = blockDim.z;
 	int x = blockIdx.x * bw + tx;
 	int y = blockIdx.y * bh + ty;
+	int z = blockIdx.z + bt * tz;
+
+	int firstPos = (z * (imgw * imgw) + y * imgw + x) * 4;
 
 	float weights[] =
 	{
@@ -48,7 +53,6 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 	  0.01, 0.02, 0.04, 0.02, 0.01
 	};
 
-	int firstPos = (y * imgw * currRatio + x) * 4;
 	float3 next = make_float3(0,0,0);
 	for (int xD = -2; xD <= 2; xD++) {
 		for (int yD = -2; yD <= 2; yD++) {
@@ -56,8 +60,7 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
 			float factor = weights[(yD + 2) *5 + xD + 2];
 			int xToUse = max(0, min(x + xD,imgw-1));
 			int YToUse = max(0, min(y + yD,imgh-1));
-			int currPos = 4 * (YToUse * imgw * currRatio + xToUse);
-			//currPos = max(0, min(currPos, imgw * imgh * currRatio * 4));
+			int currPos = 4 * (YToUse * imgw * currRatio + xToUse + (z*imgw*imgw));
 			float3 CurrC = make_float3(pointers.processRead[currPos], pointers.processRead[currPos + 1], pointers.processRead[currPos + 2]);
 			next = next + factor*CurrC;
 
@@ -76,33 +79,39 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
 {
 	extern __shared__ uchar4 sdata[];
 
+
 	int tx = threadIdx.x;
 	int ty = threadIdx.y;
+	int tz = threadIdx.z;
 	int bw = blockDim.x;
 	int bh = blockDim.y;
+	int bt = blockDim.z;
 	int x = blockIdx.x * bw + tx;
 	int y = blockIdx.y * bh + ty;
+	int z = blockIdx.z + bt * tz;
 
+	int firstPos = (z * (imgw * imgh) + y * imgw + x) * 4;
 	float weight[BLOOM_KERNEL_SIZE] = {0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216}; // 5
 	//float weight[BLOOM_KERNEL_SIZE] = { 0.104379, 	0.075216, 0.02812, 	0.005441, 0.000543 , 0.000028 , 0.000001 }; // 7
 
-	//currRatio = 1;
-
-	int firstPos = (y * imgw *currRatio + x) * 4;
 
 	float3 result = make_float3(pointers.processRead[firstPos], pointers.processRead[firstPos + 1], pointers.processRead[firstPos + 2]) * weight[0]; 
 	if (isHorizontal) {
-		for (int i = 1; i < min(BLOOM_KERNEL_SIZE, imgw - 1 - x); ++i)
+		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
 		{
-			result = result + make_float3(pointers.processRead[firstPos + i*4], pointers.processRead[firstPos + i*4 + 1], pointers.processRead[firstPos + i*4 + 2])*weight[i];
-			result = result + make_float3(pointers.processRead[firstPos - i*4], pointers.processRead[firstPos - i*4 + 1], pointers.processRead[firstPos - i*4 + 2])*weight[i];
+			int xU = min(i, imgw - 1 - x)*4;
+			int xL = min(i, x)*4;
+			result = result + make_float3(pointers.processRead[firstPos + xU], pointers.processRead[firstPos + xU + 1], pointers.processRead[firstPos + xU + 2])*weight[i];
+			result = result + make_float3(pointers.processRead[firstPos - xL], pointers.processRead[firstPos - xL + 1], pointers.processRead[firstPos - xL + 2])*weight[i];
 		}
 	}
 	else {
-		for (int i = 1; i < min(BLOOM_KERNEL_SIZE, imgh -i - y); ++i)
+		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
 		{
-			result = result + make_float3(pointers.processRead[firstPos + i * imgw *currRatio * 4], pointers.processRead[firstPos + i * imgw * currRatio * 4 + 1], pointers.processRead[firstPos + i * imgw * currRatio * 4 + 2]) * weight[i];
-			result = result + make_float3(pointers.processRead[firstPos - i * imgw * currRatio * 4], pointers.processRead[firstPos - i * imgw * currRatio * 4 + 1], pointers.processRead[firstPos - i * imgw * currRatio * 4 + 2]) * weight[i];
+			int yU = min(i, imgh - 1 - y) * 4;
+			int yL = min(i, y) * 4;
+			result = result + make_float3(pointers.processRead[firstPos + yU * imgw *currRatio], pointers.processRead[firstPos + yU * imgw * currRatio  + 1], pointers.processRead[firstPos + yU * imgw * currRatio  + 2]) * weight[i];
+			result = result + make_float3(pointers.processRead[firstPos - yL * imgw * currRatio], pointers.processRead[firstPos - yL * imgw * currRatio  + 1], pointers.processRead[firstPos - yL * imgw * currRatio + 2]) * weight[i];
 		}
 	}
 

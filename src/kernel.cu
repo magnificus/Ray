@@ -1,21 +1,23 @@
 #pragma once
 #include "rayHelpers.cu"
 #include "perlin.h"
+#include "cuda.h"
+
 
 
 #define USING_SHADOWS
 #define USING_DOUBLE_TAP_SHADOWS
 #define USING_PHOTON_MAPPED_SHADOWS
 //#define USING_POINT_LIGHT
-#define STATIC_LIGHT_DIR make_float3(0.0,1.0,1.0)
-#define LIGHT_POS make_float3(0,2000,2000)
+//#define STATIC_LIGHT_DIR make_float3(0.0,.71,0.71)
+//#define LIGHT_POS make_float3(0,2000,2000)
 
+#define STATIC_LIGHT_DIR make_float3(0.0,1,0)
+#define LIGHT_POS make_float3(0,2000,0)
 //#define AMBIENT_OCCLUSION
 //#define VISUALIZE_BOUNDS
 
 
-//#define USING_SHADOW_FALLOW
-#define SHADOW_FALLOW_FACTOR 0.95
 
 cudaError_t cuda();
 __global__ void kernel() {
@@ -26,6 +28,8 @@ __global__ void kernel() {
 __device__ float currentTime;
 __device__ sceneInfo *scene;
 __device__ unsigned int* lightImage;
+__device__ int imageWidth;
+__device__ int imageHeight;
 //sceneInfo info;
 
 
@@ -160,12 +164,6 @@ __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 	t = f * dot(edge2, q);
 
 	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
-	//if (t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0))) // ray intersection
-	//{
-	//	return true;
-	//}
-	//else // This means that there is a line intersection but not a ray intersection.
-	//	return false;
 }
 
 
@@ -243,17 +241,64 @@ __device__ float3 getDistortion(const float3 normal,const float3 inputPos,const 
 	float h3 = perlin2d(axis1, axis2 - d, 1, perlinDepth);
 	float h4 = perlin2d(axis1, axis2 + d, 1, perlinDepth);
 
-	//// derivatives
-	//float d1 = sample1;// (h2 - h1) / 2 * d;
-	//float d2 = sample2; //(h4 - h3) / 2 * d;
-
 	float d1 =  (h2 - h1) / 2 * d;
 	float d2 =  (h4 - h3) / 2 * d;
 
 
-	return (otherDir1 * d1 + otherDir2 * d2)/**0.0002*/;
+	return (otherDir1 * d1 + otherDir2 * d2);
 
 }
+
+__device__ bool getTranslatedPos(float3 position, float3 &translatedPos) {
+	float3 beforeTranslation = make_float3(LIGHT_BUFFER_WORLD_RATIO * position.x, LIGHT_BUFFER_WORLD_RATIO * position.z, LIGHT_BUFFER_THICKNESS_WORLD_RATIO * (position.y +50));
+	translatedPos = beforeTranslation + make_float3(0.5, 0.5, 0.5);
+	translatedPos = translatedPos * make_float3(LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_THICKNESS);
+	if (translatedPos.x >= 0 && translatedPos.x < LIGHT_BUFFER_WIDTH && translatedPos.y >= 0 && translatedPos.y < LIGHT_BUFFER_WIDTH && translatedPos.z >= 0 && translatedPos.z < LIGHT_BUFFER_THICKNESS) {
+	//if(max(max(fabs(beforeTranslation.x), fabs(beforeTranslation.y)), fabs(beforeTranslation.z)) < LIGHT_BUFFER_WORLD_SIZE / 2){
+		return true;
+	}
+	return false;
+}
+
+__device__ bool worldPositionToLerpedValue(float3 position, float &value) {
+	float3 translatedPos;
+	bool OK = getTranslatedPos(position, translatedPos);
+
+	if (OK) {
+		int currZ = floor(translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH * 4;
+
+		int currY = floor(translatedPos.y);
+		int currX = floor(translatedPos.x);
+		int nextY = min(currY + 1, imageHeight-1);
+		int nextX = min(currX + 1, imageWidth-1);
+
+
+
+		int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX) * 4;
+		int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX) * 4;
+		int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX) * 4;
+		int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX) * 4;
+
+		float xFactor = translatedPos.x - floor(translatedPos.x);
+		float yFactor = translatedPos.y - floor(translatedPos.y);
+		float combinedUpper = lightImage[outUL] * (1.-xFactor) + lightImage[outUR] * (xFactor);
+		float combinedDown = lightImage[outLR] * xFactor + lightImage[outLL] * (1. - xFactor);
+		float result = combinedUpper* yFactor + (1. - yFactor) * combinedDown;
+		value = result;
+		return true;
+	}
+	return false;
+}
+
+
+
+__device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
+	float3 translatedPos;
+	bool res = getTranslatedPos(position, translatedPos);
+	out = (((int)(translatedPos.z)) * LIGHT_BUFFER_WIDTH*LIGHT_BUFFER_WIDTH + ((int)translatedPos.y) * LIGHT_BUFFER_WIDTH + (int)(translatedPos.x)) * 4;
+	return res;
+}
+
 
 __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 	float closestDist = 1000000;
@@ -269,6 +314,10 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 
 
 		shapeInfo info = curr.shapeData;
+		if (info.isMoving) {
+			info.pos = make_float3(sin(currentTime*0.3) * info.pos.x, info.pos.y, cos(currentTime*0.3) * info.pos.z);
+
+		}
 		switch (curr.s) {
 		case water: {
 			shapeInfo otherInfo = info;
@@ -282,13 +331,12 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				needsToCommunicateInversion = true;
 			}
 
-
 			
 			if (intersected && currDist < closestDist) {
 				closestDist = currDist;
 				toReturn.info = curr.rayInfo;
 				float3 waveInput = (currRayPos + currDist * currRayDir) * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
-				float strength = 1500;
+				float strength = 2000;
 
 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
 				normal = normalize(normalToUse + strength * distortion);
@@ -386,6 +434,23 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 
 __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 
+#ifdef USING_PHOTON_MAPPED_SHADOWS
+
+	float val;
+	bool valid = worldPositionToLerpedValue(originalPos, val);
+	//int pos;
+	//bool valid = worldPositionToTextureCoordinate(originalPos, pos);
+	if (valid) {
+		return val*0.01;
+		//return lightImage[pos]*0.03;
+	}
+	//else {
+	//	return 0;
+	//}
+
+
+#endif
+
 #ifndef USING_SHADOWS
 	return 1.0;
 #endif
@@ -433,6 +498,27 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 
 }
 
+//#if __CUDA_ARCH__ < 600
+//__device__ double atomicAdd(double* address, double val)
+//{
+//	unsigned long long int* address_as_ull =
+//		(unsigned long long int*)address;
+//	unsigned long long int old = *address_as_ull, assumed;
+//
+//	do {
+//		assumed = old;
+//		old = atomicCAS(address_as_ull, assumed,
+//			__double_as_longlong(val +
+//				__longlong_as_double(assumed)));
+//
+//		// Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
+//	} while (assumed != old);
+//
+//	return __longlong_as_double(old);
+//}
+//#endif
+
+
 
 __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, float totalContributionRemaining = 1.0, bool isLightPass = false) {
 
@@ -457,7 +543,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 
 		float extraReflection = 0;
 		float3 extraColor;
-		float3 refractBias = 0.0005 * normal;
+		float3 refractBias = 0.001 * normal;
 		float3 reflectBias = 0.001 * normal;
 		float prevColorMP = 0;
 		float3 extraPrevColor = make_float3(0,0,0);
@@ -476,17 +562,17 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
-			//if (kr < 1) {
+			if (kr < 1) {
 				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
 				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
 				float refracMP = max(0., (1 - kr));
 				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP, isLightPass);
-			//}
+			}
 			extraReflection = max(0.,min(1., kr) * info.refractivity);
 
 		}
-		if ((info.reflectivity + extraReflection) > 0.001) {
+		if ((info.reflectivity + extraReflection) > 0.001 && !isLightPass) {
 			float3 reflectDir = reflect(currRayDir, normal);
 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 			float reflecMP = info.reflectivity + extraReflection;
@@ -494,8 +580,8 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP*totalContributionRemaining, isLightPass);
 		}
 
+		float colorMultiplier = max(0., (1. - info.reflectivity - extraReflection - info.refractivity));
 		if (!isLightPass) {
-			float colorMultiplier = max(0., (1. - info.reflectivity - extraReflection - info.refractivity));
 			float3 color = colorMultiplier * info.color;
 			float3 light_dir = STATIC_LIGHT_DIR;
 			float angleFactor = (0.0 + 1.0 * max(0.0, dot(light_dir, normal)));
@@ -507,6 +593,49 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 		}
 		else {
 
+			float strength = (1. - prevColorMP) * colorMultiplier * 100;
+			float3 translatedPos;
+			bool OK = getTranslatedPos(nextPos, translatedPos);
+			if (OK) {
+				int currZ = ((int)translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH * 4;
+
+				int currY = floor(translatedPos.y);
+				int currX = floor(translatedPos.x);
+				int nextY = min(currY + 1, imageWidth - 1);
+				int nextX = min(currX + 1, imageWidth - 1);
+
+				int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX) * 4;
+				int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX) * 4;
+				int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX) * 4;
+				int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX) * 4;
+
+				float xFactor = fmod(translatedPos.x, 1.f);// -floor(translatedPos.x);
+				float yFactor = fmod(translatedPos.y,1.f);
+
+				atomicAdd(&lightImage[outLL], strength*(1. - xFactor) * (1. - yFactor));
+				atomicAdd(&lightImage[outUL], strength*(1. - xFactor) * (yFactor));
+				atomicAdd(&lightImage[outUR], strength*(xFactor) * (yFactor));
+				atomicAdd(&lightImage[outLR], strength*(xFactor) * (1. - yFactor));
+
+				//float combinedUpper = lightImage[outUL] * (1. - xFactor) + lightImage[outUR] * (xFactor);
+				//float combinedDown = lightImage[outLR] * xFactor + lightImage[outLL] * (1. - xFactor);
+				//float result = combinedUpper * yFactor + (1. - yFactor) * combinedDown;
+				//return true;
+			}
+
+			//int pos;
+			//bool OK = worldPositionToTextureCoordinate(nextPos, pos);
+			//if (OK)
+			//	lightImage[pos] += strength;
+
+
+
+			//int out;
+			//if (worldPositionToTextureCoordinate(nextPos, out)) {
+			//	lightImage[out] += (1. - prevColorMP)*colorMultiplier*1000;
+			//	//lightImage[out + 1] += (1. - prevColorMP)*colorMultiplier*10;
+			//	//lightImage[out + 2] += (1. - prevColorMP)*colorMultiplier*10;
+			//}
 			return currRayPos;
 		}
 	}
@@ -546,6 +675,9 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 	currentTime = currTime;
 	scene = &pointers.scene;
+	lightImage = pointers.lightImage;
+	imageWidth = imgw;
+	imageHeight = imgh;
 	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
 
 
@@ -554,6 +686,10 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	pointers.image1[firstPos+1] = out.y;
 	pointers.image1[firstPos+2] = out.z;
 }
+
+//float rand(float2 co) {
+//	return fmod((sin(dot(co, make_float2(12.9898, 78.233))) * 43758.5453),0);
+//}
 
 __global__ void
 cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
@@ -568,24 +704,48 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 	int y = blockIdx.y * bh + ty;
 
 	float3 forwardV = STATIC_LIGHT_DIR;
-	float3 upV = make_float3(input.upX, input.upY, input.upZ);
+	float3 upV = make_float3(1,0,0);
 	float3 rightV = normalize(cross(upV, forwardV));
+	upV = cross(forwardV, rightV);
 
-	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
+	float2 center = make_float2(imgw / 2.0, imgh / 2.0);
 	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
-	float3 startPos = distFromCenter * LIGHT_PLANE_SIZE;
-	float3 dirVector = STATIC_LIGHT_DIR;
+	float3 startPos = distFromCenter * LIGHT_PLANE_SIZE + STATIC_LIGHT_DIR * 400 ;
+	float3 dirVector = inverse(STATIC_LIGHT_DIR);
 
+	//float3 distFromCenter = make_float3(((x - center.x) / imgw), 0, ((center.y - y) / imgh));
+	//float3 startPos = distFromCenter * LIGHT_PLANE_SIZE + make_float3(0, 100, 0);
+	//float3 dirVector = make_float3(0,-1,0);
 
 	currentTime = currTime;
 	scene = &pointers.scene;
-	float3 out = 255 * 3 * trace(startPos, dirVector, 10, input.beginMedium, 1.0, true);
+	lightImage = pointers.lightImage;
+	imageWidth = imgw;
+	imageHeight = imgh;
+	trace(startPos, dirVector, 5, hitInfo(), 1.0, true);
+
+}
 
 
-	int firstPos = (y * imgw + x) * 4;
-	pointers.image1[firstPos] = out.x;
-	pointers.image1[firstPos + 1] = out.y;
-	pointers.image1[firstPos + 2] = out.z;
+__global__ void
+cudaClear(unsigned int* buffer, int imgw)
+{
+	extern __shared__ uchar4 sdata[];
+
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int tz = threadIdx.z;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int bt = blockDim.z;
+	int x = blockIdx.x * bw + tx;
+	int y = blockIdx.y * bh + ty;
+	int z = blockIdx.z + bt * tz;
+
+	int firstPos = (z * (imgw*imgw) + y * imgw + x) * 4;
+	buffer[firstPos] = 0;
+	buffer[firstPos + 1] = 0;
+	buffer[firstPos + 2] = 0;
 }
 
 extern "C" void
@@ -593,6 +753,13 @@ launch_cudaLight(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int 
 {
 
 	cudaLightRender << < grid, block, sbytes >> > (pointers, imgw, imgh, currTime, input);
+}
+
+extern "C" void
+launch_cudaClear(dim3 grid, dim3 block, int sbytes, int imgw, unsigned int *buffer)
+{
+
+	cudaClear << < grid, block, sbytes >> > (buffer, imgw);
 }
 
 

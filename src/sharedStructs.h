@@ -8,14 +8,20 @@
 #define WATER_DENSITY 0.1
 
 
-#define LIGHT_BUFFER_WORLD_SIZE = 100
-#define LIGHT_PLANE_SIZE 100
+#define LIGHT_BUFFER_WORLD_SIZE 128
+#define LIGHT_PLANE_SIZE 128
 #define LIGHT_BUFFER_WIDTH 1024
+#define LIGHT_BUFFER_THICKNESS 5
+#define LIGHT_BUFFER_THICKNESS_SIZE 200
+
+#define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
+#define LIGHT_BUFFER_THICKNESS_WORLD_RATIO (1. / LIGHT_BUFFER_THICKNESS_SIZE)
 
 struct shapeInfo {
 	float3 pos;
 	float3 normal;
 	float rad;
+	bool isMoving = false;
 };
 
 struct sphereInfo {
