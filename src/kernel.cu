@@ -442,27 +442,30 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 			Ray nextRay;
 
 
-			//if (info.refractivity * totalContributionRemaining > 0.001) {
-			//	float kr = 1.0;
-			//	fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
+			if (info.refractivity > 0.001) {
+				float kr = 1.0;
+				fresnel(currentRay.currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
-			//	if (kr < 1) {
-			//		float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
-			//		float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
+				if (kr < 1) {
+					float3 refractionDirection = normalize(refract(currentRay.currRayDir, normal, info.refractiveIndex));
+					float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
-			//		float refracMP = max(0., (1 - kr));
-			//		//refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining * refracMP, isLightPass);
-			//	}
-			//	extraReflection = max(0.0, min(1., kr) * info.refractivity);
+					float refracMP = max(0., (1 - kr));
+					//refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining * refracMP, isLightPass);
+					nextRay = make_ray(refractionRayOrig, refractionDirection, outside ^ hit.normalIsInversed ? hit : hitInfo(), info.refractivity*refracMP * currentRay.totalContributionRemaining, isLightPass);
 
-			//}
+				}
+
+				extraReflection = max(0.0, min(1., kr) * info.refractivity);
+
+			}
 			if ((info.reflectivity + extraReflection) > 0.001 && !isLightPass) {
 				float3 reflectDir = reflect(currentRay.currRayDir, normal);
 				float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 				float reflecMP = info.reflectivity + extraReflection;
 
-				nextRay = make_ray(reflectionOrig, reflectDir, hit, reflecMP * (1.-prevColorMP), isLightPass);
+				nextRay = make_ray(reflectionOrig, reflectDir, hit, reflecMP * (1.-prevColorMP) * currentRay.totalContributionRemaining, isLightPass);
 
 				//reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP * totalContributionRemaining, isLightPass);
 			}
