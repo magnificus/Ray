@@ -5,20 +5,37 @@
 #define AIR_DENSITY 0.001
 #define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
 #define WATER_COLOR make_float3(0,0.0,0.1)
-#define WATER_DENSITY 0.1
+#define WATER_DENSITY 0.05
 
 
 #define WIDTH 1024
 #define HEIGHT 1024
 
-#define LIGHT_BUFFER_WORLD_SIZE 140
-#define LIGHT_PLANE_SIZE 140
+#define LIGHT_BUFFER_WORLD_SIZE 200
+#define LIGHT_PLANE_SIZE 200
 #define LIGHT_BUFFER_WIDTH WIDTH
 #define LIGHT_BUFFER_THICKNESS 4
 #define LIGHT_BUFFER_THICKNESS_SIZE 150
 
 #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
 #define LIGHT_BUFFER_THICKNESS_WORLD_RATIO (1. / LIGHT_BUFFER_THICKNESS_SIZE)
+
+
+// total size will be pow(GRID_SIZE,3) bc of xyz
+#define GRID_SIZE 15
+#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
+//#define GRID_DEPTH 1
+
+#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
+
+#define GLOBAL_GRID_SIZE 4
+#define GLOBAL_GRID_SIZE2 GLOBAL_GRID_SIZE*GLOBAL_GRID_SIZE
+#define GLOBAL_GRID_MAX make_float3(500,300,500)
+#define GLOBAL_GRID_MIN make_float3(-500,-100,-500)
+#define GLOBAL_GRID_DIMENSIONS (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN) *(1/GLOBAL_GRID_SIZE)
+
+#define GLOBAL_GRID_POS(x,y,z) GLOBAL_GRID_SIZE2*x + GLOBAL_GRID_SIZE*y + z
+
 
 struct shapeInfo {
 	float3 pos;
@@ -101,15 +118,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 	return o;
 }
 
-// total size will be pow(GRID_SIZE,3) bc of xyz
-#define GRID_SIZE 15
-#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
-#define GRID_DEPTH 1
 
-#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
-
-#define GLOBAL_GRID_SIZE 2
-#define GLOBAL_GRID_CHUNK_SIZE 500
 
 struct triangleMesh {
 	float3* vertices; 
@@ -308,3 +317,78 @@ inline __device__ bool intersectBox(const float3& orig, const float3& dir, const
 
 
 }
+
+
+inline __device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
+
+	float t0, t1; // solutions for t if the ray intersects 
+
+	float rad2 = powf(rad, 2);
+
+	float3 L = pos - origin;
+	float tca = dot(dir, L);
+	//if (tca < 0) return false;
+	float d2 = dot(L, L) - tca * tca;
+	if (d2 > rad2) return false;
+	float thc = sqrt(rad2 - d2);
+	t0 = tca - thc;
+	t1 = tca + thc;
+
+	if (t0 > t1) {
+		float temp = t0;
+		t0 = t1;
+		t1 = temp;
+	}
+
+	if (t0 < 0) {
+		t0 = t1; // if t0 is negative, let's use t1 instead 
+		if (t0 < 0) return false; // both t0 and t1 are negative 
+	}
+	t = t0;
+	return true;
+}
+
+// plane normal, plane point, ray start, ray dir, point along line
+inline __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
+{
+	// assuming vectors are all normalized
+	float denom = dot(p.normal, l);
+	if (denom < -1e-8) {
+		float3 p0l0 = p.pos - l0;
+		t = dot(p0l0, p.normal) / denom;
+		return (t >= 0);
+	}
+	return false;
+}
+
+inline  __device__ bool RayIntersectsTriangle(float3 rayOrigin,
+	float3 rayVector,
+	float3 vertex0, float3 vertex1, float3 vertex2,
+	float& t, float& u, float& v)
+{
+
+	const float EPSILON = 0.001;
+	float3 edge1, edge2, h, s, q;
+	float a, f;
+	edge1 = vertex1 - vertex0;
+	edge2 = vertex2 - vertex0;
+	h = cross(rayVector, edge2);
+	a = dot(edge1, h);
+	if (a > -EPSILON && a < EPSILON)
+		return false;    // This ray is parallel to this triangle.
+	f = 1.0 / a;
+	s = rayOrigin - vertex0;
+	u = f * dot(s, h);
+	if (u < 0.0 || u > 1.0)
+		return false;
+	q = cross(s, edge1);
+	v = f * dot(rayVector, q);
+	if (v < 0.0 || u + v > 1.0)
+		return false;
+	// At this stage we can compute t to find out where the intersection point is on the line.
+	t = f * dot(edge2, q);
+
+	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
+}
+
+

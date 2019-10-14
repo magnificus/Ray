@@ -441,6 +441,125 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
 
 	return myMeshOnCuda;
 }
+#define NUM_ELEMENTS 8
+
+void setupGlobalGrid(objectInfo objects[NUM_ELEMENTS], std::vector<triangleMesh> importedMeshes) {
+
+	unsigned int gridSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int*);
+	unsigned int gridSizesSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int);
+
+	float3 gridDist = (1.0 / GLOBAL_GRID_SIZE)* (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN);
+
+	for (int x = 0; x < GLOBAL_GRID_SIZE; x++) {
+		for (int y = 0; y < GLOBAL_GRID_SIZE; y++) {
+			for (int z = 0; z < GLOBAL_GRID_SIZE; z++) {
+				std::vector<unsigned int> objectsToAddToBlock;
+				std::vector<unsigned int> meshesToAddToBlock;
+
+				float3 boxMin = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x, y, z);
+				float3 boxMax = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x+1, y+1, z+1);
+				float3 center = (boxMin + boxMax) * 0.5;
+
+				for (int i = 0; i < NUM_ELEMENTS; i++) {
+					objectInfo object = objects[i];
+					switch (object.s) {
+						case water:
+						case plane: {
+
+							break;
+						}
+						case sphere: {
+
+							if (length(object.shapeData.pos - center)) {
+								
+							}
+
+
+							break;
+						}
+					}
+
+				}
+	//			std::vector<unsigned int> trianglesToAddToBlock;
+	//			float3 currMin = make_float3(x, y, z) * gridDist + min;
+	//			float3 currMax = make_float3(x + 1, y + 1, z + 1) * gridDist + min;
+	//			float3 currCenter = 0.5 * (currMin + currMax);
+
+	//			for (int i = 0; i < myMesh.numIndices; i += 3) {
+	//				float3 v0 = myMesh.vertices[myMesh.indices[i]];
+	//				float3 v1 = myMesh.vertices[myMesh.indices[i + 1]];
+	//				float3 v2 = myMesh.vertices[myMesh.indices[i + 2]];
+
+	//				float tMin;
+	//				float tMax;
+	//				// we intersect if we're either inside the slab or one edge crosses it
+	//				bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
+	//				//if (!intersecting)
+	//				intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
+	//				//if (!intersecting)
+	//				intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
+	//				//if (!intersecting)
+	//				intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+
+	//				if (intersecting) {
+	//					trianglesToAddToBlock.push_back(i);
+	//				}
+	//			}
+
+	//			//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+	//			gridSizes[GRID_POS(x, y, z)] = trianglesToAddToBlock.size();
+	//			grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
+
+	//			for (int i = 0; i < trianglesToAddToBlock.size(); i++) {
+	//				grid[GRID_POS(x, y, z)][i] = trianglesToAddToBlock[i]; // add collisions to grid
+	//			}
+			}
+		}
+	}
+
+	//unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
+	//unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
+
+
+	//if (myMesh.numIndices > 0) {
+	//	// allocate cuda space
+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
+	//	// this shit is getting convoluted man
+	//	// gotta allocate for each list in grid separately, then feed the correct pointers to the correct positions
+
+	//	unsigned int** CudaGridPointer = (unsigned int**)malloc(gridSize);
+
+	//	for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+	//		checkCudaErrors(cudaMalloc(&(CudaGridPointer[i]), gridSizes[i] * sizeof(unsigned int)));
+	//		checkCudaErrors(cudaMemcpy(CudaGridPointer[i], grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
+
+	//	}
+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.grid, gridSize));
+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.gridSizes, gridSizesSize));
+
+	//	// copy data to cuda buffers
+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
+
+	//	free(CudaGridPointer);
+
+	//}
+
+	//for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+	//	free(grid[i]);
+	//}
+	//free(grid);
+	//free(gridSizes);
+
+	//return myMeshOnCuda;
+
+
+}
 
 void initCUDABuffers()
 {
@@ -458,7 +577,6 @@ void initCUDABuffers()
 	checkCudaErrors(cudaMalloc(&cuda_light_buffer_2, size_light_data)); // Allocate CUDA memory for pong buffer
 
 
-	#define NUM_ELEMENTS 8
 	num_elements = NUM_ELEMENTS;
 	size_elements_data = sizeof(objectInfo) * num_elements;
 
@@ -525,6 +643,10 @@ void initCUDABuffers()
 		meshesOnCuda[i] = prepareMeshForCuda(curr);
 	}
 	// setup the global grid
+
+	setupGlobalGrid(objects, importedMeshes);
+
+	//gridMeshes = (*unsigned int) malloc(GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE);
 
 
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));

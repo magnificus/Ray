@@ -33,140 +33,6 @@ __device__ int imageHeight;
 //sceneInfo info;
 
 
-__device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
-
-	float t0, t1; // solutions for t if the ray intersects 
-
-	float rad2 = powf(rad, 2);
-
-	float3 L = pos - origin;
-	float tca = dot(dir, L);
-	//if (tca < 0) return false;
-	float d2 = dot(L, L) - tca * tca;
-	if (d2 > rad2) return false;
-	float thc = sqrt(rad2 - d2);
-	t0 = tca - thc;
-	t1 = tca + thc;
-
-	if (t0 > t1) {
-		float temp = t0;
-		t0 = t1;
-		t1 = temp;
-	}
-
-	if (t0 < 0) {
-		t0 = t1; // if t0 is negative, let's use t1 instead 
-		if (t0 < 0) return false; // both t0 and t1 are negative 
-	}
-	t = t0;
-	return true;
-}
-
-// plane normal, plane point, ray start, ray dir, point along line
-__device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
-{
-	// assuming vectors are all normalized
-	float denom = dot(p.normal, l);
-	if (denom < -1e-8) {
-		float3 p0l0 = p.pos - l0;
-		t = dot(p0l0, p.normal) / denom;
-		return (t >= 0);
-	}
-	return false;
-}
-
-__device__ bool rayTriangleIntersect(
-	float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
-	float& t, float& u, float& v)
-{
-	// compute plane's normal
-	float3 v0v1 = v1 - v0;
-	float3 v0v2 = v2 - v0;
-
-	//// no need to normalize
-	float3 N = cross(v0v1, v0v2); // N 
-	float denom = dot(N, N);
-
-
-	//// Step 1: finding P
-
-	// check if ray and plane are parallel ?
-	float NdotRayDirection = dot(N, dir);
-	if (fabs(NdotRayDirection) < 0.0001) // almost 0 
-		return false; // they are parallel so they don't intersect ! 
-
-	// compute d parameter using equation 2
-	float d = dot(N, v0);
-
-	// compute t (equation 3)
-	t = (dot(N, orig) + d) / NdotRayDirection;
-	// check if the triangle is in behind the ray
-	if (t < 0) return false; // the triangle is behind 
-
-	// compute the intersection point using equation 1
-	float3 P = orig + t * dir;
-
-	// Step 2: inside-outside test
-	float3 C; // vector perpendicular to triangle's plane 
-
-	// edge 0
-	float3 edge0 = v1 - v0;
-	float3 vp0 = P - v0;
-	C = cross(edge0, vp0);
-	if (dot(N, C) < 0) return false; // P is on the right side 
-
-	// edge 1
-	float3 edge1 = v2 - v1;
-	float3 vp1 = P - v1;
-	C = cross(edge1, vp1);
-	if ((u = dot(N, C)) < 0)  return false; // P is on the right side 
-
-	// edge 2
-	float3 edge2 = v0 - v2;
-	float3 vp2 = P - v2;
-	C = cross(edge2, vp2);
-	if ((v = dot(N, C)) < 0) return false; // P is on the right side; 
-
-	u /= denom;
-	v /= denom;
-
-	return true; // this ray hits the triangle 
-}
-
-
-
-
-__device__ bool RayIntersectsTriangle(float3 rayOrigin,
-	float3 rayVector,
-	float3 vertex0, float3 vertex1, float3 vertex2,
-	float& t, float& u, float& v)
-{
-
-	const float EPSILON = 0.001;
-	float3 edge1, edge2, h, s, q;
-	float a, f;
-	edge1 = vertex1 - vertex0;
-	edge2 = vertex2 - vertex0;
-	h = cross(rayVector, edge2);
-	a = dot(edge1, h);
-	if (a > -EPSILON && a < EPSILON)
-		return false;    // This ray is parallel to this triangle.
-	f = 1.0 / a;
-	s = rayOrigin - vertex0;
-	u = f * dot(s, h);
-	if (u < 0.0 || u > 1.0)
-		return false;
-	q = cross(s, edge1);
-	v = f * dot(rayVector, q);
-	if (v < 0.0 || u + v > 1.0)
-		return false;
-	// At this stage we can compute t to find out where the intersection point is on the line.
-	t = f * dot(edge2, q);
-
-	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
-}
-
-
 __device__ __forceinline__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
 {
 	float cosi = clamp(-1, 1, dot(I, N));
@@ -389,6 +255,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 			gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
 
 			int stepsBeforeQuit = 1000;
+			bool hitGrid = false;
 			while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
 
 				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
@@ -405,6 +272,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 
 						normal = (1 - v - u)* currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
 						toReturn.hit = true;
+						toReturn.pos = currPos + t * currRayDir;
 						stepsBeforeQuit = 1;
 					}
 				}
@@ -515,6 +383,110 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 //#endif
 
 
+struct Ray {
+	float3 currRayPos;
+	float3 currRayDir;
+	hitInfo prevHitToAddDepthFrom;
+	float totalContributionRemaining = 0.0;
+	bool isLightPass = false;
+};
+
+__device__ Ray make_ray(float3 pos, float3 dir, hitInfo prevHit, float remaining, bool lightPass) {
+	Ray toReturn;
+	toReturn.currRayPos = pos;
+	toReturn.currRayDir = dir;
+	toReturn.prevHitToAddDepthFrom = prevHit;
+	toReturn.totalContributionRemaining = remaining;
+	toReturn.isLightPass = lightPass;
+	return toReturn;
+
+}
+
+__device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 initialRayDir, int remainingDepth, const hitInfo prevHitToAddDepthFrom, float totalContributionRemaining = 1.0, bool isLightPass = false) {
+
+	Ray currentRay = make_ray(initialRayPos, initialRayDir, prevHitToAddDepthFrom, totalContributionRemaining, isLightPass);
+	float3 accumColor = make_float3(0,0,0);
+	for (int i = 0; i < remainingDepth && currentRay.totalContributionRemaining > 0.001; i++) {
+		hitInfo hit = getHit(currentRay.currRayPos, currentRay.currRayDir, isLightPass);
+		if (!hit.hit) {
+			accumColor = accumColor + currentRay.totalContributionRemaining * AIR_COLOR;
+			return accumColor;
+		}
+		else {
+			rayHitInfo info = hit.info;
+			//accumColor = accumColor + hit.info.color*currentRay.totalContributionRemaining;
+
+			float3 reflected = make_float3(0, 0, 0);
+			float3 refracted = make_float3(0, 0, 0);
+			float3 nextPos = hit.pos;
+			float3 normal = hit.normal;
+
+			if (hit.info.roughness > 0.0001) {
+				float3 distortion = getDistortion(normal, nextPos + make_float3(10000, 10000, 10000), 4);
+				normal = normalize(normal + distortion * hit.info.roughness);
+			}
+
+
+			float extraReflection = 0;
+			float3 extraColor;
+			float3 refractBias = 0.001 * normal;
+			float3 reflectBias = 0.001 * normal;
+			float prevColorMP = 0;
+			bool outside = dot(currentRay.currRayDir, normal) < 0;
+
+			if (prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
+				prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currentRay.currRayPos) + 1);
+				accumColor = accumColor + prevColorMP * prevHitToAddDepthFrom.info.color;
+			}
+
+			Ray nextRay;
+
+
+			//if (info.refractivity * totalContributionRemaining > 0.001) {
+			//	float kr = 1.0;
+			//	fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
+
+
+			//	if (kr < 1) {
+			//		float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
+			//		float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
+
+			//		float refracMP = max(0., (1 - kr));
+			//		//refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining * refracMP, isLightPass);
+			//	}
+			//	extraReflection = max(0.0, min(1., kr) * info.refractivity);
+
+			//}
+			if ((info.reflectivity + extraReflection) > 0.001 && !isLightPass) {
+				float3 reflectDir = reflect(currentRay.currRayDir, normal);
+				float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
+				float reflecMP = info.reflectivity + extraReflection;
+
+				nextRay = make_ray(reflectionOrig, reflectDir, hit, reflecMP * (1.-prevColorMP), isLightPass);
+
+				//reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP * totalContributionRemaining, isLightPass);
+			}
+
+			float colorMultiplier = max(0., (1. - max(0.f, info.reflectivity) - extraReflection - info.refractivity));
+			float3 color = colorMultiplier * info.color;
+			float3 light_dir = STATIC_LIGHT_DIR;
+			float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
+			float shadowFactor = 0;
+
+
+			if (colorMultiplier * (1. - prevColorMP) > 0.1) {
+				shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currentRay.currRayDir), normal);
+			}
+			accumColor = accumColor + (1. - prevColorMP) * colorMultiplier * color * currentRay.totalContributionRemaining;
+			//return (1. - prevColorMP) * ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color + reflected + refracted) + extraPrevColor;
+			currentRay = nextRay;
+		}
+		//currentRay = make_ray(hit.pos, make_float3(0,0,0), hit, 0., isLightPass);
+	}
+	return accumColor;
+}
+
+
 
 __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, float totalContributionRemaining = 1.0, bool isLightPass = false) {
 
@@ -550,11 +522,11 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
 		}
 
-		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.01)
+		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.001)
 			return info.color * (1. - prevColorMP) + extraPrevColor;
 
 		if (info.refractivity* totalContributionRemaining > 0.001) {
-			float kr = 1.0;;
+			float kr = 1.0;
 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
 
@@ -565,7 +537,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
 				float refracMP = max(0., (1 - kr));
 				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP, isLightPass);
 			}
-			extraReflection = max(0.,min(1., kr) * info.refractivity);
+			extraReflection = max(0.0,min(1., kr) * info.refractivity);
 
 		}
 		if ((info.reflectivity + extraReflection)* totalContributionRemaining > 0.001 && !isLightPass) {
@@ -657,7 +629,8 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	lightImage = pointers.lightImage;
 	imageWidth = imgw;
 	imageHeight = imgh;
-	float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
+	//float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
+	float3 out = 255 * 3 * traceNonRecursive(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
 
 
 	int firstPos = (y * imgw + x) * 4;
@@ -669,6 +642,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 //float rand(float2 co) {
 //	return fmod((sin(dot(co, make_float2(12.9898, 78.233))) * 43758.5453),0);
 //}
+
 
 __global__ void
 cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
@@ -701,7 +675,10 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 	lightImage = pointers.lightImage;
 	imageWidth = imgw;
 	imageHeight = imgh;
-	trace(startPos, dirVector, 10, hitInfo(), 1.0, true);
+	//trace(startPos, dirVector, 10, hitInfo(), 1.0, true);
+
+	traceNonRecursive(startPos, dirVector, 10, input.beginMedium, 1.0, true);
+
 
 }
 
