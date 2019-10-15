@@ -201,7 +201,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 				toReturn.info = curr.rayInfo;
 				float3 pos = currRayPos + currDist * currRayDir;
 				float3 waveInput = pos * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
-				float strength = 4000;
+				float strength = 3000;
 
 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
 				normal = normalize(normalToUse + strength * distortion);
@@ -419,7 +419,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 
 			hitInfo hit = getHit(currentRay.currRayPos, currentRay.currRayDir, isLightPass);
 			if (!hit.hit) {
-				accumColor = accumColor + currentRay.totalContributionRemaining * currentRay.prevHitToAddDepthFrom.info.color;
+				accumColor = accumColor + currentRay.totalContributionRemaining * AIR_COLOR;// * currentRay.prevHitToAddDepthFrom.info.color;
 			}
 			else {
 				rayHitInfo info = hit.info;
@@ -460,7 +460,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 
 						float refracMP = max(0., (1 - kr));
 						//refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining * refracMP, isLightPass);
-						Ray nextRay = make_ray(refractionRayOrig, refractionDirection, outside ^ hit.normalIsInversed ? hit : hitInfo(), info.refractivity * refracMP * currentRay.totalContributionRemaining, isLightPass);
+						Ray nextRay = make_ray(refractionRayOrig, refractionDirection, outside ^ hit.normalIsInversed ? hit : currentRay.prevHitToAddDepthFrom, info.refractivity * refracMP * currentRay.totalContributionRemaining, isLightPass);
 						if (currentNbrRays < MAX_RAYS) {
 							AllRays[currentNbrRays] = nextRay;
 							currentNbrRays++;
@@ -677,7 +677,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	imageWidth = imgw;
 	imageHeight = imgh;
 	//float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
-	float3 out = 255 * 3 * traceNonRecursive(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
+	float3 out = 255 * 3 * traceNonRecursive(firstPlanePos, dirVector, 6, input.beginMedium, 1.0);
 
 
 	int firstPos = (y * imgw + x) * 4;
@@ -724,7 +724,7 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 	imageHeight = imgh;
 	//trace(startPos, dirVector, 10, hitInfo(), 1.0, true);
 
-	traceNonRecursive(startPos, dirVector, 10, input.beginMedium, 1.0, true);
+	traceNonRecursive(startPos, dirVector, 6, input.beginMedium, 1.0, true);
 
 
 }
