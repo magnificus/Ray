@@ -568,8 +568,8 @@ void initCUDABuffers()
 
 	// We don't want to use cudaMallocManaged here - since we definitely want
 	cudaError_t stat;
-	size_t myStackSize = 8192;
-	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
+	//size_t myStackSize = 8192;
+	//stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer_2, size_tex_data)); // Allocate CUDA memory for color output 2
 	checkCudaErrors(cudaMalloc(&cuda_ping_buffer, size_tex_data)); // Allocate CUDA memory for ping buffer
@@ -622,7 +622,7 @@ void initCUDABuffers()
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 500)); // palm leaves
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.7*make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
 
-	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(100.0, -80, 50.0), false);
+	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 2000 )); //rock
 
