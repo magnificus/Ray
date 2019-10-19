@@ -180,7 +180,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 
 		shapeInfo info = curr.shapeData;
 		if (info.isMoving) {
-			info.pos = make_float3(sin(currentTime*0.3) * info.pos.x, info.pos.y, cos(currentTime*0.3) * info.pos.z);
+			info.pos = make_float3(sin(currentTime*0.3) * info.pos.x, (sin(currentTime * 0.5))*info.pos.y + 2*info.pos.y, cos(currentTime*0.3) * info.pos.z);
 
 		}
 		switch (curr.s) {
@@ -190,11 +190,11 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 			float3 normalToUse = info.normal;
 			bool needsToCommunicateInversion = false;
 			bool intersected = intersectPlane(info, currRayPos, currRayDir, currDist);
-			if (!intersected) {
-				intersected = intersectPlane(otherInfo, currRayPos, currRayDir, currDist);
-				normalToUse = otherInfo.normal;
-				needsToCommunicateInversion = true;
-			}
+			//if (!intersected) {
+			//	intersected = intersectPlane(otherInfo, currRayPos, currRayDir, currDist);
+			//	normalToUse = otherInfo.normal;
+			//	needsToCommunicateInversion = true;
+			//}
 			
 			if (intersected && currDist < closestDist) {
 				closestDist = currDist;
@@ -362,26 +362,6 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 
 }
 
-//#if __CUDA_ARCH__ < 600
-//__device__ double atomicAdd(double* address, double val)
-//{
-//	unsigned long long int* address_as_ull =
-//		(unsigned long long int*)address;
-//	unsigned long long int old = *address_as_ull, assumed;
-//
-//	do {
-//		assumed = old;
-//		old = atomicCAS(address_as_ull, assumed,
-//			__double_as_longlong(val +
-//				__longlong_as_double(assumed)));
-//
-//		// Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
-//	} while (assumed != old);
-//
-//	return __longlong_as_double(old);
-//}
-//#endif
-
 
 struct Ray {
 	float3 currRayPos;
@@ -414,7 +394,8 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 	AllRays[0] = firstRay;
 
 	for (int i = 0; i < remainingDepth && currentNbrRays > 0; i++) {
-		for (int j = 0; j < currentNbrRays; j++) {
+		int firstNumR = currentNbrRays;
+		for (int j = 0; j < firstNumR; j++) {
 			Ray currentRay = AllRays[j];
 
 			hitInfo hit = getHit(currentRay.currRayPos, currentRay.currRayDir, isLightPass);
@@ -437,7 +418,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 
 				float extraReflection = 0;
 				float3 extraColor;
-				float3 refractBias = 0.001 * normal;
+				float3 refractBias = 0.002 * normal;
 				float3 reflectBias = refractBias;// 0.001 * normal;
 				bool outside = dot(currentRay.currRayDir, normal) < 0;
 
@@ -489,7 +470,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 
 
 				if (colorMultiplier > 0.0001 && !isLightPass) {
-					float shadowFactor = getShadowTerm(nextPos/* + 0.01 * inverse(currentRay.currRayDir)*/, normal);
+					float shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currentRay.currRayDir), normal);
 					accumColor = accumColor + ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color) ;
 				}
 				else if (isLightPass){
@@ -521,13 +502,9 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 					}
 
 				}
-				//return (1. - prevColorMP) * ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color + reflected + refracted) + extraPrevColor;
-				//currentRay = nextRay;
 			}
-			//return accumColor;
 			AllRays[j] = AllRays[currentNbrRays - 1];
 			currentNbrRays--;
-			//currentRay = make_ray(hit.pos, make_float3(0,0,0), hit, 0., isLightPass);
 		}
 	}
 	return accumColor;
@@ -713,9 +690,6 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 	float3 startPos = distFromCenter * LIGHT_PLANE_SIZE + forwardV * 400 ;
 	float3 dirVector = inverse(forwardV);
 
-	//float3 distFromCenter = make_float3(((x - center.x) / imgw), 0, ((center.y - y) / imgh));
-	//float3 startPos = distFromCenter * LIGHT_PLANE_SIZE + make_float3(0, 100, 0);
-	//float3 dirVector = make_float3(0,-1,0);
 
 	currentTime = currTime;
 	scene = pointers.scene;

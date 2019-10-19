@@ -5,7 +5,7 @@
 #define AIR_DENSITY 0.001
 #define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
 #define WATER_COLOR make_float3(0,0.0,0.1)
-#define WATER_DENSITY 0.05
+#define WATER_DENSITY 0.06
 
 
 #define WIDTH 1024
