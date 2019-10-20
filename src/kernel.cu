@@ -509,6 +509,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 
 						float xFactor = fmod(translatedPos.x, 1.f);// -floor(translatedPos.x);
 						float yFactor = fmod(translatedPos.y, 1.f);
+						//float zFactor = fmod(translatedPos.y, 1.f);
 
 						atomicAdd(&lightImage[outLL], strength * (1. - xFactor) * (1. - yFactor));
 						atomicAdd(&lightImage[outUL], strength * (1. - xFactor) * (yFactor));

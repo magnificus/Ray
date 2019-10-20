@@ -197,6 +197,8 @@ float Pressed4 = 0.0;
 float Pressed5 = 0.0;
 float Pressed6 = 0.0;
 
+bool blurEnabled = false;
+
 #define PRESSED_RELEASED_MACRO(inKey, variable) if (key == GLFW_KEY_##inKey) { \
 if (action == GLFW_PRESS){ \
 variable = 1; \
@@ -222,6 +224,7 @@ void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mod
 	PRESSED_RELEASED_MACRO(E, EPressed);
 
 	PRESSED_ONLY_MACRO(SPACE, isMovingObject, !isMovingObject);
+	PRESSED_ONLY_MACRO(P, blurEnabled, !blurEnabled);
 	PRESSED_ONLY_MACRO(0, selectedIndex, 0);
 	PRESSED_ONLY_MACRO(1, selectedIndex, 1);
 	PRESSED_ONLY_MACRO(2, selectedIndex, 2);
@@ -790,10 +793,13 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	dim3 lightGrid(LIGHT_BUFFER_WIDTH / block.x, LIGHT_BUFFER_WIDTH / block.y, LIGHT_BUFFER_THICKNESS / block.z); // 2D grid, every thread will compute a pixel
 	launch_cudaClear(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, (unsigned int*)cuda_light_buffer);
 	launch_cudaLight(lightGridDraw, block, 0, pointers, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, totalTime.count(), input);
-	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-	//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
 
-	//launch_cudaBlur(lightGridDraw, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, });
+
+	//if (blurEnabled) {
+		//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+		//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+	//}
+
 
 	// main render
 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
