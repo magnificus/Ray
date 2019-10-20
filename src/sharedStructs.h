@@ -14,7 +14,7 @@
 #define LIGHT_BUFFER_WORLD_SIZE 200
 #define LIGHT_PLANE_SIZE 200
 #define LIGHT_BUFFER_WIDTH WIDTH
-#define LIGHT_BUFFER_THICKNESS 8
+#define LIGHT_BUFFER_THICKNESS 5
 #define LIGHT_BUFFER_THICKNESS_SIZE 150
 
 #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
@@ -84,7 +84,7 @@ enum shape { sphere, plane, water };
 struct rayHitInfo {
 	float reflectivity;
 	float refractivity;
-	float refractiveIndex;
+	float refractiveIndex = 1.0;
 	float insideColorDensity;
 	float3 color;
 	float roughness;
