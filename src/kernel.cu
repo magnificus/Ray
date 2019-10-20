@@ -668,7 +668,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	imageWidth = imgw;
 	imageHeight = imgh;
 	//float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
-	float3 out = 255 * 3 * traceNonRecursive(firstPlanePos, dirVector, 6, input.beginMedium, 1.0);
+	float3 out = 255 * 3 * traceNonRecursive(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
 
 
 	int firstPos = (y * imgw + x) * 4;
