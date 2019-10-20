@@ -171,12 +171,12 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 
 
 
-	float3 globalGridPos = (currRayPos - GLOBAL_GRID_MIN) / GLOBAL_GRID_DIMENSIONS;
-	globalGridPos = make_float3(floor(globalGridPos.x), floor(globalGridPos.y), floor(globalGridPos.z));
-	float tMin;
-	float tMax;
+	//float3 globalGridPos = (currRayPos - GLOBAL_GRID_MIN) / GLOBAL_GRID_DIMENSIONS;
+	//globalGridPos = make_float3(floor(globalGridPos.x), floor(globalGridPos.y), floor(globalGridPos.z));
+	//float tMin;
+	//float tMax;
 
-	bool isAlreadyInsideGlobalGrid = max(globalGridPos.x, max(globalGridPos.y, globalGridPos.z)) < GLOBAL_GRID_SIZE && min(globalGridPos.x, min(globalGridPos.y, globalGridPos.z)) >= 0;
+	//bool isAlreadyInsideGlobalGrid = max(globalGridPos.x, max(globalGridPos.y, globalGridPos.z)) < GLOBAL_GRID_SIZE && min(globalGridPos.x, min(globalGridPos.y, globalGridPos.z)) >= 0;
 	//if (isAlreadyInsideGlobalGrid/* || (intersectBox(currRayPos, currRayDir, GLOBAL_GRID_MIN, GLOBAL_GRID_MAX, tMin, tMax) && tMin > 0)*/) {
 
 
@@ -227,7 +227,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 				break;
 			}
 			case sphere: {
-				if (/*length(info.pos - currRayPos) - info.rad < closestDist && */intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
+				if (length(info.pos - currRayPos) - info.rad < closestDist && intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
 					closestDist = currDist;
 					float3 nextPos = currRayPos + currDist * currRayDir;
 					normal = normalize(nextPos - info.pos);
@@ -345,7 +345,6 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 		if (hit.info.insideColorDensity > 0.0001) {
 			// hack
 			toReturn = powf(1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
-			//toReturn = (1. - hit.info.insideColorDensity, length(hit.pos - originalPos));
 			toReturn = max(0.,toReturn);
 			#ifdef USING_DOUBLE_TAP_SHADOWS
 			hit = getHit(hit.pos + 0.01 * toLightVec, toLightVec, false);
@@ -388,7 +387,7 @@ __device__ Ray make_ray(float3 pos, float3 dir, hitInfo prevHit, float remaining
 
 }
 
-#define MAX_RAYS 5
+#define MAX_RAYS 10
 
 __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 initialRayDir, int remainingDepth, const hitInfo prevHitToAddDepthFrom, float totalContributionRemaining = 1.0, bool isLightPass = false) {
 
@@ -443,7 +442,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 
 						float refracMP = max(0., (1 - kr));
 						//refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1, outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining * refracMP, isLightPass);
-						Ray nextRay = make_ray(refractionRayOrig, refractionDirection, (outside ^ hit.normalIsInversed) && hit.info.insideColorDensity > 0.001? hit : currentRay.prevHitToAddDepthFrom, info.refractivity * refracMP * currentRay.totalContributionRemaining, isLightPass);
+						Ray nextRay = make_ray(refractionRayOrig, refractionDirection, (outside ^ hit.normalIsInversed) ? hit : currentRay.prevHitToAddDepthFrom, info.refractivity * refracMP * currentRay.totalContributionRemaining, isLightPass);
 						if (currentNbrRays < MAX_RAYS) {
 							AllRays[currentNbrRays] = nextRay;
 							currentNbrRays++;
@@ -454,7 +453,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 					extraReflection = max(0.0, min(1., kr) * info.refractivity);
 				}
 				float reflecMP = (info.reflectivity + extraReflection)* currentRay.totalContributionRemaining;
-				if ( reflecMP > 0.005 && !isLightPass) {
+				if ( reflecMP > 0.001 && !isLightPass) {
 					float3 reflectDir = reflect(currentRay.currRayDir, normal);
 					float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 
@@ -471,7 +470,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
 
 
-				if (colorMultiplier > 0.01 && !isLightPass) {
+				if (colorMultiplier > 0.001 && !isLightPass) {
 					float shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currentRay.currRayDir), normal);
 					accumColor = accumColor + ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color) ;
 				}
@@ -494,14 +493,13 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 						int outDUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
 						int outDLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
-						//int outUUL = nextZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
-						//int outULL = nextZ + (currY * LIGHT_BUFFER_WIDTH + currX);
-						//int outUUR = nextZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
-						//int outULR = nextZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
+						int outUUL = nextZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
+						int outULL = nextZ + (currY * LIGHT_BUFFER_WIDTH + currX);
+						int outUUR = nextZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
+						int outULR = nextZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
 						float xFactor = fmod(translatedPos.x, 1.f);
 						float yFactor = fmod(translatedPos.y, 1.f);
-						float zFactor = 1.;// fmod(translatedPos.z, 1.f);
 
 						atomicAdd(&lightImage[outDLL], strength * (1. - xFactor) * (1. - yFactor));
 						atomicAdd(&lightImage[outDUL], strength * (1. - xFactor) * (yFactor));

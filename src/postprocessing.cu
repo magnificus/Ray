@@ -14,12 +14,12 @@ cudaBloomSample(PostProcessPointers pointers, int imgw, int imgh)
 	int y = blockIdx.y * bh + ty;
 
 	float bloomThreshold = 255;
-	float bloomStrength = 0.01;
+	float bloomStrength = 0.002;
 
 	int firstPos = (y * imgw + x) * 4;
 	float3 CurrC = make_float3(pointers.inputImage[firstPos], pointers.inputImage[firstPos + 1], pointers.inputImage[firstPos + 2]);
 	float luma = (CurrC.x + CurrC.y + CurrC.z) / 3;
-	CurrC = max(0., powf(luma - bloomThreshold, 0.6)*bloomStrength) * CurrC;
+	CurrC = max(0., powf(luma - bloomThreshold, 0.7)*bloomStrength) * CurrC;
 
 
 	pointers.processWrite[firstPos] =  CurrC.x;
