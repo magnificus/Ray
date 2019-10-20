@@ -5,7 +5,7 @@
 #define AIR_DENSITY 0.001
 #define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
 #define WATER_COLOR make_float3(0,0.0,0.1)
-#define WATER_DENSITY 0.06
+#define WATER_DENSITY 0.07
 
 
 #define WIDTH 1024
@@ -14,7 +14,7 @@
 #define LIGHT_BUFFER_WORLD_SIZE 200
 #define LIGHT_PLANE_SIZE 200
 #define LIGHT_BUFFER_WIDTH WIDTH
-#define LIGHT_BUFFER_THICKNESS 4
+#define LIGHT_BUFFER_THICKNESS 10
 #define LIGHT_BUFFER_THICKNESS_SIZE 150
 
 #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
@@ -24,15 +24,16 @@
 // total size will be pow(GRID_SIZE,3) bc of xyz
 #define GRID_SIZE 15
 #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
-//#define GRID_DEPTH 1
 
 #define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
 
+
+// global grid is currently unused
 #define GLOBAL_GRID_SIZE 4
 #define GLOBAL_GRID_SIZE2 GLOBAL_GRID_SIZE*GLOBAL_GRID_SIZE
-#define GLOBAL_GRID_MAX make_float3(500,300,500)
-#define GLOBAL_GRID_MIN make_float3(-500,-100,-500)
-#define GLOBAL_GRID_DIMENSIONS (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN) *(1/GLOBAL_GRID_SIZE)
+#define GLOBAL_GRID_MAX make_float3(100,100,100)
+#define GLOBAL_GRID_MIN make_float3(-100,-100,-100)
+#define GLOBAL_GRID_DIMENSIONS (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN) *(1./GLOBAL_GRID_SIZE)
 
 #define GLOBAL_GRID_POS(x,y,z) GLOBAL_GRID_SIZE2*x + GLOBAL_GRID_SIZE*y + z
 
@@ -41,7 +42,6 @@ struct shapeInfo {
 	float3 pos;
 	float3 normal;
 	float rad;
-	bool isMoving = false;
 };
 
 struct sphereInfo {

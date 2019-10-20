@@ -79,6 +79,8 @@ void** gridMeshes;
 void** gridObjects;
 void* gridMeshesSizes;
 void* gridObjectsSizes;
+void* outOfBoundsMeshes;
+void* outOfBoundsObjects;
 
 
 struct cudaGraphicsResource* cuda_tex_resource;
@@ -106,7 +108,6 @@ extern "C" void
 launch_cudaUpSampleToDoubleRes(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers);
 
 size_t size_elements_data;
-unsigned int num_elements;
 
 size_t size_meshes_data;
 unsigned int num_meshes;
@@ -186,22 +187,49 @@ float APressed = 0.0;
 float QPressed = 0.0;
 float EPressed = 0.0;
 
-#define PRESSED_MACRO(inKey, variable) if (key == GLFW_KEY_##inKey) { \
+bool isMovingObject = false;
+int selectedIndex;
+
+float Pressed1 = 0.0;
+float Pressed2 = 0.0;
+float Pressed3 = 0.0;
+float Pressed4 = 0.0;
+float Pressed5 = 0.0;
+float Pressed6 = 0.0;
+
+#define PRESSED_RELEASED_MACRO(inKey, variable) if (key == GLFW_KEY_##inKey) { \
 if (action == GLFW_PRESS){ \
-variable = 1.0; \
+variable = 1; \
 } \
 else if (action == GLFW_RELEASE) { \
-	variable = 0.0; \
+	variable = 0; \
 } \
 }
+
+#define PRESSED_ONLY_MACRO(inKey, variable, val) if (key == GLFW_KEY_##inKey) { \
+if (action == GLFW_PRESS){ \
+variable = val; \
+} \
+}
+
 // Keyboard
 void keyboardfunc(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	PRESSED_MACRO(W, WPressed);
-	PRESSED_MACRO(S, SPressed);
-	PRESSED_MACRO(D, DPressed);
-	PRESSED_MACRO(A, APressed);
-	PRESSED_MACRO(Q, QPressed);
-	PRESSED_MACRO(E, EPressed);
+	PRESSED_RELEASED_MACRO(W, WPressed);
+	PRESSED_RELEASED_MACRO(S, SPressed);
+	PRESSED_RELEASED_MACRO(D, DPressed);
+	PRESSED_RELEASED_MACRO(A, APressed);
+	PRESSED_RELEASED_MACRO(Q, QPressed);
+	PRESSED_RELEASED_MACRO(E, EPressed);
+
+	PRESSED_ONLY_MACRO(SPACE, isMovingObject, !isMovingObject);
+	PRESSED_ONLY_MACRO(0, selectedIndex, 0);
+	PRESSED_ONLY_MACRO(1, selectedIndex, 1);
+	PRESSED_ONLY_MACRO(2, selectedIndex, 2);
+	PRESSED_ONLY_MACRO(3, selectedIndex, 3);
+	PRESSED_ONLY_MACRO(4, selectedIndex, 4);
+	PRESSED_ONLY_MACRO(5, selectedIndex, 5);
+	PRESSED_ONLY_MACRO(6, selectedIndex, 6);
+	PRESSED_ONLY_MACRO(7, selectedIndex, 7);
 }
 
 bool firstMouse = true;
@@ -236,9 +264,9 @@ void mouseFunc(GLFWwindow* window, double xpos, double ypos) {
 	currPitch = currPitch < -89.0f ? -89.0f : currPitch;
 
 
-	currFront.x = cos(glm::radians(currYaw)) * cos(glm::radians(currPitch));
-	currFront.y = sin(glm::radians(currPitch));
-	currFront.z = sin(glm::radians(currYaw)) * cos(glm::radians(currPitch));
+	currFront.x = (float)cos(glm::radians(currYaw)) * cos(glm::radians(currPitch));
+	currFront.y = (float)sin(glm::radians(currPitch));
+	currFront.z = (float)sin(glm::radians(currYaw)) * cos(glm::radians(currPitch));
 	currFront = glm::normalize(currFront);
 
 }
@@ -439,143 +467,171 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
 	return myMeshOnCuda;
 }
 #define NUM_ELEMENTS 8
-
-void setupGlobalGrid(objectInfo objects[NUM_ELEMENTS], std::vector<triangleMesh> importedMeshes) {
-
-	unsigned int gridSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int*);
-	unsigned int gridSizesSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int);
-
-	float3 gridDist = (1.0 / GLOBAL_GRID_SIZE)* (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN);
+objectInfo objects[NUM_ELEMENTS];
 
 
-	unsigned int** objectGrid = (unsigned int**)malloc(gridSize);
-	unsigned int* objectSizes = (unsigned int*)malloc(gridSizesSize);
-	unsigned int** meshesGrid = (unsigned int**)malloc(gridSize);
-	unsigned int* meshesSizes = (unsigned int*)malloc(gridSizesSize);
+//void setupGlobalGrid(objectInfo objects[NUM_ELEMENTS], std::vector<triangleMesh> importedMeshes) {
+//
+//	unsigned int gridSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int*);
+//	unsigned int gridSizesSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int);
+//
+//	float3 gridDist = (1.0 / GLOBAL_GRID_SIZE)* (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN);
+//
+//
+//	unsigned int** objectGrid = (unsigned int**)malloc(gridSize);
+//	unsigned int* objectSizes = (unsigned int*)malloc(gridSizesSize);
+//	unsigned int** meshesGrid = (unsigned int**)malloc(gridSize);
+//	unsigned int* meshesSizes = (unsigned int*)malloc(gridSizesSize);
+//
+//	std::vector<unsigned int> objectBlocks;
+//	for (int x = 0; x < GLOBAL_GRID_SIZE; x++) {
+//		for (int y = 0; y < GLOBAL_GRID_SIZE; y++) {
+//			for (int z = 0; z < GLOBAL_GRID_SIZE; z++) {
+//				std::vector<unsigned int> objectsToAddToBlock;
+//				std::vector<unsigned int> meshesToAddToBlock;
+//
+//				float3 boxMin = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x, y, z);
+//				float3 boxMax = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x+1, y+1, z+1);
+//				float3 center = (boxMin + boxMax) * 0.5;
+//
+//				for (int i = 0; i < NUM_ELEMENTS; i++) {
+//					objectInfo object = objects[i];
+//					switch (object.s) {
+//						case water:
+//						case plane: {
+//							bool foundPositive = false;
+//							bool foundNegative = false;
+//							for (int x2 = 0; x2 < 2; x2++) {
+//								for (int y2 = 0; y2 < 2; y2++) {
+//									for (int z2 = 0; z2 < 2; z2++) {
+//										float3 vertP = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x2, y2, z2);
+//										float3 diffV = vertP - object.shapeData.pos;
+//										float dotRes = dot(diffV, object.shapeData.normal);
+//										foundPositive |= dotRes > 0;
+//										foundNegative |= dotRes < 0;
+//
+//									}
+//								}
+//							}
+//
+//							if (foundNegative && foundPositive)
+//								objectsToAddToBlock.push_back(i);
+//
+//							break;
+//						}
+//						case sphere: {
+//
+//						}
+//					}
+//				}
+//				for (int i = 0; i < importedMeshes.size(); i++) {
+//					triangleMesh mesh = importedMeshes[i];
+//					float3 meshMin = mesh.bbMin;
+//					float3 meshMax = mesh.bbMin;
+//					#define overlaps1D(var) (meshMax . var >= boxMin .var && boxMax. var >= meshMin. var)
+//
+//					if (overlaps1D(x) && overlaps1D(y) && overlaps1D(z))
+//						objectsToAddToBlock.push_back(i);
+//
+//				}
+//
+//				// add objects to grid
+//				objectSizes[GLOBAL_GRID_POS(x, y, z)] = objectsToAddToBlock.size();
+//				objectGrid[GLOBAL_GRID_POS(x, y, z)] = (unsigned int*)malloc(objectsToAddToBlock.size() * sizeof(unsigned int));
+//
+//				for (int i = 0; i < objectsToAddToBlock.size(); i++) {
+//					objectGrid[GLOBAL_GRID_POS(x, y, z)][i] = objectsToAddToBlock[i]; // add collisions to grid
+//				}
+//
+//				// add meshes to grid
+//				meshesSizes[GLOBAL_GRID_POS(x, y, z)] = meshesToAddToBlock.size();
+//				meshesGrid[GLOBAL_GRID_POS(x, y, z)] = (unsigned int*)malloc(meshesToAddToBlock.size() * sizeof(unsigned int));
+//
+//				for (int i = 0; i < meshesToAddToBlock.size(); i++) {
+//					meshesGrid[GLOBAL_GRID_POS(x, y, z)][i] = meshesToAddToBlock[i]; // add collisions to grid
+//				}
+//			}
+//		}
+//	}
+//
+//	//unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
+//	//unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
+//
+//	//unsigned int 
+//
+//	//void** gridMeshes;
+//	//void** gridObjects;
+//	//void* gridMeshesSizes;
+//	//void* gridObjectsSizes;
+//
+//
+//	checkCudaErrors(cudaMalloc(&gridMeshes, gridSize));
+//	checkCudaErrors(cudaMalloc(&gridObjects, gridSize));
+//
+//	checkCudaErrors(cudaMalloc(&gridMeshesSizes, gridSizesSize));
+//	checkCudaErrors(cudaMalloc(&gridObjectsSizes, gridSizesSize));
+//
+//	unsigned int** CudaMeshGridPointer = (unsigned int**)malloc(gridSize);
+//	unsigned int** CudaObjectGridPointer = (unsigned int**)malloc(gridSize);
+//	for (int i = 0; i < GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE; i++) {
+//			checkCudaErrors(cudaMalloc(&(CudaMeshGridPointer[i]), meshesSizes[i] * sizeof(unsigned int)));
+//			checkCudaErrors(cudaMemcpy(CudaMeshGridPointer[i], meshesGrid[i], meshesSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
+//
+//			checkCudaErrors(cudaMalloc(&(CudaObjectGridPointer[i]), objectSizes[i] * sizeof(unsigned int)));
+//			checkCudaErrors(cudaMemcpy(CudaObjectGridPointer[i], objectGrid[i], objectSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
+//	}
+//
+//	checkCudaErrors(cudaMalloc(&gridMeshes, gridSize));
+//	checkCudaErrors(cudaMalloc(&gridObjects, gridSize));
+//	checkCudaErrors(cudaMalloc(&gridMeshesSizes, gridSizesSize));
+//	checkCudaErrors(cudaMalloc(&gridObjectsSizes, gridSizesSize));
+//
+//
+//	checkCudaErrors(cudaMemcpy(gridMeshes, CudaMeshGridPointer, gridSize, cudaMemcpyHostToDevice));
+//	checkCudaErrors(cudaMemcpy(gridMeshesSizes, gridMeshesSizes, gridSizesSize, cudaMemcpyHostToDevice));
+//
+//	checkCudaErrors(cudaMemcpy(gridObjects, CudaObjectGridPointer, gridSize, cudaMemcpyHostToDevice));
+//	checkCudaErrors(cudaMemcpy(gridObjectsSizes, gridObjectsSizes, gridSizesSize, cudaMemcpyHostToDevice));
+//
+//
+//	for (int i = 0; i < GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE; i++) {
+//		free(meshesGrid[i]);
+//		free(objectGrid[i]);
+//	}
+//	free(meshesGrid);
+//	free(objectGrid);
+//	free(meshesSizes);
+//	free(objectSizes);
+//
+//	//return myMeshOnCuda;
+//
+//
+//}
 
-	std::vector<unsigned int> objectBlocks;
-	for (int x = 0; x < GLOBAL_GRID_SIZE; x++) {
-		for (int y = 0; y < GLOBAL_GRID_SIZE; y++) {
-			for (int z = 0; z < GLOBAL_GRID_SIZE; z++) {
-				std::vector<unsigned int> objectsToAddToBlock;
-				std::vector<unsigned int> meshesToAddToBlock;
+void createObjects() {
+	size_elements_data = sizeof(objectInfo) * NUM_ELEMENTS;
+	checkCudaErrors(cudaMalloc(&cuda_custom_objects_buffer, size_elements_data)); // Allocate CUDA memory for objects
 
-				float3 boxMin = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x, y, z);
-				float3 boxMax = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x+1, y+1, z+1);
-				float3 center = (boxMin + boxMax) * 0.5;
+	shapeInfo s1 = make_shapeInfo(make_float3(0, -99, 0), make_float3(0, 0, 0), 100);
+	shapeInfo s2 = make_shapeInfo(make_float3(0, -15, 50), make_float3(0, 0, 0), 14); // diffuse
+	shapeInfo s3 = make_shapeInfo(make_float3(0, 4, -80), make_float3(0, 0, 0), 8); // reflective
+	shapeInfo s4 = make_shapeInfo(make_float3(-50, 4, 0), make_float3(0, 0, 0), 12); // refractive
+	shapeInfo s5 = make_shapeInfo(make_float3(-50, 10, -50), make_float3(0, 0, 0), 8); // refractive 2
+	shapeInfo s6 = make_shapeInfo(make_float3(-30, 10, 10), make_float3(0, 0, 0), 8); // refractive 3
+	shapeInfo p1 = make_shapeInfo(make_float3(0, -5, 0), make_float3(0, 1, 0), 0); // water top
+	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
 
-				for (int i = 0; i < NUM_ELEMENTS; i++) {
-					objectInfo object = objects[i];
-					switch (object.s) {
-						case water:
-						case plane: {
-							bool foundPositive = false;
-							bool foundNegative = false;
-							for (int x2 = 0; x2 < 2; x2++) {
-								for (int y2 = 0; y2 < 2; y2++) {
-									for (int z2 = 0; z2 < 2; z2++) {
-										float3 vertP = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x2, y2, z2);
-										float3 diffV = vertP - object.shapeData.pos;
-										float dotRes = dot(diffV, object.shapeData.normal);
-										foundPositive |= dotRes > 0;
-										foundNegative |= dotRes < 0;
-
-									}
-								}
-							}
-
-							if (foundNegative && foundPositive)
-								objectsToAddToBlock.push_back(i);
-
-							break;
-						}
-						case sphere: {
-
-						}
-					}
-				}
-				for (int i = 0; i < importedMeshes.size(); i++) {
-					triangleMesh mesh = importedMeshes[i];
-					float3 meshMin = mesh.bbMin;
-					float3 meshMax = mesh.bbMin;
-					#define overlaps1D(var) (meshMax . var >= boxMin .var && boxMax. var >= meshMin. var)
-
-					if (overlaps1D(x) && overlaps1D(y) && overlaps1D(z))
-						objectsToAddToBlock.push_back(i);
-
-				}
-
-				// add objects to grid
-				objectSizes[GLOBAL_GRID_POS(x, y, z)] = objectsToAddToBlock.size();
-				objectGrid[GLOBAL_GRID_POS(x, y, z)] = (unsigned int*)malloc(objectsToAddToBlock.size() * sizeof(unsigned int));
-
-				for (int i = 0; i < objectsToAddToBlock.size(); i++) {
-					objectGrid[GLOBAL_GRID_POS(x, y, z)][i] = objectsToAddToBlock[i]; // add collisions to grid
-				}
-
-				// add meshes to grid
-				meshesSizes[GLOBAL_GRID_POS(x, y, z)] = meshesToAddToBlock.size();
-				meshesGrid[GLOBAL_GRID_POS(x, y, z)] = (unsigned int*)malloc(meshesToAddToBlock.size() * sizeof(unsigned int));
-
-				for (int i = 0; i < meshesToAddToBlock.size(); i++) {
-					meshesGrid[GLOBAL_GRID_POS(x, y, z)][i] = meshesToAddToBlock[i]; // add collisions to grid
-				}
-			}
-		}
-	}
-
-	//unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
-	//unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
-
-	//unsigned int 
-
-	//void** gridMeshes;
-	//void** gridObjects;
-	//void* gridMeshesSizes;
-	//void* gridObjectsSizes;
+	shapeInfo sun = make_shapeInfo(make_float3(0, 2000, 0), make_float3(1, 0, 0), 200);
 
 
-	checkCudaErrors(cudaMalloc(&gridMeshes, gridSize));
-	checkCudaErrors(cudaMalloc(&gridObjects, gridSize));
-
-	checkCudaErrors(cudaMalloc(&gridMeshesSizes, gridSizesSize));
-	checkCudaErrors(cudaMalloc(&gridObjectsSizes, gridSizesSize));
-
-	unsigned int** CudaMeshGridPointer = (unsigned int**)malloc(gridSize);
-	unsigned int** CudaObjectGridPointer = (unsigned int**)malloc(gridSize);
-	for (int i = 0; i < GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE; i++) {
-			checkCudaErrors(cudaMalloc(&(CudaMeshGridPointer[i]), meshesSizes[i] * sizeof(unsigned int)));
-			checkCudaErrors(cudaMemcpy(CudaMeshGridPointer[i], meshesGrid[i], meshesSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
-
-			checkCudaErrors(cudaMalloc(&(CudaObjectGridPointer[i]), objectSizes[i] * sizeof(unsigned int)));
-			checkCudaErrors(cudaMemcpy(CudaObjectGridPointer[i], objectGrid[i], objectSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
-	}
-
-	checkCudaErrors(cudaMalloc(&gridMeshes, gridSize));
-	checkCudaErrors(cudaMalloc(&gridObjects, gridSize));
-	checkCudaErrors(cudaMalloc(&gridMeshesSizes, gridSizesSize));
-	checkCudaErrors(cudaMalloc(&gridObjectsSizes, gridSizesSize));
-
-
-	checkCudaErrors(cudaMemcpy(gridMeshes, CudaMeshGridPointer, gridSize, cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(gridMeshesSizes, gridMeshesSizes, gridSizesSize, cudaMemcpyHostToDevice));
-
-	checkCudaErrors(cudaMemcpy(gridObjects, CudaObjectGridPointer, gridSize, cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(gridObjectsSizes, gridObjectsSizes, gridSizesSize, cudaMemcpyHostToDevice));
-
-
-	for (int i = 0; i < GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE; i++) {
-		free(meshesGrid[i]);
-		free(objectGrid[i]);
-	}
-	free(meshesGrid);
-	free(objectGrid);
-	free(meshesSizes);
-	free(objectSizes);
-
-	//return myMeshOnCuda;
-
-
+	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0, 0.0); // reflective
+	objects[1] = make_objectInfo(sphere, s6, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.6, 0.0, 0.0); // refractive 3
+	objects[2] = make_objectInfo(water, p1, 0.0, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0); // water top
+	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 0); // sand ocean floor
+	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 2000); // island
+	objects[5] = make_objectInfo(sphere, sun, 0.0, 5000 * make_float3(1, 1, 1), 0.0, 1.33, 0.0, 0.0); // sun
+	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0); // yellow boi
+	objects[7] = make_objectInfo(sphere, s5, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0, 0.0); // refractive 2
 }
 
 void initCUDABuffers()
@@ -594,39 +650,8 @@ void initCUDABuffers()
 	checkCudaErrors(cudaMalloc(&cuda_light_buffer_2, size_light_data)); // Allocate CUDA memory for pong buffer
 
 
-	num_elements = NUM_ELEMENTS;
-	size_elements_data = sizeof(objectInfo) * num_elements;
-
-	checkCudaErrors(cudaMalloc(&cuda_custom_objects_buffer, size_elements_data)); // Allocate CUDA memory for objects
-
-	shapeInfo s1 = make_shapeInfo(make_float3(0, -99, 0), make_float3(0, 0, 0), 100);
-	shapeInfo s2 = make_shapeInfo(make_float3(0, -15, 50), make_float3(0, 0, 0), 14); // diffuse
-	shapeInfo s3 = make_shapeInfo(make_float3(0, 4, -80), make_float3(0, 0, 0), 8); // reflective
-	shapeInfo s4 = make_shapeInfo(make_float3(-50, 4, 0), make_float3(0, 0, 0), 8); // refractive
-	shapeInfo s5 = make_shapeInfo(make_float3(-50, 10, -50), make_float3(0, 0, 0), 8); // refractive 2
-	s5.isMoving = true;
-	shapeInfo s6 = make_shapeInfo(make_float3(-30, 10, 10), make_float3(0, 0, 0), 8); // refractive 3
-	//s6.isMoving = true;
-	shapeInfo p1 = make_shapeInfo(make_float3(0, -5, 0), make_float3(0, 1, 0), 0); // water top
-	shapeInfo p3 = make_shapeInfo(make_float3(0, -60.0, 0), make_float3(0, 1, 0), 0); // sand bottom
-	//shapeInfo s4 = make_shapeInfo(make_float3(70, 0, 0), make_float3(1, 0, 0), 0);
-
-	shapeInfo sun = make_shapeInfo(make_float3(0, 2000, 0), make_float3(1, 0, 0), 200);
-
-
-	objectInfo objects[NUM_ELEMENTS];
-	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
-	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0, 0.0); // reflective
-	objects[2] = make_objectInfo(water, p1, 0.0, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0); // water top
-	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 0); // sand ocean floor
-	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 2000); // island
-	objects[5] = make_objectInfo(sphere, sun, 0.0, 5000*make_float3(1,1,1), 0.0, 1.33, 0.0, 0.0); // sun
-	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0); // yellow boi
-	objects[7] = make_objectInfo(sphere, s5, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0, 0.0); // refractive 2
-	objects[1] = make_objectInfo(sphere, s6, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.6, 0.0, 0.0); // refractive 3
-
-	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
-
+	// add objects
+	createObjects();
 
 
 	// add meshes
@@ -660,10 +685,8 @@ void initCUDABuffers()
 		meshesOnCuda[i] = prepareMeshForCuda(curr);
 	}
 	// setup the global grid
+	//setupGlobalGrid(objects, importedMeshes);
 
-	setupGlobalGrid(objects, importedMeshes);
-
-	//gridMeshes = (*unsigned int) malloc(GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE);
 
 
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
@@ -691,9 +714,25 @@ bool initGLFW() {
 }
 
 
+
 #define X_ROTATE_SCALE 0.1
 #define Y_ROTATE_SCALE 0.1
 #define MOVE_SPEED 50
+
+void updateObjects(std::chrono::duration<double> deltaTime) {
+
+	if (isMovingObject) {
+		float3 movementVec = make_float3(WPressed - SPressed, QPressed - EPressed, APressed - DPressed);
+		objects[selectedIndex].shapeData.pos = objects[selectedIndex].shapeData.pos + movementVec * deltaTime.count() * MOVE_SPEED;
+	}
+
+
+	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
+}
+
+
+
+
 
 
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
@@ -710,12 +749,15 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	glm::vec3 actualUpV = glm::normalize(glm::cross(frontV, rightV));
 	glm::vec3 lessUp = actualUpV;
 
-	frontV *= MOVE_SPEED* (WPressed -SPressed)*deltaTime.count();
-	rightV *= MOVE_SPEED* (DPressed -APressed)*deltaTime.count();
-	lessUp *= MOVE_SPEED * (EPressed - QPressed)*deltaTime.count();
-	currP += frontV;
-	currP += rightV;
-	currP += lessUp;
+	if (!isMovingObject) {
+
+		frontV *= MOVE_SPEED * (WPressed - SPressed) * deltaTime.count();
+		rightV *= MOVE_SPEED * (DPressed - APressed) * deltaTime.count();
+		lessUp *= MOVE_SPEED * (EPressed - QPressed) * deltaTime.count();
+		currP += frontV;
+		currP += rightV;
+		currP += lessUp;
+	}
 
 	input.currPosX = currP.x;
 	input.currPosY = currP.y;
@@ -730,6 +772,8 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.upZ = actualUpV.z;
 
 
+	updateObjects(deltaTime);
+
 	rayHitInfo prevMedium;
 	prevMedium.color = input.currPosY < -5 ? WATER_COLOR : AIR_COLOR;
 	prevMedium.insideColorDensity = input.currPosY < -5 ? WATER_DENSITY : AIR_DENSITY;
@@ -737,7 +781,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.beginMedium = hitInfo{ prevMedium, true, float3(), float3() };
 
 
-	sceneInfo info{ (unsigned int**)gridMeshes,(unsigned int**)gridObjects, (unsigned int*)gridMeshesSizes, (unsigned int*)gridObjectsSizes,totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
+	sceneInfo info{ (unsigned int**)gridMeshes,(unsigned int**)gridObjects, (unsigned int*)gridMeshesSizes, (unsigned int*)gridObjectsSizes,totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, NUM_ELEMENTS, (triangleMesh*)cuda_mesh_buffer, num_meshes };
 	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, info };
 	//inputPointers pointers2{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer_2, info };
 

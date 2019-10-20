@@ -172,124 +172,131 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 	toReturn.hit = false;
 
 
-	// mathematical objects
-	for (int i = 0; i < scene.numObjects; i++) {
-		const objectInfo& curr = scene.objects[i];
-		float currDist;
+
+	float3 globalGridPos = (currRayPos - GLOBAL_GRID_MIN) / GLOBAL_GRID_DIMENSIONS;
+	globalGridPos = make_float3(floor(globalGridPos.x), floor(globalGridPos.y), floor(globalGridPos.z));
+	float tMin;
+	float tMax;
+
+	bool isAlreadyInsideGlobalGrid = max(globalGridPos.x, max(globalGridPos.y, globalGridPos.z)) < GLOBAL_GRID_SIZE && min(globalGridPos.x, min(globalGridPos.y, globalGridPos.z)) >= 0;
+	//if (isAlreadyInsideGlobalGrid/* || (intersectBox(currRayPos, currRayDir, GLOBAL_GRID_MIN, GLOBAL_GRID_MAX, tMin, tMax) && tMin > 0)*/) {
 
 
-		shapeInfo info = curr.shapeData;
-		if (info.isMoving) {
-			info.pos = make_float3(sin(currentTime*0.3) * info.pos.x, (sin(currentTime * 0.5))*info.pos.y + 2*info.pos.y, cos(currentTime*0.3) * info.pos.z);
-
-		}
-		switch (curr.s) {
-		case water: {
-			shapeInfo otherInfo = info;
-			otherInfo.normal = inverse(otherInfo.normal);
-			float3 normalToUse = info.normal;
-			bool needsToCommunicateInversion = false;
-			bool intersected = intersectPlane(info, currRayPos, currRayDir, currDist);
-			//if (!intersected) {
-			//	intersected = intersectPlane(otherInfo, currRayPos, currRayDir, currDist);
-			//	normalToUse = otherInfo.normal;
-			//	needsToCommunicateInversion = true;
-			//}
-			
-			if (intersected && currDist < closestDist) {
-				closestDist = currDist;
-				toReturn.info = curr.rayInfo;
-				float3 pos = currRayPos + currDist * currRayDir;
-				float3 waveInput = pos * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
-				float strength = 3000;
-
-				float3 distortion = getDistortion(normalToUse, waveInput, 4);
-				normal = normalize(normalToUse + strength * distortion);
-				toReturn.hit = true;
-				toReturn.normalIsInversed = needsToCommunicateInversion;
-
-			}
-
-			break;
-		}
-		case plane: {
-			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
-				closestDist = currDist;
-				toReturn.info = curr.rayInfo;
-				normal = info.normal;
-				toReturn.hit = true;
-			}
-
-			break;
-		}
-		case sphere: {
-			if (length(info.pos - currRayPos) - info.rad < closestDist && intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
-				closestDist = currDist;
-				float3 nextPos = currRayPos + currDist * currRayDir;
-				normal = normalize(nextPos - info.pos);
-				toReturn.info = curr.rayInfo;
-				toReturn.hit = true;
-
-			}
-			break;
-		}
-		}
-	}
+		// mathematical objects
+		for (int i = 0; i < scene.numObjects; i++) {
+			const objectInfo& curr = scene.objects[i];
+			float currDist;
 
 
-	// meshes
-	for (int i = 0; i < scene.numMeshes; i++) {
-		triangleMesh currMesh = scene.meshes[i];
-
-		float tMin = 0;
-		float tMax;
-
-		float3 gridPos = (currRayPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
-		gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
-
-		bool isAlreadyInside = max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0;
-		if (isAlreadyInside || (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0)) {
-
-			// engage the GRID
-			float3 currPos = currRayPos + (tMin + 0.001)*currRayDir;
-			gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
-
-			int stepsBeforeQuit = 1000;
-			bool hitGrid = false;
-			while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
-
-				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
-				unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
-
-				float t;
-				float u;
-				float v;
-				for (unsigned int j = 0; j < currMesh.gridSizes[gridPosLoc]; j++) {
-					unsigned int iPos = currMesh.grid[gridPosLoc][j];
-					if (RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[iPos]], currMesh.vertices[currMesh.indices[iPos + 1]], currMesh.vertices[currMesh.indices[iPos + 2]], t, u, v) && t < closestDist) {
-						closestDist = t;
-						toReturn.info = currMesh.rayInfo;
-
-						normal = (1 - v - u)* currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
-						toReturn.hit = true;
-						toReturn.pos = currPos + t * currRayDir;
-						stepsBeforeQuit = 1;
-					}
+			shapeInfo info = curr.shapeData;
+			switch (curr.s) {
+			case water: {
+				shapeInfo otherInfo = info;
+				otherInfo.normal = inverse(otherInfo.normal);
+				float3 normalToUse = info.normal;
+				bool needsToCommunicateInversion = false;
+				bool intersected = intersectPlane(info, currRayPos, currRayDir, currDist);
+				if (!intersected) {
+					intersected = intersectPlane(otherInfo, currRayPos, currRayDir, currDist);
+					normalToUse = otherInfo.normal;
+					needsToCommunicateInversion = true;
 				}
 
-				float3 distFromCorner = currPos - gridPos * currMesh.gridBoxDimensions - currMesh.bbMin;
-				float3 distFromOtherCorner = currMesh.gridBoxDimensions - distFromCorner;
-				float remainingToHitX = max(-distFromCorner.x / currRayDir.x, distFromOtherCorner.x / currRayDir.x);
-				float remainingToHitY = max(-distFromCorner.y / currRayDir.y, distFromOtherCorner.y / currRayDir.y);
-				float remainingToHitZ = max(-distFromCorner.z / currRayDir.z, distFromOtherCorner.z / currRayDir.z);
-				float minDist = min(remainingToHitX, min(remainingToHitY, remainingToHitZ)) + 0.01;
+				if (intersected && currDist < closestDist) {
+					closestDist = currDist;
+					toReturn.info = curr.rayInfo;
+					float3 pos = currRayPos + currDist * currRayDir;
+					float3 waveInput = pos * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
+					float strength = 3000;
 
-				currPos = currPos + minDist * currRayDir;
-				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+					float3 distortion = getDistortion(normalToUse, waveInput, 4);
+					normal = normalize(normalToUse + strength * distortion);
+					toReturn.hit = true;
+					toReturn.normalIsInversed = needsToCommunicateInversion;
+
+				}
+
+				break;
+			}
+			case plane: {
+				if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+					closestDist = currDist;
+					toReturn.info = curr.rayInfo;
+					normal = info.normal;
+					toReturn.hit = true;
+				}
+
+				break;
+			}
+			case sphere: {
+				if (/*length(info.pos - currRayPos) - info.rad < closestDist && */intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
+					closestDist = currDist;
+					float3 nextPos = currRayPos + currDist * currRayDir;
+					normal = normalize(nextPos - info.pos);
+					toReturn.info = curr.rayInfo;
+					toReturn.hit = true;
+
+				}
+				break;
+			}
 			}
 		}
 
-	}
+
+		// meshes
+		for (int i = 0; i < scene.numMeshes; i++) {
+			triangleMesh currMesh = scene.meshes[i];
+
+			float tMin = 0;
+			float tMax;
+
+			float3 gridPos = (currRayPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+			gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
+
+			bool isAlreadyInside = max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0;
+			if (isAlreadyInside || (intersectBox(currRayPos, currRayDir, currMesh.bbMin, currMesh.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0)) {
+
+				// engage the GRID
+				float3 currPos = currRayPos + (tMin + 0.001) * currRayDir;
+				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+
+				int stepsBeforeQuit = 1000;
+				bool hitGrid = false;
+				while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
+
+					gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
+					unsigned int gridPosLoc = GRID_POS(gridPos.x, gridPos.y, gridPos.z);
+
+					float t;
+					float u;
+					float v;
+					for (unsigned int j = 0; j < currMesh.gridSizes[gridPosLoc]; j++) {
+						unsigned int iPos = currMesh.grid[gridPosLoc][j];
+						if (RayIntersectsTriangle(currRayPos, currRayDir, currMesh.vertices[currMesh.indices[iPos]], currMesh.vertices[currMesh.indices[iPos + 1]], currMesh.vertices[currMesh.indices[iPos + 2]], t, u, v) && t < closestDist) {
+							closestDist = t;
+							toReturn.info = currMesh.rayInfo;
+
+							normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
+							toReturn.hit = true;
+							toReturn.pos = currPos + t * currRayDir;
+							stepsBeforeQuit = 1;
+						}
+					}
+
+					float3 distFromCorner = currPos - gridPos * currMesh.gridBoxDimensions - currMesh.bbMin;
+					float3 distFromOtherCorner = currMesh.gridBoxDimensions - distFromCorner;
+					float remainingToHitX = max(-distFromCorner.x / currRayDir.x, distFromOtherCorner.x / currRayDir.x);
+					float remainingToHitY = max(-distFromCorner.y / currRayDir.y, distFromOtherCorner.y / currRayDir.y);
+					float remainingToHitZ = max(-distFromCorner.z / currRayDir.z, distFromOtherCorner.z / currRayDir.z);
+					float minDist = min(remainingToHitX, min(remainingToHitY, remainingToHitZ)) + 0.01;
+
+					currPos = currPos + minDist * currRayDir;
+					gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+				}
+			}
+
+		}
+	//}
 
 
 	toReturn.normal = normal;
@@ -394,8 +401,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 	AllRays[0] = firstRay;
 
 	for (int i = 0; i < remainingDepth && currentNbrRays > 0; i++) {
-		int firstNumR = currentNbrRays;
-		for (int j = 0; j < firstNumR; j++) {
+		for (int j = 0; j < currentNbrRays; j++) {
 			Ray currentRay = AllRays[j];
 
 			hitInfo hit = getHit(currentRay.currRayPos, currentRay.currRayDir, isLightPass);
@@ -422,16 +428,26 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				float3 reflectBias = refractBias;// 0.001 * normal;
 				bool outside = dot(currentRay.currRayDir, normal) < 0;
 
-				//if (currentRay.prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
 				float before = currentRay.totalContributionRemaining;
-					float prevColorMP = 1 - powf(1. - currentRay.prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currentRay.currRayPos));
-					accumColor = accumColor + prevColorMP * currentRay.prevHitToAddDepthFrom.info.color*currentRay.totalContributionRemaining;
-					currentRay.totalContributionRemaining *= (1. - prevColorMP);
+				float prevColorMP = 1 - powf(1. - currentRay.prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currentRay.currRayPos));
+				accumColor = accumColor + prevColorMP * currentRay.prevHitToAddDepthFrom.info.color*currentRay.totalContributionRemaining;
+				currentRay.totalContributionRemaining *= (1. - prevColorMP);
+
+
+
+				// only bother with refrac/reflec if the point is not super far away
+				//bool isCloseToTheEdge = length(currentRay.currRayPos) > 500;
+				//if (isCloseToTheEdge) {
+				//	info.reflectivity = 0;
+				//	info.refractivity = 0;
 				//}
 
+				//if (!isCloseEnoughToBranch) {
+				//	info.refractivity = 0;
+				//	info.reflectivity = 0;
+				//}
 
-
-				if (info.refractivity* currentRay.totalContributionRemaining > 0.001) {
+				if ( info.refractivity* currentRay.totalContributionRemaining > 0.001) {
 					float kr = 1.0;
 					fresnel(currentRay.currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
 
@@ -452,7 +468,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 					extraReflection = max(0.0, min(1., kr) * info.refractivity);
 				}
 				float reflecMP = (info.reflectivity + extraReflection)* currentRay.totalContributionRemaining;
-				if (reflecMP > 0.001 && !isLightPass) {
+				if ( reflecMP > 0.001 && !isLightPass) {
 					float3 reflectDir = reflect(currentRay.currRayDir, normal);
 					float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 
@@ -469,7 +485,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
 
 
-				if (colorMultiplier > 0.0001 && !isLightPass) {
+				if (colorMultiplier > 0.01 && !isLightPass) {
 					float shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currentRay.currRayDir), normal);
 					accumColor = accumColor + ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color) ;
 				}
@@ -662,11 +678,6 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	pointers.image1[firstPos+1] = out.y;
 	pointers.image1[firstPos+2] = out.z;
 }
-
-//float rand(float2 co) {
-//	return fmod((sin(dot(co, make_float2(12.9898, 78.233))) * 43758.5453),0);
-//}
-
 
 __global__ void
 cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
