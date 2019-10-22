@@ -3,7 +3,7 @@
 #include "cuda_runtime.h"
 
 #define AIR_DENSITY 0.001
-#define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
+#define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255)
 #define WATER_COLOR make_float3(0,0.0,0.1)
 #define WATER_DENSITY 0.07
 
@@ -171,6 +171,7 @@ struct inputPointers {
 
 };
 
+
 struct hitInfo {
 	rayHitInfo info;
 	bool hit = false;
@@ -179,6 +180,22 @@ struct hitInfo {
 
 	bool normalIsInversed = false;
 };
+
+struct prevHitInfo {
+	float insideColorDensity = 0.0;
+	float3 color;
+	float refractiveIndex = 1.0;
+};
+
+
+inline __device__ prevHitInfo make_prevHitInfo(const hitInfo& info) {
+	prevHitInfo toReturn;
+	toReturn.insideColorDensity = info.info.insideColorDensity;
+	toReturn.color = info.info.color;
+	toReturn.refractiveIndex = info.info.refractiveIndex;
+	return toReturn;
+
+}
 
 
 struct inputStruct {
@@ -194,7 +211,7 @@ struct inputStruct {
 	float upY;
 	float upZ;
 
-	hitInfo beginMedium;
+	prevHitInfo beginMedium;
 };
 
 

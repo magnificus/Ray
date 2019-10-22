@@ -677,6 +677,12 @@ void initCUDABuffers()
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
 	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20,0,0.0), 0)); //le bun
 
+	//std::vector<triangleMesh> wrechMesh = importModel("../../meshes/wreck.obj", 0.1, make_float3(0.0, 10, 0.0), false);
+	//importedMeshes.insert(std::end(importedMeshes), std::begin(wrechMesh), std::end(wrechMesh));
+	//for (int i = 0; i < wrechMesh.size(); i++) {
+	//	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(1, 1, 0.0), 0)); //le crusader
+	//}
+
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = importedMeshes.size();
 
@@ -779,11 +785,12 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	updateObjects(deltaTime);
 
-	rayHitInfo prevMedium;
+	prevHitInfo prevMedium;
 	prevMedium.color = input.currPosY < -5 ? WATER_COLOR : AIR_COLOR;
 	prevMedium.insideColorDensity = input.currPosY < -5 ? WATER_DENSITY : AIR_DENSITY;
+	prevMedium.refractiveIndex = input.currPosY < -5 ? 1.33 : 1.0;
 	
-	input.beginMedium = hitInfo{ prevMedium, true, float3(), float3() };
+	input.beginMedium = prevMedium;
 
 
 	sceneInfo info{ (unsigned int**)gridMeshes,(unsigned int**)gridObjects, (unsigned int*)gridMeshesSizes, (unsigned int*)gridObjectsSizes,totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, NUM_ELEMENTS, (triangleMesh*)cuda_mesh_buffer, num_meshes };

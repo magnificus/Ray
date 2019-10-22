@@ -14,7 +14,7 @@ cudaBloomSample(PostProcessPointers pointers, int imgw, int imgh)
 	int y = blockIdx.y * bh + ty;
 
 	float bloomThreshold = 255;
-	float bloomStrength = 0.002;
+	float bloomStrength = 0.001;
 
 	int firstPos = (y * imgw + x) * 4;
 	float3 CurrC = make_float3(pointers.inputImage[firstPos], pointers.inputImage[firstPos + 1], pointers.inputImage[firstPos + 2]);
