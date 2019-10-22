@@ -121,7 +121,8 @@ __device__ bool getTranslatedPos(float3 position, float3 &translatedPos) {
 	float3 beforeTranslation = make_float3(LIGHT_BUFFER_WORLD_RATIO * position.x, LIGHT_BUFFER_WORLD_RATIO * position.z, LIGHT_BUFFER_THICKNESS_WORLD_RATIO * position.y);
 	translatedPos = beforeTranslation + make_float3(0.5, 0.5, 0.5);
 	translatedPos = translatedPos * make_float3(LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_THICKNESS);
-	return (translatedPos.x >= 0 && translatedPos.x < LIGHT_BUFFER_WIDTH && translatedPos.y >= 0 && translatedPos.y < LIGHT_BUFFER_WIDTH && translatedPos.z >= 0 && translatedPos.z < LIGHT_BUFFER_THICKNESS);
+	return max(max(abs(beforeTranslation.x), abs(beforeTranslation.y)), abs(beforeTranslation.z)) <= 0.5;
+	//return (translatedPos.x >= 0 && translatedPos.x < LIGHT_BUFFER_WIDTH && translatedPos.y >= 0 && translatedPos.y < LIGHT_BUFFER_WIDTH && translatedPos.z >= 0 && translatedPos.z < LIGHT_BUFFER_THICKNESS);
 }
 
 __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
@@ -129,25 +130,32 @@ __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
 	bool OK = getTranslatedPos(position, translatedPos);
 
 	if (OK) {
-		int currZ = floor(translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
-
 		int currY = floor(translatedPos.y);
 		int currX = floor(translatedPos.x);
-		int nextY = min(currY + 1, LIGHT_BUFFER_WIDTH -1);
-		int nextX = min(currX + 1, LIGHT_BUFFER_WIDTH -1);
+		int nextY = min(currY + 1, imageWidth - 1);
+		int nextX = min(currX + 1, imageWidth - 1);
+		int currZ = floor(translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
+		int nextZ = min(LIGHT_BUFFER_THICKNESS - 1., floor(translatedPos.z + 1)) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
 
-		int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
-		int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX);
-		int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
-		int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
+		int outDUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
+		int outDLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX);
+		int outDUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
+		int outDLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
-		float xFactor = translatedPos.x - floor(translatedPos.x);
+		int outUUL = nextZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
+		int outULL = nextZ + (currY * LIGHT_BUFFER_WIDTH + currX);
+		int outUUR = nextZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
+		int outULR = nextZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
-		float yFactor = translatedPos.y - floor(translatedPos.y);
-		float combinedUpper = lightImage[outUL] * (1.-xFactor) + lightImage[outUR] * (xFactor);
-		float combinedDown = lightImage[outLR] * xFactor + lightImage[outLL] * (1. - xFactor);
-		float result = combinedUpper* yFactor + (1. - yFactor) * combinedDown;
-		value = result;
+		float xFactor = fmod(translatedPos.x, 1.f);
+		float yFactor = fmod(translatedPos.y, 1.f);
+		float zFactor = fmod(translatedPos.z, 1.f);
+
+		float combinedUpper = max(lightImage[outDUL], lightImage[outUUL]) * (1.-xFactor) + max(lightImage[outDUR], lightImage[outUUR]) * (xFactor);
+		float combinedDown = max(lightImage[outDLR], lightImage[outULR]) * xFactor + max(lightImage[outDLL], lightImage[outULL]) * (1. - xFactor);
+		float resultD = combinedUpper* yFactor + (1. - yFactor) * combinedDown;
+
+		value = resultD;// *zFactor + resultD * (1. - zFactor);
 		return true;
 	}
 	return false;
@@ -481,18 +489,23 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 					float3 translatedPos;
 					bool OK = getTranslatedPos(nextPos, translatedPos);
 					if (OK) {
-						int currZ = ((int)translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
 
 						int currY = floor(translatedPos.y);
 						int currX = floor(translatedPos.x);
 						int nextY = min(currY + 1, imageWidth - 1);
 						int nextX = min(currX + 1, imageWidth - 1);
-						int nextZ = (min(LIGHT_BUFFER_THICKNESS-1, (int)translatedPos.z + 1)) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
+						int currZ = floor(translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
+						int nextZ = min(LIGHT_BUFFER_THICKNESS-1., floor(translatedPos.z + 1)) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
 
 						int outDUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
 						int outDLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX);
 						int outDUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
 						int outDLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
+
+						int outUUL = nextZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
+						int outULL = nextZ + (currY * LIGHT_BUFFER_WIDTH + currX);
+						int outUUR = nextZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
+						int outULR = nextZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
 
 						float xFactor = fmod(translatedPos.x, 1.f);
 						float yFactor = fmod(translatedPos.y, 1.f);
@@ -501,6 +514,11 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 						atomicAdd(&lightImage[outDUL], strength * (1. - xFactor) * (yFactor));
 						atomicAdd(&lightImage[outDUR], strength * (xFactor) * (yFactor));
 						atomicAdd(&lightImage[outDLR], strength * (xFactor) * (1. - yFactor));
+
+						atomicAdd(&lightImage[outULL], strength* (1. - xFactor)* (1. - yFactor));
+						atomicAdd(&lightImage[outUUL], strength* (1. - xFactor)* (yFactor));
+						atomicAdd(&lightImage[outUUR], strength* (xFactor)* (yFactor));
+						atomicAdd(&lightImage[outULR], strength* (xFactor)* (1. - yFactor));
 
 					}
 

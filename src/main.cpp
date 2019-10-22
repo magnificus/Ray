@@ -795,7 +795,6 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	sceneInfo info{ (unsigned int**)gridMeshes,(unsigned int**)gridObjects, (unsigned int*)gridMeshesSizes, (unsigned int*)gridObjectsSizes,totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, NUM_ELEMENTS, (triangleMesh*)cuda_mesh_buffer, num_meshes };
 	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, info };
-	//inputPointers pointers2{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer_2, info };
 
 	// draw light
 	dim3 lightGridDraw(LIGHT_BUFFER_WIDTH / block.x, LIGHT_BUFFER_WIDTH / block.y, 1); // 2D grid, every thread will compute a pixel
