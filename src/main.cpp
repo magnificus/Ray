@@ -833,30 +833,6 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 }
 
-//void display(std::chrono::duration<double> duration, std::chrono::duration<double> deltaTime) {
-//	generateCUDAImage(duration, deltaTime);
-//	glfwPollEvents();
-//	// Clear the color buffer
-//	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-//	glClear(GL_COLOR_BUFFER_BIT);
-//
-//	glActiveTexture(GL_TEXTURE0);
-//	glBindTexture(GL_TEXTURE_2D, opengl_tex_cuda);
-//
-//	shdrawtex.use(); // we gonna use this compiled GLSL program
-//	glUniform1i(glGetUniformLocation(shdrawtex.program, "tex"), 0);
-//
-//	glBindVertexArray(VAO); // binding VAO automatically binds EBO
-//		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-//	glBindVertexArray(0); // unbind VAO
-//
-//	SDK_CHECK_ERROR_GL();
-//	
-//	// Swap the screen buffers
-//	glfwSwapBuffers(window);
-//}
-
-
 void display(std::chrono::duration<double> duration, std::chrono::duration<double> deltaTime) {
 	glClear(GL_COLOR_BUFFER_BIT);
 	generateCUDAImage(duration, deltaTime);
