@@ -379,22 +379,26 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 struct Ray {
 	float3 currRayPos;
 	float3 currRayDir;
-	prevHitInfo prevHitToAddDepthFrom;
-	prevHitInfo prevPrevHitToAddDepthFrom;
+	prevHitInfo lastMaterialHit;
+	prevHitInfo prevMaterialHit;
 	float totalContributionRemaining = 0.0;
 	bool isLightPass = false;
 };
 
-__device__ Ray make_ray(float3 pos, float3 dir, prevHitInfo prevHit, prevHitInfo prev2Hit, float remaining, bool lightPass) {
+__device__ Ray make_ray(float3 pos, float3 dir, prevHitInfo lastHit, prevHitInfo prevHit, float remaining, bool lightPass) {
 	Ray toReturn;
 	toReturn.currRayPos = pos;
 	toReturn.currRayDir = dir;
-	toReturn.prevHitToAddDepthFrom = prevHit;
-	toReturn.prevPrevHitToAddDepthFrom = prev2Hit;
+	toReturn.lastMaterialHit = lastHit;
+	toReturn.prevMaterialHit = prevHit;
 	toReturn.totalContributionRemaining = remaining;
 	toReturn.isLightPass = lightPass;
 	return toReturn;
 
+}
+
+__device__  prevHitInfo getPrevMaterialHit(prevHitInfo Curr, prevHitInfo Last, prevHitInfo Prev) {
+	return Curr.refractiveIndex != Last.refractiveIndex ? Last : Prev;
 }
 
 #define MAX_RAYS 10
@@ -437,21 +441,21 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				bool outside = dot(currentRay.currRayDir, normal) < 0;
 
 				float before = currentRay.totalContributionRemaining;
-				float prevColorMP = 1 - powf(1. - currentRay.prevHitToAddDepthFrom.insideColorDensity, length(nextPos - currentRay.currRayPos));
-				accumColor = accumColor + prevColorMP * currentRay.prevHitToAddDepthFrom.color*currentRay.totalContributionRemaining;
+				float prevColorMP = 1 - powf(1. - currentRay.lastMaterialHit.insideColorDensity, length(nextPos - currentRay.currRayPos));
+				accumColor = accumColor + prevColorMP * currentRay.lastMaterialHit.color*currentRay.totalContributionRemaining;
 				currentRay.totalContributionRemaining *= (1. - prevColorMP);
 
 
 				if (info.refractivity* currentRay.totalContributionRemaining > 0.001) {
 					float kr = 1.0;
-					fresnel(currentRay.currRayDir, normal, outside ? info.refractiveIndex /currentRay.prevPrevHitToAddDepthFrom.refractiveIndex: currentRay.prevPrevHitToAddDepthFrom.refractiveIndex / info.refractiveIndex, kr);
+					fresnel(currentRay.currRayDir, normal, outside ? info.refractiveIndex /currentRay.prevMaterialHit.refractiveIndex: currentRay.prevMaterialHit.refractiveIndex / info.refractiveIndex, kr);
 
 					if (kr < 1) {
 						float3 refractionDirection = normalize(refract(currentRay.currRayDir, normal, info.refractiveIndex));
 						float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
 
 						float refracMP = max(0., (1 - kr));
-						Ray nextRay = make_ray(refractionRayOrig, refractionDirection, !outside || hit.normalIsInversed ? currentRay.prevPrevHitToAddDepthFrom : make_prevHitInfo(hit), currentRay.prevHitToAddDepthFrom, info.refractivity * refracMP * currentRay.totalContributionRemaining, isLightPass);
+						Ray nextRay = make_ray(refractionRayOrig, refractionDirection, !outside || hit.normalIsInversed ? getPrevMaterialHit(make_prevHitInfo(hit), currentRay.lastMaterialHit, currentRay.prevMaterialHit) : make_prevHitInfo(hit), currentRay.lastMaterialHit, info.refractivity * refracMP * currentRay.totalContributionRemaining, isLightPass);
 						if (currentNbrRays < MAX_RAYS) {
 							AllRays[currentNbrRays] = nextRay;
 							currentNbrRays++;
@@ -466,7 +470,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 					float3 reflectDir = reflect(currentRay.currRayDir, normal);
 					float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
 
-					Ray nextRay = make_ray(reflectionOrig, reflectDir, currentRay.prevHitToAddDepthFrom, currentRay.prevPrevHitToAddDepthFrom, reflecMP, isLightPass);
+					Ray nextRay = make_ray(reflectionOrig, reflectDir, currentRay.lastMaterialHit, currentRay.prevMaterialHit, reflecMP, isLightPass);
 					if (currentNbrRays < MAX_RAYS) {
 						AllRays[currentNbrRays] = nextRay;
 						currentNbrRays++;
@@ -530,114 +534,6 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 	}
 	return accumColor;
 }
-
-
-
-//__device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int remainingDepth, const hitInfo &prevHitToAddDepthFrom, float totalContributionRemaining = 1.0, bool isLightPass = false) {
-//
-//	hitInfo hit = getHit(currRayPos, currRayDir, isLightPass);
-//
-//	if (!hit.hit) {
-//		return AIR_COLOR;
-//	}
-//	else {
-//
-//		rayHitInfo info = hit.info;
-//		float3 reflected = make_float3(0, 0, 0);
-//		float3 refracted = make_float3(0, 0, 0);
-//		float3 nextPos = hit.pos;
-//		float3 normal = hit.normal;
-//
-//		if (hit.info.roughness > 0.0001) {
-//			float3 distortion = getDistortion(normal, nextPos + make_float3(10000,10000,10000), 4);
-//			normal = normalize(normal + distortion * hit.info.roughness);
-//		}
-//
-//
-//		float extraReflection = 0;
-//		float3 extraColor;
-//		float3 refractBias = 0.001 * normal;
-//		float3 reflectBias = 0.0001 * normal;
-//		float prevColorMP = 0;
-//		float3 extraPrevColor = make_float3(0,0,0);
-//		bool outside = dot(currRayDir, normal) < 0;
-//
-//		if (prevHitToAddDepthFrom.info.insideColorDensity > 0.001) {
-//			prevColorMP = 1 - powf(1. - prevHitToAddDepthFrom.info.insideColorDensity, length(nextPos - currRayPos)+1);
-//			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
-//		}
-//
-//		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.001)
-//			return info.color * (1. - prevColorMP) + extraPrevColor;
-//
-//		if (info.refractivity* totalContributionRemaining > 0.001) {
-//			float kr = 1.0;
-//			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
-//
-//
-//			if (kr < 1) {
-//				float3 refractionDirection = normalize(refract(currRayDir, normal, info.refractiveIndex));
-//				float3 refractionRayOrig = outside ? nextPos - refractBias : nextPos + refractBias;
-//
-//				float refracMP = max(0., (1 - kr));
-//				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP, isLightPass);
-//			}
-//			extraReflection = max(0.0,min(1., kr) * info.refractivity);
-//
-//		}
-//		if ((info.reflectivity + extraReflection)* totalContributionRemaining > 0.001 && !isLightPass) {
-//			float3 reflectDir = reflect(currRayDir, normal);
-//			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
-//			float reflecMP = info.reflectivity + extraReflection;
-//
-//			reflected = reflecMP * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, reflecMP*totalContributionRemaining, isLightPass);
-//		}
-//
-//		float colorMultiplier = max(0., (1. - max(0.f,info.reflectivity) - extraReflection - info.refractivity));
-//			float3 color = colorMultiplier * info.color;
-//			float3 light_dir = STATIC_LIGHT_DIR;
-//			float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
-//			float shadowFactor = 0;
-//		if (!isLightPass) {
-//			if (colorMultiplier * (1.-prevColorMP) > 0.1) {
-//				shadowFactor = getShadowTerm(nextPos + 0.01 * inverse(currRayDir), normal);
-//			}
-//			return (1. - prevColorMP) * ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color + reflected + refracted) + extraPrevColor;
-//		}
-//		else {
-//
-//			float strength = (1. - prevColorMP) * colorMultiplier * 100;
-//			float3 translatedPos;
-//			bool OK = getTranslatedPos(nextPos, translatedPos);
-//			if (OK) {
-//				int currZ = ((int)translatedPos.z) * LIGHT_BUFFER_WIDTH * LIGHT_BUFFER_WIDTH;
-//
-//				int currY = floor(translatedPos.y);
-//				int currX = floor(translatedPos.x);
-//				int nextY = min(currY + 1, imageWidth - 1);
-//				int nextX = min(currX + 1, imageWidth - 1);
-//
-//				int outUL = currZ + (nextY * LIGHT_BUFFER_WIDTH + currX);
-//				int outLL = currZ + (currY * LIGHT_BUFFER_WIDTH + currX);
-//				int outUR = currZ + (nextY * LIGHT_BUFFER_WIDTH + nextX);
-//				int outLR = currZ + (currY * LIGHT_BUFFER_WIDTH + nextX);
-//
-//				float xFactor = fmod(translatedPos.x, 1.f);// -floor(translatedPos.x);
-//				float yFactor = fmod(translatedPos.y,1.f);
-//
-//				atomicAdd(&lightImage[outLL], strength*(1. - xFactor) * (1. - yFactor));
-//				atomicAdd(&lightImage[outUL], strength*(1. - xFactor) * (yFactor));
-//				atomicAdd(&lightImage[outUR], strength*(xFactor) * (yFactor));
-//				atomicAdd(&lightImage[outLR], strength*(xFactor) * (1. - yFactor));
-//
-//			}
-//
-//			return currRayPos;
-//		}
-//	}
-//
-//}
-
 
 __global__ void
 cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
