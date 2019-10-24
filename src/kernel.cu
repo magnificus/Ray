@@ -8,6 +8,7 @@
 #define USING_SHADOWS
 //#define USING_DOUBLE_TAP_SHADOWS
 #define USING_PHOTON_MAPPED_SHADOWS
+//#define LIGHT_PASS_USES_REFLECTION
 //#define USING_POINT_LIGHT
 //#define STATIC_LIGHT_DIR make_float3(0.0,.71,0.71)
 //#define LIGHT_POS make_float3(0,2000,2000)
@@ -175,7 +176,7 @@ __device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
 }
 
 
-__device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool isLightPass) {
+__device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 	float closestDist = 1000000;
 	float3 normal;
 	hitInfo toReturn;
@@ -219,6 +220,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool 
 					float3 waveInput = pos * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
 					float strength = 3000;
 					float3 distortion = length(pos - startPos) < MAX_DISTANCE_FROM_CAMERA_FOR_EFFECTS ? getDistortion(normalToUse, waveInput, 4) : make_float3(0,0,0);
+					//float3 distortion = getDistortion(normalToUse, waveInput, 4);
+
 					normal = normalize(normalToUse + strength * distortion);
 					toReturn.hit = true;
 					toReturn.normalIsInversed = needsToCommunicateInversion;
@@ -339,7 +342,7 @@ __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 #else 
 	float3 toLightVec = STATIC_LIGHT_DIR;
 #endif // USING_POINT_LIGHT
-	hitInfo hit = getHit(originalPos + 0.001 *toLightVec, toLightVec, false);
+	hitInfo hit = getHit(originalPos + 0.001 *toLightVec, toLightVec);
 #ifdef USING_POINT_LIGHT
 	if (!hit.hit || length(hit.pos - originalPos) > length(originalPos - LIGHT_POS)) {
 		toReturn = 1.;
@@ -416,7 +419,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 		for (int j = 0; j < currentNbrRays; j++) {
 			Ray currentRay = AllRays[j];
 
-			hitInfo hit = getHit(currentRay.currRayPos, currentRay.currRayDir, isLightPass);
+			hitInfo hit = getHit(currentRay.currRayPos, currentRay.currRayDir);
 			if (!hit.hit) {
 				accumColor = accumColor + currentRay.totalContributionRemaining * AIR_COLOR;
 			}
@@ -475,7 +478,12 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				}
 				float reflecMP = (info.reflectivity + extraReflection)* currentRay.totalContributionRemaining;
 				float3 reflectionOrig = nextPos + reflectBias;
+#ifdef LIGHT_PASS_USES_REFLECTION
+				if (reflecMP > 0.001) {
+
+#else
 				if ( reflecMP > 0.001 && !isLightPass) {
+#endif
 
 					if (currentNbrRays < MAX_RAYS) {
 						float3 reflectDir = reflect(currentRay.currRayDir, normal);
@@ -566,7 +574,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	float distFirstPlane = distFarPlane * 0.5;
 
 	float3 center = make_float3(imgw / 2.0, imgh / 2.0, 0.);
-	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgh) * upV;
+	float3 distFromCenter = ((x - center.x) / imgw) * rightV + ((center.y - y) / imgw) * upV;
 	startPos = (sizeNearPlane * distFromCenter) + origin + (distFirstPlane * forwardV);
 	float3 secondPlanePos = (sizeFarPlane * distFromCenter) + (distFarPlane * forwardV) + origin;
 
