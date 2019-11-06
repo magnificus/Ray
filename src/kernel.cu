@@ -161,6 +161,7 @@ __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
 		float resultD = combinedUpper* yFactor + (1. - yFactor) * combinedDown;
 
 		value = resultD;// *zFactor + resultD * (1. - zFactor);
+		//value = lightImage[outDLL];
 		return true;
 	}
 	return false;
@@ -273,7 +274,6 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
 
 				int stepsBeforeQuit = 1000;
-				bool hitGrid = false;
 				while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
 
 					gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));

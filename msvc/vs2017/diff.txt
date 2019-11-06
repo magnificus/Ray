@@ -1,1152 +1,1229 @@
 diff --git a/msvc/vs2017/diff.txt b/msvc/vs2017/diff.txt
-index b877b47..e69de29 100644
+index 5a0fdbc..e69de29 100644
 --- a/msvc/vs2017/diff.txt
 +++ b/msvc/vs2017/diff.txt
-@@ -1,960 +0,0 @@
+@@ -1,1152 +0,0 @@
 -diff --git a/msvc/vs2017/diff.txt b/msvc/vs2017/diff.txt
--index cb3787c..e69de29 100644
+-index b877b47..e69de29 100644
 ---- a/msvc/vs2017/diff.txt
 -+++ b/msvc/vs2017/diff.txt
--@@ -1,417 +0,0 @@
---diff --git a/msvc/vs2017/cuda2GLCore.vcxproj b/msvc/vs2017/cuda2GLCore.vcxproj
---index b64b5de..cdaf413 100644
------ a/msvc/vs2017/cuda2GLCore.vcxproj
---+++ b/msvc/vs2017/cuda2GLCore.vcxproj
---@@ -37,6 +37,7 @@
---   </ItemGroup>
---   <ItemGroup>
---     <CudaCompile Include="..\..\src\kernel.cu" />
---+    <CudaCompile Include="..\..\src\postprocessing.cu" />
---     <CudaCompile Include="..\..\src\rayHelpers.cu" />
---   </ItemGroup>
---   <PropertyGroup Label="Globals">
---diff --git a/msvc/vs2017/cuda2GLCore.vcxproj.filters b/msvc/vs2017/cuda2GLCore.vcxproj.filters
---index aad6cb3..0326ae6 100644
------ a/msvc/vs2017/cuda2GLCore.vcxproj.filters
---+++ b/msvc/vs2017/cuda2GLCore.vcxproj.filters
---@@ -51,5 +51,6 @@
---   <ItemGroup>
---     <CudaCompile Include="..\..\src\kernel.cu" />
---     <CudaCompile Include="..\..\src\rayHelpers.cu" />
---+    <CudaCompile Include="..\..\src\postprocessing.cu" />
---   </ItemGroup>
--- </Project>
---\ No newline at end of file
+-@@ -1,960 +0,0 @@
 --diff --git a/msvc/vs2017/diff.txt b/msvc/vs2017/diff.txt
---index 2bc65f3..e69de29 100644
+--index cb3787c..e69de29 100644
 ----- a/msvc/vs2017/diff.txt
 --+++ b/msvc/vs2017/diff.txt
---@@ -1,174 +0,0 @@
+--@@ -1,417 +0,0 @@
+---diff --git a/msvc/vs2017/cuda2GLCore.vcxproj b/msvc/vs2017/cuda2GLCore.vcxproj
+---index b64b5de..cdaf413 100644
+------ a/msvc/vs2017/cuda2GLCore.vcxproj
+---+++ b/msvc/vs2017/cuda2GLCore.vcxproj
+---@@ -37,6 +37,7 @@
+---   </ItemGroup>
+---   <ItemGroup>
+---     <CudaCompile Include="..\..\src\kernel.cu" />
+---+    <CudaCompile Include="..\..\src\postprocessing.cu" />
+---     <CudaCompile Include="..\..\src\rayHelpers.cu" />
+---   </ItemGroup>
+---   <PropertyGroup Label="Globals">
+---diff --git a/msvc/vs2017/cuda2GLCore.vcxproj.filters b/msvc/vs2017/cuda2GLCore.vcxproj.filters
+---index aad6cb3..0326ae6 100644
+------ a/msvc/vs2017/cuda2GLCore.vcxproj.filters
+---+++ b/msvc/vs2017/cuda2GLCore.vcxproj.filters
+---@@ -51,5 +51,6 @@
+---   <ItemGroup>
+---     <CudaCompile Include="..\..\src\kernel.cu" />
+---     <CudaCompile Include="..\..\src\rayHelpers.cu" />
+---+    <CudaCompile Include="..\..\src\postprocessing.cu" />
+---   </ItemGroup>
+--- </Project>
+---\ No newline at end of file
+---diff --git a/msvc/vs2017/diff.txt b/msvc/vs2017/diff.txt
+---index 2bc65f3..e69de29 100644
+------ a/msvc/vs2017/diff.txt
+---+++ b/msvc/vs2017/diff.txt
+---@@ -1,174 +0,0 @@
+----diff --git a/src/main.cpp b/src/main.cpp
+----index ea2fcaf..287c145 100644
+------- a/src/main.cpp
+----+++ b/src/main.cpp
+----@@ -225,54 +225,58 @@ bool initGL() {
+---- }
+---- 
+---- 
+-----triangleMesh importModel(std::string path, float scale, float3 offset) {
+----+std::vector<triangleMesh> importModel(std::string path, float scale, float3 offset) {
+---- 
+-----	triangleMesh toReturn;
+----+	std::vector<triangleMesh> toReturn;
+---- 
+---- 	Assimp::Importer importer;
+-----	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
+----+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenNormals);
+---- 	if (!scene) {
+-----		cout << "invalid path to mesh fuccboi\n";
+----+		cout << "ya entered an invalid path to mesh fuccboi\n";
+---- 		return toReturn;
+---- 	}
+---- 
+-----	if (scene->HasMeshes()) {
+-----		auto firstMesh = scene->mMeshes[0];
+----+	for (int i = 0; i < scene->mNumMeshes; i++) {
+----+		auto mesh = scene->mMeshes[i];
+---- 		// indices
+---- 
+----+		triangleMesh current;
+----+
+---- 		unsigned int totalIndices = 0;
+---- 
+-----		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
+-----			auto face = firstMesh->mFaces[i];
+----+		for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+----+			auto face = mesh->mFaces[i];
+---- 			totalIndices += face.mNumIndices + (face.mNumIndices > 3 ? (face.mNumIndices - 3)*2 : 0);
+---- 		}
+---- 
+-----		toReturn.numIndices = totalIndices;
+-----		toReturn.numVertices = firstMesh->mNumVertices;
+-----		toReturn.indices = (unsigned int*) malloc(toReturn.numIndices * sizeof(unsigned int));
+----+		current.numIndices = totalIndices;
+----+		current.numVertices = mesh->mNumVertices;
+----+		current.indices = (unsigned int*) malloc(current.numIndices * sizeof(unsigned int));
+---- 
+---- 		unsigned int currIndexPos = 0;
+-----		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
+-----			auto face = firstMesh->mFaces[i];
+----+		for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+----+			auto face = mesh->mFaces[i];
+---- 			for (int j = 2; j < face.mNumIndices; j++) { // fan triangulate if not triangles
+-----				toReturn.indices[currIndexPos] = face.mIndices[0];
+-----				toReturn.indices[currIndexPos+1] = face.mIndices[j-1];
+-----				toReturn.indices[currIndexPos+2] = face.mIndices[j];
+----+				current.indices[currIndexPos] = face.mIndices[0];
+----+				current.indices[currIndexPos+1] = face.mIndices[j-1];
+----+				current.indices[currIndexPos+2] = face.mIndices[j];
+---- 				currIndexPos += 3;
+---- 			}
+---- 		}
+---- 
+---- 		// vertices & normals
+-----		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
+-----		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
+-----		cout << "num vertices: " << firstMesh->mNumVertices << endl;
+-----		cout << "num faces: " << toReturn.numIndices/3 << endl;
+-----		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
+-----			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x* scale + offset.x, firstMesh->mVertices[i].y* scale + offset.y, firstMesh->mVertices[i].z* scale + offset.z);
+----+		current.vertices = (float3*)malloc(current.numVertices * sizeof(float3));
+----+		current.normals = (float3*)malloc(current.numVertices * sizeof(float3));
+----+		cout << "num vertices: " << mesh->mNumVertices << endl;
+----+		cout << "num faces: " << current.numIndices/3 << endl;
+----+		for (unsigned int i = 0; i < current.numVertices; i++) {
+----+			current.vertices[i] = make_float3(mesh->mVertices[i].x* scale + offset.x, mesh->mVertices[i].y* scale + offset.y, mesh->mVertices[i].z* scale + offset.z);
+---- 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
+-----			//if (firstMesh->HasNormals())
+-----				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
+----+			//if (mesh->HasNormals())
+----+			current.normals[i] = make_float3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+---- 		}
+----+
+----+		toReturn.push_back(current);
+---- 	}
+---- 
+---- 	return toReturn;
+----@@ -282,7 +286,7 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
+---- #define MIN(a,b) a < b ? a : b
+---- #define MOST(type, v1,v2) make_float3( type (v1.x, v2.x), type (v1.y,v2.y), type (v1.z, v2.z));
+---- 
+-----triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void** mesh_pointer) {
+----+triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda) {
+---- 
+---- 	myMeshOnCuda.numIndices = myMesh.numIndices;
+---- 	myMeshOnCuda.numVertices = myMesh.numVertices;
+----@@ -330,16 +334,19 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMesh
+---- 					float tMax;
+---- 					// we intersect if we're either inside the slab or one edge crosses it
+---- 					bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
+-----					intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
+-----					intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
+-----					intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+----+					if (!intersecting)
+----+						intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
+----+					if (!intersecting)
+----+						intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
+----+					if (!intersecting)
+----+						intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+---- 
+---- 					if (intersecting) {
+---- 						trianglesToAddToBlock.push_back(i);
+---- 					}
+---- 				}
+---- 
+-----				cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+----+				//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+---- 				gridSizes[GRID_POS(x,y,z)] = trianglesToAddToBlock.size();
+---- 				grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
+---- 
+----@@ -442,24 +449,27 @@ void initCUDABuffers()
+---- 
+---- 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
+---- 
+-----	num_meshes = 1;
+-----	size_meshes_data = sizeof(triangleMesh) * num_elements;
+---- 
+----+	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palm1.obj", 1, make_float3(0, 0, 40));
+---- 
+-----	triangleMesh bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0,0,40));
+-----	triangleMesh bunnyMeshOnCuda;// = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0, 0, 40));
+----+	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
+---- 
+----+	triangleMesh *meshesOnCuda = (triangleMesh*) malloc(size_meshes_data);
+----+	for (int i = 0; i < importedMeshes.size(); i++) {
+----+		triangleMesh curr = importedMeshes[i];
+----+		triangleMesh importedMeshOnCuda;
+----+		importedMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
+----+		importedMeshOnCuda.rayInfo.refractivity = 0.6;
+----+		importedMeshOnCuda.rayInfo.reflectivity = 0.3;
+----+		importedMeshOnCuda.rayInfo.insideColorDensity = 0.0;
+----+		importedMeshOnCuda.rayInfo.refractiveIndex = 1.5;
+----+		prepareMeshForCuda(curr, importedMeshOnCuda);
+----+		meshesOnCuda[i] = importedMeshOnCuda;
+----+	}
+---- 
+-----	bunnyMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
+-----	bunnyMeshOnCuda.rayInfo.refractivity = 0.6;
+-----	bunnyMeshOnCuda.rayInfo.reflectivity = 0.3;
+-----	bunnyMeshOnCuda.rayInfo.insideColorDensity = 0.0;
+-----	bunnyMeshOnCuda.rayInfo.refractiveIndex = 1.5;
+-----
+-----	prepareMeshForCuda(bunnyMesh, bunnyMeshOnCuda, &cuda_mesh_buffer);
+----+	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
+----+	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
+---- 
+-----	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
+-----	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, &bunnyMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+---- 
+---- }
+---- 
+----diff --git a/src/sharedStructs.h b/src/sharedStructs.h
+----index d45bfc7..5391f3e 100644
+------- a/src/sharedStructs.h
+----+++ b/src/sharedStructs.h
+----@@ -74,7 +74,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
+---- }
+---- 
+---- // total size will be pow(GRID_SIZE,3) bc of xyz
+-----#define GRID_SIZE 15 
+----+#define GRID_SIZE 15
+---- #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
+---- #define GRID_DEPTH 1
+---- 
+---diff --git a/src/kernel.cu b/src/kernel.cu
+---index 8f6b869..87631b3 100644
+------ a/src/kernel.cu
+---+++ b/src/kernel.cu
+---@@ -522,9 +522,9 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
+--- 			float3 reflectDir = reflect(currRayDir, normal);
+--- 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
+--- 
+----
+--- 			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, false);
+--- 		}
+---+
+--- 		float colorMultiplier = max(0.,(1. - info.reflectivity - extraReflection - info.refractivity));
+--- 		float3 color = colorMultiplier* info.color;
+--- #ifdef USING_POINT_LIGHT
+---@@ -575,9 +575,11 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
+--- 
+--- 	currentTime = currTime;
+--- 	scene = &pointers.scene;
+----	float3 out = 255 * trace(firstPlanePos, dirVector, 4, hitInfo(), true)*3;
+---+	float3 out = 255 * trace(firstPlanePos, dirVector, 4, hitInfo(), true);
+--- 
+----	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
+---+	pointers.image1[(y * imgw + x)*4] = out.x;
+---+	pointers.image1[(y * imgw + x) * 4 + 1] = out.y;
+---+	pointers.image1[(y * imgw + x) * 4 + 2] = out.z;
+--- }
+--- extern "C" void
+--- launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
+---@@ -586,3 +588,4 @@ launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int
+--- 	cudaRender << < grid, block, sbytes >> > (pointers, imgw, imgh, currTime, input);
+--- }
+--- 
+---+
 ---diff --git a/src/main.cpp b/src/main.cpp
----index ea2fcaf..287c145 100644
+---index 0c6c682..0cddc39 100644
 ------ a/src/main.cpp
 ---+++ b/src/main.cpp
----@@ -225,54 +225,58 @@ bool initGL() {
---- }
+---@@ -43,6 +43,11 @@ GLFWwindow* window;
+--- int WIDTH = 1024;
+--- int HEIGHT = 1024;
 --- 
---- 
-----triangleMesh importModel(std::string path, float scale, float3 offset) {
----+std::vector<triangleMesh> importModel(std::string path, float scale, float3 offset) {
---- 
-----	triangleMesh toReturn;
----+	std::vector<triangleMesh> toReturn;
---- 
---- 	Assimp::Importer importer;
-----	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
----+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices | aiProcess_GenNormals);
---- 	if (!scene) {
-----		cout << "invalid path to mesh fuccboi\n";
----+		cout << "ya entered an invalid path to mesh fuccboi\n";
---- 		return toReturn;
---- 	}
---- 
-----	if (scene->HasMeshes()) {
-----		auto firstMesh = scene->mMeshes[0];
----+	for (int i = 0; i < scene->mNumMeshes; i++) {
----+		auto mesh = scene->mMeshes[i];
---- 		// indices
---- 
----+		triangleMesh current;
+---+int num_texels = WIDTH * HEIGHT;
+---+int num_values = num_texels * 4;
+---+int size_tex_data = sizeof(GLuint) * num_values;
 ---+
---- 		unsigned int totalIndices = 0;
---- 
-----		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
-----			auto face = firstMesh->mFaces[i];
----+		for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
----+			auto face = mesh->mFaces[i];
---- 			totalIndices += face.mNumIndices + (face.mNumIndices > 3 ? (face.mNumIndices - 3)*2 : 0);
---- 		}
---- 
-----		toReturn.numIndices = totalIndices;
-----		toReturn.numVertices = firstMesh->mNumVertices;
-----		toReturn.indices = (unsigned int*) malloc(toReturn.numIndices * sizeof(unsigned int));
----+		current.numIndices = totalIndices;
----+		current.numVertices = mesh->mNumVertices;
----+		current.indices = (unsigned int*) malloc(current.numIndices * sizeof(unsigned int));
---- 
---- 		unsigned int currIndexPos = 0;
-----		for (unsigned int i = 0; i < firstMesh->mNumFaces; i++) {
-----			auto face = firstMesh->mFaces[i];
----+		for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
----+			auto face = mesh->mFaces[i];
---- 			for (int j = 2; j < face.mNumIndices; j++) { // fan triangulate if not triangles
-----				toReturn.indices[currIndexPos] = face.mIndices[0];
-----				toReturn.indices[currIndexPos+1] = face.mIndices[j-1];
-----				toReturn.indices[currIndexPos+2] = face.mIndices[j];
----+				current.indices[currIndexPos] = face.mIndices[0];
----+				current.indices[currIndexPos+1] = face.mIndices[j-1];
----+				current.indices[currIndexPos+2] = face.mIndices[j];
---- 				currIndexPos += 3;
---- 			}
---- 		}
---- 
---- 		// vertices & normals
-----		toReturn.vertices = (float3*)malloc(toReturn.numVertices * sizeof(float3));
-----		toReturn.normals = (float3*)malloc(toReturn.numVertices * sizeof(float3));
-----		cout << "num vertices: " << firstMesh->mNumVertices << endl;
-----		cout << "num faces: " << toReturn.numIndices/3 << endl;
-----		for (unsigned int i = 0; i < toReturn.numVertices; i++) {
-----			toReturn.vertices[i] = make_float3(firstMesh->mVertices[i].x* scale + offset.x, firstMesh->mVertices[i].y* scale + offset.y, firstMesh->mVertices[i].z* scale + offset.z);
----+		current.vertices = (float3*)malloc(current.numVertices * sizeof(float3));
----+		current.normals = (float3*)malloc(current.numVertices * sizeof(float3));
----+		cout << "num vertices: " << mesh->mNumVertices << endl;
----+		cout << "num faces: " << current.numIndices/3 << endl;
----+		for (unsigned int i = 0; i < current.numVertices; i++) {
----+			current.vertices[i] = make_float3(mesh->mVertices[i].x* scale + offset.x, mesh->mVertices[i].y* scale + offset.y, mesh->mVertices[i].z* scale + offset.z);
---- 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
-----			//if (firstMesh->HasNormals())
-----				toReturn.normals[i] = make_float3(firstMesh->mNormals[i].x, firstMesh->mNormals[i].y, firstMesh->mNormals[i].z);
----+			//if (mesh->HasNormals())
----+			current.normals[i] = make_float3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
---- 		}
 ---+
----+		toReturn.push_back(current);
---- 	}
+--- // camera
+--- double currYaw = 270;
+--- double currPitch = 0;
+---@@ -58,6 +63,9 @@ GLSLProgram shdrawtex; // GLSLS program for textured draw
 --- 
---- 	return toReturn;
----@@ -282,7 +286,7 @@ triangleMesh importModel(std::string path, float scale, float3 offset) {
---- #define MIN(a,b) a < b ? a : b
---- #define MOST(type, v1,v2) make_float3( type (v1.x, v2.x), type (v1.y,v2.y), type (v1.z, v2.z));
+--- // Cuda <-> OpenGl interop resources
+--- void* cuda_dev_render_buffer; // Cuda buffer for initial render
+---+void* cuda_dev_render_buffer_2; // Cuda buffer for initial render
+---+
+---+
+--- void* cuda_custom_objects_buffer; 
+--- void* cuda_mesh_buffer; 
 --- 
-----triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda, void** mesh_pointer) {
----+triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMeshOnCuda) {
+---@@ -65,13 +73,17 @@ void* cuda_mesh_buffer;
+--- struct cudaGraphicsResource* cuda_tex_resource;
+--- GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
+--- extern "C" void
+---+
+---+
+--- // Forward declaration of CUDA render
+--- launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
 --- 
---- 	myMeshOnCuda.numIndices = myMesh.numIndices;
---- 	myMeshOnCuda.numVertices = myMesh.numVertices;
----@@ -330,16 +334,19 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh, triangleMesh &myMesh
---- 					float tMax;
---- 					// we intersect if we're either inside the slab or one edge crosses it
---- 					bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
-----					intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
-----					intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
-----					intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
----+					if (!intersecting)
----+						intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
----+					if (!intersecting)
----+						intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
----+					if (!intersecting)
----+						intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+---+
+---+extern "C" void
+---+// Forward declaration of CUDA bloom
+---+launch_cudaBloom(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
+---+
+--- // CUDA
+----size_t size_tex_data;
+----unsigned int num_texels;
+----unsigned int num_values;
 --- 
---- 					if (intersecting) {
---- 						trianglesToAddToBlock.push_back(i);
---- 					}
---- 				}
+--- size_t size_elements_data;
+--- unsigned int num_elements;
+---@@ -129,7 +141,7 @@ void createGLTextureForCUDA(GLuint* gl_tex, cudaGraphicsResource** cuda_tex, uns
+--- 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+--- 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+--- 	// Specify 2D texture
+----	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI_EXT, size_x, size_y, 0, GL_RGB_INTEGER_EXT, GL_UNSIGNED_BYTE, NULL);
+---+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI_EXT, size_x, size_y, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, NULL);
+--- 	// Register this texture with CUDA
+--- 	checkCudaErrors(cudaGraphicsGLRegisterImage(cuda_tex, *gl_tex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
+--- 	SDK_CHECK_ERROR_GL();
+---@@ -415,16 +427,14 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
+--- void initCUDABuffers()
+--- {
+--- 	// set up vertex data parameters
+----	num_texels = WIDTH * HEIGHT;
+----	num_values = num_texels * 4;
+----	size_tex_data = sizeof(GLubyte) * num_values;
 --- 
-----				cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
----+				//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
---- 				gridSizes[GRID_POS(x,y,z)] = trianglesToAddToBlock.size();
---- 				grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
 --- 
----@@ -442,24 +449,27 @@ void initCUDABuffers()
+--- 	// We don't want to use cudaMallocManaged here - since we definitely want
+--- 	cudaError_t stat;
+----	size_t myStackSize = 8192;
+---+	size_t myStackSize = 16000;
+--- 	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
+--- 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
+---+	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer_2, size_tex_data)); // Allocate CUDA memory for color output 2
 --- 
---- 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 --- 
-----	num_meshes = 1;
-----	size_meshes_data = sizeof(triangleMesh) * num_elements;
+--- 	#define NUM_ELEMENTS 7
+---@@ -446,12 +456,12 @@ void initCUDABuffers()
 --- 
----+	std::vector<triangleMesh> importedMeshes = importModel("C:/Users/Tobbe/Desktop/palm1.obj", 1, make_float3(0, 0, 40));
+--- 	objectInfo objects[NUM_ELEMENTS];
+--- 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
+----	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
+---+	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0); // reflective
+--- 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.5, 0.0); // refractive
+--- 	objects[2] = make_objectInfo(water, p1, 0.0, make_float3(0,0.0,0.1), 1.0, 1.33, 0.06); // water top
+--- 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
+--- 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
+----	objects[5] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.0, 1.33, 0.0); // sun
+---+	objects[5] = make_objectInfo(sphere, sun, 0.0, 100*make_float3(1,1,1), 0.0, 1.33, 0.0); // sun
+--- 	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.3, 0.3, 0), 0.0, 1.5, 0); // yellow boi
+--- 	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
 --- 
-----	triangleMesh bunnyMesh = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0,0,40));
-----	triangleMesh bunnyMeshOnCuda;// = importModel("C:/Users/Tobbe/Desktop/bun2.ply", 200, make_float3(0, 0, 40));
----+	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
+---@@ -463,9 +473,9 @@ void initCUDABuffers()
+--- 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0))); // bark
+--- 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255))); // palm leaves
 --- 
----+	triangleMesh *meshesOnCuda = (triangleMesh*) malloc(size_meshes_data);
----+	for (int i = 0; i < importedMeshes.size(); i++) {
----+		triangleMesh curr = importedMeshes[i];
----+		triangleMesh importedMeshOnCuda;
----+		importedMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
----+		importedMeshOnCuda.rayInfo.refractivity = 0.6;
----+		importedMeshOnCuda.rayInfo.reflectivity = 0.3;
----+		importedMeshOnCuda.rayInfo.insideColorDensity = 0.0;
----+		importedMeshOnCuda.rayInfo.refractiveIndex = 1.5;
----+		prepareMeshForCuda(curr, importedMeshOnCuda);
----+		meshesOnCuda[i] = importedMeshOnCuda;
----+	}
+----	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.04, make_float3(50.0, -60, 30.0), false);
+---+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.05, make_float3(50.0, -70, 30.0), false);
+--- 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
+----	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.1*make_float3(215./255,198./255,171./255) )); //bunny
+---+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255) )); //bunny
 --- 
-----	bunnyMeshOnCuda.rayInfo.color = make_float3(1, 1, 0);
-----	bunnyMeshOnCuda.rayInfo.refractivity = 0.6;
-----	bunnyMeshOnCuda.rayInfo.reflectivity = 0.3;
-----	bunnyMeshOnCuda.rayInfo.insideColorDensity = 0.0;
-----	bunnyMeshOnCuda.rayInfo.refractiveIndex = 1.5;
+--- 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
+--- 	num_meshes = importedMeshes.size();
+---@@ -477,7 +487,6 @@ void initCUDABuffers()
+--- 	for (int i = 0; i < importedMeshes.size(); i++) {
+--- 		triangleMesh curr = importedMeshes[i];
+--- 		curr.rayInfo = infos[i];
 ----
-----	prepareMeshForCuda(bunnyMesh, bunnyMeshOnCuda, &cuda_mesh_buffer);
----+	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
----+	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
+--- 		meshesOnCuda[i] = prepareMeshForCuda(curr);
+--- 	}
 --- 
-----	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, sizeof(triangleMesh)));
-----	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, &bunnyMeshOnCuda, sizeof(triangleMesh), cudaMemcpyHostToDevice));
+---@@ -548,19 +557,18 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 --- 
+--- 
+--- 	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
+----	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, info };
+---+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, info };
+--- 
+--- 
+--- 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
+---+	launch_cudaBloom(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
+--- 	cudaArray* texture_ptr;
+--- 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
+--- 	/*checkCudaErrors(*/cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0);
+--- 
+--- 
+----	int num_texels = WIDTH * HEIGHT;
+----	int num_values = num_texels * 4;
+----	int size_tex_data = sizeof(GLubyte) * num_values;
+----	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
+---+
+---+	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer_2, size_tex_data, cudaMemcpyDeviceToDevice));
+--- 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
+--- 
+--- 	cudaDeviceSynchronize();
+---diff --git a/src/rayHelpers.cu b/src/rayHelpers.cu
+---index 402b6b3..613eae8 100644
+------ a/src/rayHelpers.cu
+---+++ b/src/rayHelpers.cu
+---@@ -14,14 +14,22 @@ inline __device__ float clamp(float x, float a, float b)
 --- }
 --- 
+--- // convert floating point rgb color to 8-bit integer
+----inline __device__ int rgbToInt(float r, float g, float b)
+---+inline __device__ int rgbToInt(float3 rgb)
+--- {
+----	r = clamp(r, 0.0f, 255.0f);
+----	g = clamp(g, 0.0f, 255.0f);
+----	b = clamp(b, 0.0f, 255.0f);
+----	return (int(b) << 16) | (int(g) << 8) | int(r);
+---+	rgb.x = clamp(rgb.x, 0.0f, 65535.f);
+---+	rgb.y = clamp(rgb.y, 0.0f, 65535.f);
+---+	rgb.z = clamp(rgb.z, 0.0f, 65535.f);
+---+	return (int(rgb.z) << 16) | (int(rgb.y) << 8) | int(rgb.x);
+--- }
+--- 
+---+// the reverse
+---+inline __device__ float3 intToRgb(int val)
+---+{
+---+	float r =  val % 256;
+---+	float g = (val % (256*256)) / 256;
+---+	float b = val / (256 * 256); 
+---+	return make_float3(r, g, b);
+---+}
+--- 
+--- 
+--- inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 
 ---diff --git a/src/sharedStructs.h b/src/sharedStructs.h
----index d45bfc7..5391f3e 100644
+---index 3499ea4..9018918 100644
 ------ a/src/sharedStructs.h
 ---+++ b/src/sharedStructs.h
----@@ -74,7 +74,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
---- }
+---@@ -123,7 +123,8 @@ struct sceneInfo {
 --- 
---- // total size will be pow(GRID_SIZE,3) bc of xyz
-----#define GRID_SIZE 15 
----+#define GRID_SIZE 15
---- #define GRID_SIZE2 GRID_SIZE*GRID_SIZE
---- #define GRID_DEPTH 1
 --- 
+--- struct inputPointers {
+----	unsigned int* g_odata; // texture position
+---+	unsigned int* image1; // normal texture position
+---+	unsigned int* image2; // after post processing
+--- 
+--- 	sceneInfo scene;
+--- 	//objectInfo* objects;
 --diff --git a/src/kernel.cu b/src/kernel.cu
---index 8f6b869..87631b3 100644
+--index 0b86d89..42acb27 100644
 ----- a/src/kernel.cu
 --+++ b/src/kernel.cu
---@@ -522,9 +522,9 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
--- 			float3 reflectDir = reflect(currRayDir, normal);
--- 			float3 reflectionOrig = outside ? nextPos + reflectBias : nextPos - reflectBias;
+--@@ -33,140 +33,6 @@ __device__ int imageHeight;
+-- //sceneInfo info;
 -- 
+-- 
+---__device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
 ---
--- 			reflected = (info.reflectivity + extraReflection) * trace(reflectionOrig, reflectDir, remainingDepth - 1, prevHitToAddDepthFrom, false);
--- 		}
---+
--- 		float colorMultiplier = max(0.,(1. - info.reflectivity - extraReflection - info.refractivity));
--- 		float3 color = colorMultiplier* info.color;
--- #ifdef USING_POINT_LIGHT
---@@ -575,9 +575,11 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
--- 
--- 	currentTime = currTime;
--- 	scene = &pointers.scene;
----	float3 out = 255 * trace(firstPlanePos, dirVector, 4, hitInfo(), true)*3;
---+	float3 out = 255 * trace(firstPlanePos, dirVector, 4, hitInfo(), true);
--- 
----	pointers.g_odata[y * imgw + x] = rgbToInt(out.x, out.y, out.z);
---+	pointers.image1[(y * imgw + x)*4] = out.x;
---+	pointers.image1[(y * imgw + x) * 4 + 1] = out.y;
---+	pointers.image1[(y * imgw + x) * 4 + 2] = out.z;
--- }
--- extern "C" void
--- launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input)
---@@ -586,3 +588,4 @@ launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int
--- 	cudaRender << < grid, block, sbytes >> > (pointers, imgw, imgh, currTime, input);
--- }
--- 
---+
---diff --git a/src/main.cpp b/src/main.cpp
---index 0c6c682..0cddc39 100644
------ a/src/main.cpp
---+++ b/src/main.cpp
---@@ -43,6 +43,11 @@ GLFWwindow* window;
--- int WIDTH = 1024;
--- int HEIGHT = 1024;
--- 
---+int num_texels = WIDTH * HEIGHT;
---+int num_values = num_texels * 4;
---+int size_tex_data = sizeof(GLuint) * num_values;
---+
---+
--- // camera
--- double currYaw = 270;
--- double currPitch = 0;
---@@ -58,6 +63,9 @@ GLSLProgram shdrawtex; // GLSLS program for textured draw
--- 
--- // Cuda <-> OpenGl interop resources
--- void* cuda_dev_render_buffer; // Cuda buffer for initial render
---+void* cuda_dev_render_buffer_2; // Cuda buffer for initial render
---+
---+
--- void* cuda_custom_objects_buffer; 
--- void* cuda_mesh_buffer; 
--- 
---@@ -65,13 +73,17 @@ void* cuda_mesh_buffer;
--- struct cudaGraphicsResource* cuda_tex_resource;
--- GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
--- extern "C" void
---+
---+
--- // Forward declaration of CUDA render
--- launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
--- 
---+
---+extern "C" void
---+// Forward declaration of CUDA bloom
---+launch_cudaBloom(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
---+
--- // CUDA
----size_t size_tex_data;
----unsigned int num_texels;
----unsigned int num_values;
--- 
--- size_t size_elements_data;
--- unsigned int num_elements;
---@@ -129,7 +141,7 @@ void createGLTextureForCUDA(GLuint* gl_tex, cudaGraphicsResource** cuda_tex, uns
--- 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
--- 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
--- 	// Specify 2D texture
----	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI_EXT, size_x, size_y, 0, GL_RGB_INTEGER_EXT, GL_UNSIGNED_BYTE, NULL);
---+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI_EXT, size_x, size_y, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, NULL);
--- 	// Register this texture with CUDA
--- 	checkCudaErrors(cudaGraphicsGLRegisterImage(cuda_tex, *gl_tex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
--- 	SDK_CHECK_ERROR_GL();
---@@ -415,16 +427,14 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
--- void initCUDABuffers()
+---	float t0, t1; // solutions for t if the ray intersects 
+---
+---	float rad2 = powf(rad, 2);
+---
+---	float3 L = pos - origin;
+---	float tca = dot(dir, L);
+---	//if (tca < 0) return false;
+---	float d2 = dot(L, L) - tca * tca;
+---	if (d2 > rad2) return false;
+---	float thc = sqrt(rad2 - d2);
+---	t0 = tca - thc;
+---	t1 = tca + thc;
+---
+---	if (t0 > t1) {
+---		float temp = t0;
+---		t0 = t1;
+---		t1 = temp;
+---	}
+---
+---	if (t0 < 0) {
+---		t0 = t1; // if t0 is negative, let's use t1 instead 
+---		if (t0 < 0) return false; // both t0 and t1 are negative 
+---	}
+---	t = t0;
+---	return true;
+---}
+---
+---// plane normal, plane point, ray start, ray dir, point along line
+---__device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
+---{
+---	// assuming vectors are all normalized
+---	float denom = dot(p.normal, l);
+---	if (denom < -1e-8) {
+---		float3 p0l0 = p.pos - l0;
+---		t = dot(p0l0, p.normal) / denom;
+---		return (t >= 0);
+---	}
+---	return false;
+---}
+---
+---__device__ bool rayTriangleIntersect(
+---	float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
+---	float& t, float& u, float& v)
+---{
+---	// compute plane's normal
+---	float3 v0v1 = v1 - v0;
+---	float3 v0v2 = v2 - v0;
+---
+---	//// no need to normalize
+---	float3 N = cross(v0v1, v0v2); // N 
+---	float denom = dot(N, N);
+---
+---
+---	//// Step 1: finding P
+---
+---	// check if ray and plane are parallel ?
+---	float NdotRayDirection = dot(N, dir);
+---	if (fabs(NdotRayDirection) < 0.0001) // almost 0 
+---		return false; // they are parallel so they don't intersect ! 
+---
+---	// compute d parameter using equation 2
+---	float d = dot(N, v0);
+---
+---	// compute t (equation 3)
+---	t = (dot(N, orig) + d) / NdotRayDirection;
+---	// check if the triangle is in behind the ray
+---	if (t < 0) return false; // the triangle is behind 
+---
+---	// compute the intersection point using equation 1
+---	float3 P = orig + t * dir;
+---
+---	// Step 2: inside-outside test
+---	float3 C; // vector perpendicular to triangle's plane 
+---
+---	// edge 0
+---	float3 edge0 = v1 - v0;
+---	float3 vp0 = P - v0;
+---	C = cross(edge0, vp0);
+---	if (dot(N, C) < 0) return false; // P is on the right side 
+---
+---	// edge 1
+---	float3 edge1 = v2 - v1;
+---	float3 vp1 = P - v1;
+---	C = cross(edge1, vp1);
+---	if ((u = dot(N, C)) < 0)  return false; // P is on the right side 
+---
+---	// edge 2
+---	float3 edge2 = v0 - v2;
+---	float3 vp2 = P - v2;
+---	C = cross(edge2, vp2);
+---	if ((v = dot(N, C)) < 0) return false; // P is on the right side; 
+---
+---	u /= denom;
+---	v /= denom;
+---
+---	return true; // this ray hits the triangle 
+---}
+---
+---
+---
+---
+---__device__ bool RayIntersectsTriangle(float3 rayOrigin,
+---	float3 rayVector,
+---	float3 vertex0, float3 vertex1, float3 vertex2,
+---	float& t, float& u, float& v)
+---{
+---
+---	const float EPSILON = 0.001;
+---	float3 edge1, edge2, h, s, q;
+---	float a, f;
+---	edge1 = vertex1 - vertex0;
+---	edge2 = vertex2 - vertex0;
+---	h = cross(rayVector, edge2);
+---	a = dot(edge1, h);
+---	if (a > -EPSILON && a < EPSILON)
+---		return false;    // This ray is parallel to this triangle.
+---	f = 1.0 / a;
+---	s = rayOrigin - vertex0;
+---	u = f * dot(s, h);
+---	if (u < 0.0 || u > 1.0)
+---		return false;
+---	q = cross(s, edge1);
+---	v = f * dot(rayVector, q);
+---	if (v < 0.0 || u + v > 1.0)
+---		return false;
+---	// At this stage we can compute t to find out where the intersection point is on the line.
+---	t = f * dot(edge2, q);
+---
+---	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
+---}
+---
+---
+-- __device__ __forceinline__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
 -- {
--- 	// set up vertex data parameters
----	num_texels = WIDTH * HEIGHT;
----	num_values = num_texels * 4;
----	size_tex_data = sizeof(GLubyte) * num_values;
+-- 	float cosi = clamp(-1, 1, dot(I, N));
+--@@ -301,7 +167,6 @@ __device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
 -- 
+-- __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool isLightPass) {
+-- 	float closestDist = 1000000;
+---	float3 normal;
+-- 	hitInfo toReturn;
+-- 	toReturn.hit = false;
 -- 
--- 	// We don't want to use cudaMallocManaged here - since we definitely want
--- 	cudaError_t stat;
----	size_t myStackSize = 8192;
---+	size_t myStackSize = 16000;
--- 	stat = cudaDeviceSetLimit(cudaLimitStackSize, myStackSize);
--- 	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer, size_tex_data)); // Allocate CUDA memory for color output
---+	checkCudaErrors(cudaMalloc(&cuda_dev_render_buffer_2, size_tex_data)); // Allocate CUDA memory for color output 2
+--@@ -338,9 +203,10 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
+-- 				float strength = 4000;
 -- 
+-- 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
+---				normal = normalize(normalToUse + strength * distortion);
+--+				toReturn.normal = normalize(normalToUse + strength * distortion);
+-- 				toReturn.hit = true;
+-- 				toReturn.normalIsInversed = needsToCommunicateInversion;
+--+				toReturn.pos = pos;
 -- 
--- 	#define NUM_ELEMENTS 7
---@@ -446,12 +456,12 @@ void initCUDABuffers()
+-- 			}
 -- 
--- 	objectInfo objects[NUM_ELEMENTS];
--- 	//objects[0] = make_objectInfo(sphere, s1, 0.0, make_float3(1, 0, 0), 0, 0, 0);
----	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(1, 1, 1), 0, 0, 0); // reflective
---+	objects[0] = make_objectInfo(sphere, s3, 1.0, make_float3(0., 1, 1), 0, 0, 0); // reflective
--- 	objects[1] = make_objectInfo(sphere, s4, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.5, 0.0); // refractive
--- 	objects[2] = make_objectInfo(water, p1, 0.0, make_float3(0,0.0,0.1), 1.0, 1.33, 0.06); // water top
--- 	objects[3] = make_objectInfo(plane, p3, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.00); // sand ocean floor
--- 	objects[4] = make_objectInfo(sphere, s1, 0.0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0); // island
----	objects[5] = make_objectInfo(sphere, sun, 0.0, 1000*make_float3(1,1,1), 0.0, 1.33, 0.0); // sun
---+	objects[5] = make_objectInfo(sphere, sun, 0.0, 100*make_float3(1,1,1), 0.0, 1.33, 0.0); // sun
--- 	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.3, 0.3, 0), 0.0, 1.5, 0); // yellow boi
--- 	//objects[7] = make_objectInfo(plane, p4, 1.0, make_float3(1, 1, 0), 0, 0, 0);
+--@@ -349,8 +215,9 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
+-- 		case plane: {
+-- 			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
+-- 				closestDist = currDist;
+--+				toReturn.pos = currRayPos + currDist * currRayDir;
+-- 				toReturn.info = curr.rayInfo;
+---				normal = info.normal;
+--+				toReturn.normal = info.normal;
+-- 				toReturn.hit = true;
+-- 			}
 -- 
---@@ -463,9 +473,9 @@ void initCUDABuffers()
--- 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0))); // bark
--- 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.1, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255))); // palm leaves
+--@@ -360,7 +227,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
+-- 			if (length(info.pos - currRayPos) - info.rad < closestDist && intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
+-- 				closestDist = currDist;
+-- 				float3 nextPos = currRayPos + currDist * currRayDir;
+---				normal = normalize(nextPos - info.pos);
+--+				toReturn.pos = nextPos;
+--+				toReturn.normal = normalize(nextPos - info.pos);
+-- 				toReturn.info = curr.rayInfo;
+-- 				toReturn.hit = true;
 -- 
----	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.04, make_float3(50.0, -60, 30.0), false);
---+	std::vector<triangleMesh> bunnyMesh = importModel("C:/Users/Tobbe/Desktop/rock.obj", 0.05, make_float3(50.0, -70, 30.0), false);
--- 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
----	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.1*make_float3(215./255,198./255,171./255) )); //bunny
---+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255) )); //bunny
+--@@ -388,7 +256,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
+-- 			float3 currPos = currRayPos + (tMin + 0.001)*currRayDir;
+-- 			gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
 -- 
--- 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
--- 	num_meshes = importedMeshes.size();
---@@ -477,7 +487,6 @@ void initCUDABuffers()
--- 	for (int i = 0; i < importedMeshes.size(); i++) {
--- 		triangleMesh curr = importedMeshes[i];
--- 		curr.rayInfo = infos[i];
----
--- 		meshesOnCuda[i] = prepareMeshForCuda(curr);
+---			int stepsBeforeQuit = 1000;
+--+			int stepsBeforeQuit = GRID_SIZE*3;
+-- 			while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
+-- 
+-- 				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
+--@@ -403,7 +271,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
+-- 						closestDist = t;
+-- 						toReturn.info = currMesh.rayInfo;
+-- 
+---						normal = (1 - v - u)* currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
+--+						toReturn.normal = (1 - v - u)* currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
+--+						toReturn.pos = currPos + closestDist * currRayDir;
+-- 						toReturn.hit = true;
+-- 						stepsBeforeQuit = 1;
+-- 					}
+--@@ -419,13 +288,17 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
+-- 				currPos = currPos + minDist * currRayDir;
+-- 				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+-- 			}
+--+			//if (toReturn.hit) {
+--+			//	return toReturn;
+--+			//}
+-- 		}
+-- 
 -- 	}
 -- 
---@@ -548,19 +557,18 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 -- 
--- 
--- 	sceneInfo info{ totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, num_elements, (triangleMesh*)cuda_mesh_buffer, num_meshes };
----	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, info };
---+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, info };
--- 
--- 
--- 	launch_cudaRender(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
---+	launch_cudaBloom(grid, block, 0, pointers, WIDTH, HEIGHT, totalTime.count(), input); // launch with 0 additional shared memory allocated
--- 	cudaArray* texture_ptr;
--- 	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
--- 	/*checkCudaErrors(*/cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0);
--- 
--- 
----	int num_texels = WIDTH * HEIGHT;
----	int num_values = num_texels * 4;
----	int size_tex_data = sizeof(GLubyte) * num_values;
----	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer, size_tex_data, cudaMemcpyDeviceToDevice));
+---	toReturn.normal = normal;
+---	toReturn.pos = currRayPos + closestDist * currRayDir;
 --+
---+	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer_2, size_tex_data, cudaMemcpyDeviceToDevice));
--- 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
--- 
--- 	cudaDeviceSynchronize();
---diff --git a/src/rayHelpers.cu b/src/rayHelpers.cu
---index 402b6b3..613eae8 100644
------ a/src/rayHelpers.cu
---+++ b/src/rayHelpers.cu
---@@ -14,14 +14,22 @@ inline __device__ float clamp(float x, float a, float b)
+--+
+--+	//toReturn.pos = currRayPos + closestDist * currRayDir;
+-- 	return toReturn;
 -- }
 -- 
--- // convert floating point rgb color to 8-bit integer
----inline __device__ int rgbToInt(float r, float g, float b)
---+inline __device__ int rgbToInt(float3 rgb)
--- {
----	r = clamp(r, 0.0f, 255.0f);
----	g = clamp(g, 0.0f, 255.0f);
----	b = clamp(b, 0.0f, 255.0f);
----	return (int(b) << 16) | (int(g) << 8) | int(r);
---+	rgb.x = clamp(rgb.x, 0.0f, 65535.f);
---+	rgb.y = clamp(rgb.y, 0.0f, 65535.f);
---+	rgb.z = clamp(rgb.z, 0.0f, 65535.f);
---+	return (int(rgb.z) << 16) | (int(rgb.y) << 8) | int(rgb.x);
--- }
+--@@ -550,11 +423,11 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
+-- 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
+-- 		}
 -- 
---+// the reverse
---+inline __device__ float3 intToRgb(int val)
---+{
---+	float r =  val % 256;
---+	float g = (val % (256*256)) / 256;
---+	float b = val / (256 * 256); 
---+	return make_float3(r, g, b);
+---		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.01)
+--+		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.001)
+-- 			return info.color * (1. - prevColorMP) + extraPrevColor;
+-- 
+-- 		if (info.refractivity* totalContributionRemaining > 0.001) {
+---			float kr = 1.0;;
+--+			float kr = 1.0;
+-- 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
+-- 
+-- 
+--@@ -565,7 +438,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
+-- 				float refracMP = max(0., (1 - kr));
+-- 				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP, isLightPass);
+-- 			}
+---			extraReflection = max(0.,min(1., kr) * info.refractivity);
+--+			extraReflection = max(0.0,min(1., kr) * info.refractivity);
+-- 
+-- 		}
+-- 		if ((info.reflectivity + extraReflection)* totalContributionRemaining > 0.001 && !isLightPass) {
+--diff --git a/src/main.cpp b/src/main.cpp
+--index ad44dac..c635f97 100644
+----- a/src/main.cpp
+--+++ b/src/main.cpp
+--@@ -441,6 +441,125 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
+-- 
+-- 	return myMeshOnCuda;
+-- }
+--+#define NUM_ELEMENTS 8
+--+
+--+void setupGlobalGrid(objectInfo objects[NUM_ELEMENTS], std::vector<triangleMesh> importedMeshes) {
+--+
+--+	unsigned int gridSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int*);
+--+	unsigned int gridSizesSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int);
+--+
+--+	float3 gridDist = (1.0 / GLOBAL_GRID_SIZE)* (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN);
+--+
+--+	for (int x = 0; x < GLOBAL_GRID_SIZE; x++) {
+--+		for (int y = 0; y < GLOBAL_GRID_SIZE; y++) {
+--+			for (int z = 0; z < GLOBAL_GRID_SIZE; z++) {
+--+				std::vector<unsigned int> objectsToAddToBlock;
+--+				std::vector<unsigned int> meshesToAddToBlock;
+--+
+--+				float3 boxMin = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x, y, z);
+--+				float3 boxMax = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x+1, y+1, z+1);
+--+				float3 center = (boxMin + boxMax) * 0.5;
+--+
+--+				for (int i = 0; i < NUM_ELEMENTS; i++) {
+--+					objectInfo object = objects[i];
+--+					switch (object.s) {
+--+						case water:
+--+						case plane: {
+--+
+--+							break;
+--+						}
+--+						case sphere: {
+--+
+--+							if (length(object.shapeData.pos - center)) {
+--+								
+--+							}
+--+
+--+
+--+							break;
+--+						}
+--+					}
+--+
+--+				}
+--+	//			std::vector<unsigned int> trianglesToAddToBlock;
+--+	//			float3 currMin = make_float3(x, y, z) * gridDist + min;
+--+	//			float3 currMax = make_float3(x + 1, y + 1, z + 1) * gridDist + min;
+--+	//			float3 currCenter = 0.5 * (currMin + currMax);
+--+
+--+	//			for (int i = 0; i < myMesh.numIndices; i += 3) {
+--+	//				float3 v0 = myMesh.vertices[myMesh.indices[i]];
+--+	//				float3 v1 = myMesh.vertices[myMesh.indices[i + 1]];
+--+	//				float3 v2 = myMesh.vertices[myMesh.indices[i + 2]];
+--+
+--+	//				float tMin;
+--+	//				float tMax;
+--+	//				// we intersect if we're either inside the slab or one edge crosses it
+--+	//				bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
+--+	//				//if (!intersecting)
+--+	//				intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
+--+	//				//if (!intersecting)
+--+	//				intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
+--+	//				//if (!intersecting)
+--+	//				intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
+--+
+--+	//				if (intersecting) {
+--+	//					trianglesToAddToBlock.push_back(i);
+--+	//				}
+--+	//			}
+--+
+--+	//			//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
+--+	//			gridSizes[GRID_POS(x, y, z)] = trianglesToAddToBlock.size();
+--+	//			grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
+--+
+--+	//			for (int i = 0; i < trianglesToAddToBlock.size(); i++) {
+--+	//				grid[GRID_POS(x, y, z)][i] = trianglesToAddToBlock[i]; // add collisions to grid
+--+	//			}
+--+			}
+--+		}
+--+	}
+--+
+--+	//unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
+--+	//unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
+--+
+--+
+--+	//if (myMesh.numIndices > 0) {
+--+	//	// allocate cuda space
+--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
+--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
+--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
+--+	//	// this shit is getting convoluted man
+--+	//	// gotta allocate for each list in grid separately, then feed the correct pointers to the correct positions
+--+
+--+	//	unsigned int** CudaGridPointer = (unsigned int**)malloc(gridSize);
+--+
+--+	//	for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+--+	//		checkCudaErrors(cudaMalloc(&(CudaGridPointer[i]), gridSizes[i] * sizeof(unsigned int)));
+--+	//		checkCudaErrors(cudaMemcpy(CudaGridPointer[i], grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
+--+
+--+	//	}
+--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.grid, gridSize));
+--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.gridSizes, gridSizesSize));
+--+
+--+	//	// copy data to cuda buffers
+--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
+--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
+--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
+--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
+--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
+--+
+--+	//	free(CudaGridPointer);
+--+
+--+	//}
+--+
+--+	//for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+--+	//	free(grid[i]);
+--+	//}
+--+	//free(grid);
+--+	//free(gridSizes);
+--+
+--+	//return myMeshOnCuda;
+--+
+--+
 --+}
 -- 
+-- void initCUDABuffers()
+-- {
+--@@ -458,7 +577,6 @@ void initCUDABuffers()
+-- 	checkCudaErrors(cudaMalloc(&cuda_light_buffer_2, size_light_data)); // Allocate CUDA memory for pong buffer
 -- 
--- inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 
+-- 
+---	#define NUM_ELEMENTS 8
+-- 	num_elements = NUM_ELEMENTS;
+-- 	size_elements_data = sizeof(objectInfo) * num_elements;
+-- 
+--@@ -526,6 +644,10 @@ void initCUDABuffers()
+-- 	}
+-- 	// setup the global grid
+-- 
+--+	setupGlobalGrid(objects, importedMeshes);
+--+
+--+	//gridMeshes = (*unsigned int) malloc(GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE);
+--+
+-- 
+-- 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
+-- 	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
 --diff --git a/src/sharedStructs.h b/src/sharedStructs.h
---index 3499ea4..9018918 100644
+--index 0e7d86e..87ee74b 100644
 ----- a/src/sharedStructs.h
 --+++ b/src/sharedStructs.h
---@@ -123,7 +123,8 @@ struct sceneInfo {
+--@@ -5,14 +5,14 @@
+-- #define AIR_DENSITY 0.001
+-- #define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
+-- #define WATER_COLOR make_float3(0,0.0,0.1)
+---#define WATER_DENSITY 0.1
+--+#define WATER_DENSITY 0.05
 -- 
 -- 
--- struct inputPointers {
----	unsigned int* g_odata; // texture position
---+	unsigned int* image1; // normal texture position
---+	unsigned int* image2; // after post processing
+-- #define WIDTH 1024
+-- #define HEIGHT 1024
 -- 
--- 	sceneInfo scene;
--- 	//objectInfo* objects;
--diff --git a/src/kernel.cu b/src/kernel.cu
--index 0b86d89..42acb27 100644
----- a/src/kernel.cu
--+++ b/src/kernel.cu
--@@ -33,140 +33,6 @@ __device__ int imageHeight;
-- //sceneInfo info;
-- 
-- 
---__device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
---
---	float t0, t1; // solutions for t if the ray intersects 
---
---	float rad2 = powf(rad, 2);
---
---	float3 L = pos - origin;
---	float tca = dot(dir, L);
---	//if (tca < 0) return false;
---	float d2 = dot(L, L) - tca * tca;
---	if (d2 > rad2) return false;
---	float thc = sqrt(rad2 - d2);
---	t0 = tca - thc;
---	t1 = tca + thc;
---
---	if (t0 > t1) {
---		float temp = t0;
---		t0 = t1;
---		t1 = temp;
---	}
---
---	if (t0 < 0) {
---		t0 = t1; // if t0 is negative, let's use t1 instead 
---		if (t0 < 0) return false; // both t0 and t1 are negative 
---	}
---	t = t0;
---	return true;
---}
---
---// plane normal, plane point, ray start, ray dir, point along line
---__device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
---{
---	// assuming vectors are all normalized
---	float denom = dot(p.normal, l);
---	if (denom < -1e-8) {
---		float3 p0l0 = p.pos - l0;
---		t = dot(p0l0, p.normal) / denom;
---		return (t >= 0);
---	}
---	return false;
---}
---
---__device__ bool rayTriangleIntersect(
---	float3 orig, float3 dir, float3 v0, const float3& v1, const float3& v2,
---	float& t, float& u, float& v)
---{
---	// compute plane's normal
---	float3 v0v1 = v1 - v0;
---	float3 v0v2 = v2 - v0;
---
---	//// no need to normalize
---	float3 N = cross(v0v1, v0v2); // N 
---	float denom = dot(N, N);
---
---
---	//// Step 1: finding P
---
---	// check if ray and plane are parallel ?
---	float NdotRayDirection = dot(N, dir);
---	if (fabs(NdotRayDirection) < 0.0001) // almost 0 
---		return false; // they are parallel so they don't intersect ! 
---
---	// compute d parameter using equation 2
---	float d = dot(N, v0);
---
---	// compute t (equation 3)
---	t = (dot(N, orig) + d) / NdotRayDirection;
---	// check if the triangle is in behind the ray
---	if (t < 0) return false; // the triangle is behind 
---
---	// compute the intersection point using equation 1
---	float3 P = orig + t * dir;
---
---	// Step 2: inside-outside test
---	float3 C; // vector perpendicular to triangle's plane 
---
---	// edge 0
---	float3 edge0 = v1 - v0;
---	float3 vp0 = P - v0;
---	C = cross(edge0, vp0);
---	if (dot(N, C) < 0) return false; // P is on the right side 
---
---	// edge 1
---	float3 edge1 = v2 - v1;
---	float3 vp1 = P - v1;
---	C = cross(edge1, vp1);
---	if ((u = dot(N, C)) < 0)  return false; // P is on the right side 
---
---	// edge 2
---	float3 edge2 = v0 - v2;
---	float3 vp2 = P - v2;
---	C = cross(edge2, vp2);
---	if ((v = dot(N, C)) < 0) return false; // P is on the right side; 
---
---	u /= denom;
---	v /= denom;
---
---	return true; // this ray hits the triangle 
---}
---
---
---
---
---__device__ bool RayIntersectsTriangle(float3 rayOrigin,
---	float3 rayVector,
---	float3 vertex0, float3 vertex1, float3 vertex2,
---	float& t, float& u, float& v)
---{
---
---	const float EPSILON = 0.001;
---	float3 edge1, edge2, h, s, q;
---	float a, f;
---	edge1 = vertex1 - vertex0;
---	edge2 = vertex2 - vertex0;
---	h = cross(rayVector, edge2);
---	a = dot(edge1, h);
---	if (a > -EPSILON && a < EPSILON)
---		return false;    // This ray is parallel to this triangle.
---	f = 1.0 / a;
---	s = rayOrigin - vertex0;
---	u = f * dot(s, h);
---	if (u < 0.0 || u > 1.0)
---		return false;
---	q = cross(s, edge1);
---	v = f * dot(rayVector, q);
---	if (v < 0.0 || u + v > 1.0)
---		return false;
---	// At this stage we can compute t to find out where the intersection point is on the line.
---	t = f * dot(edge2, q);
---
---	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
---}
---
---
-- __device__ __forceinline__ void fresnel(const float3& I, const float3& N, const float& ior, float& kr)
-- {
-- 	float cosi = clamp(-1, 1, dot(I, N));
--@@ -301,7 +167,6 @@ __device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
-- 
-- __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool isLightPass) {
-- 	float closestDist = 1000000;
---	float3 normal;
-- 	hitInfo toReturn;
-- 	toReturn.hit = false;
-- 
--@@ -338,9 +203,10 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
-- 				float strength = 4000;
-- 
-- 				float3 distortion = getDistortion(normalToUse, waveInput, 4);
---				normal = normalize(normalToUse + strength * distortion);
--+				toReturn.normal = normalize(normalToUse + strength * distortion);
-- 				toReturn.hit = true;
-- 				toReturn.normalIsInversed = needsToCommunicateInversion;
--+				toReturn.pos = pos;
-- 
-- 			}
-- 
--@@ -349,8 +215,9 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
-- 		case plane: {
-- 			if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
-- 				closestDist = currDist;
--+				toReturn.pos = currRayPos + currDist * currRayDir;
-- 				toReturn.info = curr.rayInfo;
---				normal = info.normal;
--+				toReturn.normal = info.normal;
-- 				toReturn.hit = true;
-- 			}
-- 
--@@ -360,7 +227,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
-- 			if (length(info.pos - currRayPos) - info.rad < closestDist && intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
-- 				closestDist = currDist;
-- 				float3 nextPos = currRayPos + currDist * currRayDir;
---				normal = normalize(nextPos - info.pos);
--+				toReturn.pos = nextPos;
--+				toReturn.normal = normalize(nextPos - info.pos);
-- 				toReturn.info = curr.rayInfo;
-- 				toReturn.hit = true;
-- 
--@@ -388,7 +256,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
-- 			float3 currPos = currRayPos + (tMin + 0.001)*currRayDir;
-- 			gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
-- 
---			int stepsBeforeQuit = 1000;
--+			int stepsBeforeQuit = GRID_SIZE*3;
-- 			while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
-- 
-- 				gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
--@@ -403,7 +271,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
-- 						closestDist = t;
-- 						toReturn.info = currMesh.rayInfo;
-- 
---						normal = (1 - v - u)* currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
--+						toReturn.normal = (1 - v - u)* currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
--+						toReturn.pos = currPos + closestDist * currRayDir;
-- 						toReturn.hit = true;
-- 						stepsBeforeQuit = 1;
-- 					}
--@@ -419,13 +288,17 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir, bool
-- 				currPos = currPos + minDist * currRayDir;
-- 				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
-- 			}
--+			//if (toReturn.hit) {
--+			//	return toReturn;
--+			//}
-- 		}
-- 
-- 	}
-- 
-- 
---	toReturn.normal = normal;
---	toReturn.pos = currRayPos + closestDist * currRayDir;
--+
--+
--+	//toReturn.pos = currRayPos + closestDist * currRayDir;
-- 	return toReturn;
-- }
-- 
--@@ -550,11 +423,11 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
-- 			extraPrevColor = prevColorMP * prevHitToAddDepthFrom.info.color;
-- 		}
-- 
---		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.01)
--+		if (prevColorMP > 0.999 || remainingDepth == 1 || totalContributionRemaining < 0.001)
-- 			return info.color * (1. - prevColorMP) + extraPrevColor;
-- 
-- 		if (info.refractivity* totalContributionRemaining > 0.001) {
---			float kr = 1.0;;
--+			float kr = 1.0;
-- 			fresnel(currRayDir, normal, outside ? info.refractiveIndex : 1 / info.refractiveIndex, kr);
-- 
-- 
--@@ -565,7 +438,7 @@ __device__ float3 trace(const float3 currRayPos, const float3 currRayDir, int re
-- 				float refracMP = max(0., (1 - kr));
-- 				refracted = info.refractivity * refracMP * trace(refractionRayOrig, refractionDirection, remainingDepth - 1,  outside ^ hit.normalIsInversed ? hit : hitInfo(), totalContributionRemaining* refracMP, isLightPass);
-- 			}
---			extraReflection = max(0.,min(1., kr) * info.refractivity);
--+			extraReflection = max(0.0,min(1., kr) * info.refractivity);
-- 
-- 		}
-- 		if ((info.reflectivity + extraReflection)* totalContributionRemaining > 0.001 && !isLightPass) {
+---#define LIGHT_BUFFER_WORLD_SIZE 140
+---#define LIGHT_PLANE_SIZE 140
+--+#define LIGHT_BUFFER_WORLD_SIZE 200
+--+#define LIGHT_PLANE_SIZE 200
+-- #define LIGHT_BUFFER_WIDTH WIDTH
+-- #define LIGHT_BUFFER_THICKNESS 4
+-- #define LIGHT_BUFFER_THICKNESS_SIZE 150
+--@@ -20,6 +20,23 @@
+-- #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
+-- #define LIGHT_BUFFER_THICKNESS_WORLD_RATIO (1. / LIGHT_BUFFER_THICKNESS_SIZE)
+-- 
+--+
+--+// total size will be pow(GRID_SIZE,3) bc of xyz
+--+#define GRID_SIZE 15
+--+#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
+--+//#define GRID_DEPTH 1
+--+
+--+#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
+--+
+--+#define GLOBAL_GRID_SIZE 4
+--+#define GLOBAL_GRID_SIZE2 GLOBAL_GRID_SIZE*GLOBAL_GRID_SIZE
+--+#define GLOBAL_GRID_MAX make_float3(500,300,500)
+--+#define GLOBAL_GRID_MIN make_float3(-500,-100,-500)
+--+#define GLOBAL_GRID_DIMENSIONS (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN) *(1/GLOBAL_GRID_SIZE)
+--+
+--+#define GLOBAL_GRID_POS(x,y,z) GLOBAL_GRID_SIZE2*x + GLOBAL_GRID_SIZE*y + z
+--+
+--+
+-- struct shapeInfo {
+-- 	float3 pos;
+-- 	float3 normal;
+--@@ -101,15 +118,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
+-- 	return o;
+-- }
+-- 
+---// total size will be pow(GRID_SIZE,3) bc of xyz
+---#define GRID_SIZE 15
+---#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
+---#define GRID_DEPTH 1
+---
+---#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
+-- 
+---#define GLOBAL_GRID_SIZE 2
+---#define GLOBAL_GRID_CHUNK_SIZE 500
+-- 
+-- struct triangleMesh {
+-- 	float3* vertices; 
+--@@ -308,3 +317,78 @@ inline __device__ bool intersectBox(const float3& orig, const float3& dir, const
+-- 
+-- 
+-- }
+--+
+--+
+--+inline __device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
+--+
+--+	float t0, t1; // solutions for t if the ray intersects 
+--+
+--+	float rad2 = powf(rad, 2);
+--+
+--+	float3 L = pos - origin;
+--+	float tca = dot(dir, L);
+--+	//if (tca < 0) return false;
+--+	float d2 = dot(L, L) - tca * tca;
+--+	if (d2 > rad2) return false;
+--+	float thc = sqrt(rad2 - d2);
+--+	t0 = tca - thc;
+--+	t1 = tca + thc;
+--+
+--+	if (t0 > t1) {
+--+		float temp = t0;
+--+		t0 = t1;
+--+		t1 = temp;
+--+	}
+--+
+--+	if (t0 < 0) {
+--+		t0 = t1; // if t0 is negative, let's use t1 instead 
+--+		if (t0 < 0) return false; // both t0 and t1 are negative 
+--+	}
+--+	t = t0;
+--+	return true;
+--+}
+--+
+--+// plane normal, plane point, ray start, ray dir, point along line
+--+inline __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
+--+{
+--+	// assuming vectors are all normalized
+--+	float denom = dot(p.normal, l);
+--+	if (denom < -1e-8) {
+--+		float3 p0l0 = p.pos - l0;
+--+		t = dot(p0l0, p.normal) / denom;
+--+		return (t >= 0);
+--+	}
+--+	return false;
+--+}
+--+
+--+inline  __device__ bool RayIntersectsTriangle(float3 rayOrigin,
+--+	float3 rayVector,
+--+	float3 vertex0, float3 vertex1, float3 vertex2,
+--+	float& t, float& u, float& v)
+--+{
+--+
+--+	const float EPSILON = 0.001;
+--+	float3 edge1, edge2, h, s, q;
+--+	float a, f;
+--+	edge1 = vertex1 - vertex0;
+--+	edge2 = vertex2 - vertex0;
+--+	h = cross(rayVector, edge2);
+--+	a = dot(edge1, h);
+--+	if (a > -EPSILON && a < EPSILON)
+--+		return false;    // This ray is parallel to this triangle.
+--+	f = 1.0 / a;
+--+	s = rayOrigin - vertex0;
+--+	u = f * dot(s, h);
+--+	if (u < 0.0 || u > 1.0)
+--+		return false;
+--+	q = cross(s, edge1);
+--+	v = f * dot(rayVector, q);
+--+	if (v < 0.0 || u + v > 1.0)
+--+		return false;
+--+	// At this stage we can compute t to find out where the intersection point is on the line.
+--+	t = f * dot(edge2, q);
+--+
+--+	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
+--+}
+--+
+--+
 -diff --git a/src/main.cpp b/src/main.cpp
--index ad44dac..c635f97 100644
+-index 0c6750a..afde9e0 100644
 ---- a/src/main.cpp
 -+++ b/src/main.cpp
--@@ -441,6 +441,125 @@ triangleMesh prepareMeshForCuda(const triangleMesh &myMesh) {
+-@@ -101,7 +101,9 @@ launch_cudaBloomOutput(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, Po
+- extern "C" void
+- launch_cudaBlur(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers);
+- extern "C" void
+--launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers);
+-+launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval);
+-+extern "C" void
+-+launch_cudaBlur2SingleChannel(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval);
+- extern "C" void
+- launch_cudaDownSampleToHalfRes(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers);
+- extern "C" void
+-@@ -671,9 +673,9 @@ void initCUDABuffers()
+- 	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
+- 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 2000 )); //rock
 - 
-- 	return myMeshOnCuda;
+--	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
+-+	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 200, make_float3(0.0, -0, -40.0), false);
+- 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
+--	infos.push_back(make_rayHitInfo(0.0, 0.0, 0., 0.0, make_float3(20,0,0.0), 0)); //le bun
+-+	infos.push_back(make_rayHitInfo(0.0, 1.0, 1.5, 0.0, make_float3(20,0,0.0), 0)); //le bun
+- 
+- 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
+- 	num_meshes = importedMeshes.size();
+-@@ -795,10 +797,10 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
+- 	launch_cudaLight(lightGridDraw, block, 0, pointers, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, totalTime.count(), input);
+- 
+- 
+--	//if (blurEnabled) {
+--		//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+--		//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+--	//}
+-+	if (blurEnabled) {
+-+		launch_cudaBlur2SingleChannel(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }, 1); // launch with 0 additional shared memory allocated
+-+		launch_cudaBlur2SingleChannel(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }, 1); // launch with 0 additional shared memory allocated
+-+	}
+- 
+- 
+- 	// main render
+-@@ -807,8 +809,8 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
+- 
+- 	//// bloom passes
+- 	launch_cudaBloomSample(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+--	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, true, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+--	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, false, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+-+	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, true, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }, 4); // launch with 0 additional shared memory allocated
+-+	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, false, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }, 4); // launch with 0 additional shared memory allocated
+- 	launch_cudaBloomOutput(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
+- 
+- 	cudaArray* texture_ptr;
+-diff --git a/src/postprocessing.cu b/src/postprocessing.cu
+-index fd843d6..fe7ae11 100644
+---- a/src/postprocessing.cu
+-+++ b/src/postprocessing.cu
+-@@ -74,7 +74,7 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
+- #define BLOOM_KERNEL_SIZE 5
+- 
+- __global__ void
+--cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio)
+-+cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio, int dataInterval)
+- {
+- 	extern __shared__ uchar4 sdata[];
+- 
+-@@ -89,17 +89,18 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
+- 	int y = blockIdx.y * bh + ty;
+- 	int z = blockIdx.z + bt * tz;
+- 
+--	int firstPos = (z * (imgw * imgh) + y * imgw + x) * 4;
+-+	int firstPos = (z * (imgw * imgh) + y * imgw + x) * dataInterval;
+- 	float weight[BLOOM_KERNEL_SIZE] = {0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216}; // 5
+- 	//float weight[BLOOM_KERNEL_SIZE] = { 0.104379, 	0.075216, 0.02812, 	0.005441, 0.000543 , 0.000028 , 0.000001 }; // 7
+- 
+- 
+-+
+- 	float3 result = make_float3(pointers.processRead[firstPos], pointers.processRead[firstPos + 1], pointers.processRead[firstPos + 2]) * weight[0]; 
+- 	if (isHorizontal) {
+- 		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
+- 		{
+--			int xU = min(i, imgw - 1 - x)*4;
+--			int xL = min(i, x)*4;
+-+			int xU = min(i, imgw - 1 - x)* dataInterval;
+-+			int xL = min(i, x)* dataInterval;
+- 			result = result + make_float3(pointers.processRead[firstPos + xU], pointers.processRead[firstPos + xU + 1], pointers.processRead[firstPos + xU + 2])*weight[i];
+- 			result = result + make_float3(pointers.processRead[firstPos - xL], pointers.processRead[firstPos - xL + 1], pointers.processRead[firstPos - xL + 2])*weight[i];
+- 		}
+-@@ -107,8 +108,8 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
+- 	else {
+- 		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
+- 		{
+--			int yU = min(i, imgh - 1 - y) * 4;
+--			int yL = min(i, y) * 4;
+-+			int yU = min(i, imgh - 1 - y) * dataInterval;
+-+			int yL = min(i, y) * dataInterval;
+- 			result = result + make_float3(pointers.processRead[firstPos + yU * imgw *currRatio], pointers.processRead[firstPos + yU * imgw * currRatio  + 1], pointers.processRead[firstPos + yU * imgw * currRatio  + 2]) * weight[i];
+- 			result = result + make_float3(pointers.processRead[firstPos - yL * imgw * currRatio], pointers.processRead[firstPos - yL * imgw * currRatio  + 1], pointers.processRead[firstPos - yL * imgw * currRatio + 2]) * weight[i];
+- 		}
+-@@ -120,6 +121,50 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
 - }
--+#define NUM_ELEMENTS 8
--+
--+void setupGlobalGrid(objectInfo objects[NUM_ELEMENTS], std::vector<triangleMesh> importedMeshes) {
--+
--+	unsigned int gridSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int*);
--+	unsigned int gridSizesSize = GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * sizeof(unsigned int);
--+
--+	float3 gridDist = (1.0 / GLOBAL_GRID_SIZE)* (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN);
--+
--+	for (int x = 0; x < GLOBAL_GRID_SIZE; x++) {
--+		for (int y = 0; y < GLOBAL_GRID_SIZE; y++) {
--+			for (int z = 0; z < GLOBAL_GRID_SIZE; z++) {
--+				std::vector<unsigned int> objectsToAddToBlock;
--+				std::vector<unsigned int> meshesToAddToBlock;
--+
--+				float3 boxMin = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x, y, z);
--+				float3 boxMax = GLOBAL_GRID_MIN + GLOBAL_GRID_DIMENSIONS * make_float3(x+1, y+1, z+1);
--+				float3 center = (boxMin + boxMax) * 0.5;
--+
--+				for (int i = 0; i < NUM_ELEMENTS; i++) {
--+					objectInfo object = objects[i];
--+					switch (object.s) {
--+						case water:
--+						case plane: {
--+
--+							break;
--+						}
--+						case sphere: {
--+
--+							if (length(object.shapeData.pos - center)) {
--+								
--+							}
+- 
+- 
+-+__global__ void
+-+cudaBlur2SingleChannel(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio, int dataInterval)
+-+{
+-+	extern __shared__ uchar4 sdata[];
 -+
 -+
--+							break;
--+						}
--+					}
+-+	int tx = threadIdx.x;
+-+	int ty = threadIdx.y;
+-+	int tz = threadIdx.z;
+-+	int bw = blockDim.x;
+-+	int bh = blockDim.y;
+-+	int bt = blockDim.z;
+-+	int x = blockIdx.x * bw + tx;
+-+	int y = blockIdx.y * bh + ty;
+-+	int z = blockIdx.z + bt * tz;
 -+
--+				}
--+	//			std::vector<unsigned int> trianglesToAddToBlock;
--+	//			float3 currMin = make_float3(x, y, z) * gridDist + min;
--+	//			float3 currMax = make_float3(x + 1, y + 1, z + 1) * gridDist + min;
--+	//			float3 currCenter = 0.5 * (currMin + currMax);
+-+	int firstPos = (z * (imgw * imgh) + y * imgw + x) * dataInterval;
+-+	float weight[BLOOM_KERNEL_SIZE] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 }; // 5
 -+
--+	//			for (int i = 0; i < myMesh.numIndices; i += 3) {
--+	//				float3 v0 = myMesh.vertices[myMesh.indices[i]];
--+	//				float3 v1 = myMesh.vertices[myMesh.indices[i + 1]];
--+	//				float3 v2 = myMesh.vertices[myMesh.indices[i + 2]];
--+
--+	//				float tMin;
--+	//				float tMax;
--+	//				// we intersect if we're either inside the slab or one edge crosses it
--+	//				bool intersecting = (std::fabs(currCenter.x - v0.x) < gridDist.x * 0.5) && (std::fabs(currCenter.y - v0.y) < gridDist.y * 0.5) && (std::fabs(currCenter.z - v0.z) < gridDist.z * 0.5);
--+	//				//if (!intersecting)
--+	//				intersecting |= intersectBox(v0, normalize(v1 - v0), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v1 - v0);
--+	//				//if (!intersecting)
--+	//				intersecting |= intersectBox(v1, normalize(v2 - v1), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v2 - v1);
--+	//				//if (!intersecting)
--+	//				intersecting |= intersectBox(v2, normalize(v0 - v2), currMin, currMax, tMin, tMax) && tMin > 0 && tMin < length(v0 - v2);
--+
--+	//				if (intersecting) {
--+	//					trianglesToAddToBlock.push_back(i);
--+	//				}
--+	//			}
--+
--+	//			//cout << "x " << x << " y " << y << " z " << z << " collisions: " << trianglesToAddToBlock.size() << endl;
--+	//			gridSizes[GRID_POS(x, y, z)] = trianglesToAddToBlock.size();
--+	//			grid[GRID_POS(x, y, z)] = (unsigned int*)malloc(trianglesToAddToBlock.size() * sizeof(unsigned int));
--+
--+	//			for (int i = 0; i < trianglesToAddToBlock.size(); i++) {
--+	//				grid[GRID_POS(x, y, z)][i] = trianglesToAddToBlock[i]; // add collisions to grid
--+	//			}
--+			}
+-+	float result = pointers.processRead[firstPos]*weight[0];
+-+	if (isHorizontal) {
+-+		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
+-+		{
+-+			int xU = min(i, imgw - 1 - x) * dataInterval;
+-+			int xL = min(i, x) * dataInterval;
+-+			result = result + pointers.processRead[firstPos + xU] * weight[i];
+-+			result = result + pointers.processRead[firstPos - xL] * weight[i];
+-+		}
+-+	}
+-+	else {
+-+		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
+-+		{
+-+			int yU = min(i, imgh - 1 - y) * dataInterval;
+-+			int yL = min(i, y) * dataInterval;
+-+			result = result + pointers.processRead[firstPos + yU * imgw * currRatio] * weight[i];
+-+			result = result + pointers.processRead[firstPos - yL * imgw * currRatio] * weight[i];
 -+		}
 -+	}
 -+
--+	//unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
--+	//unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
--+
--+
--+	//if (myMesh.numIndices > 0) {
--+	//	// allocate cuda space
--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
--+	//	// this shit is getting convoluted man
--+	//	// gotta allocate for each list in grid separately, then feed the correct pointers to the correct positions
--+
--+	//	unsigned int** CudaGridPointer = (unsigned int**)malloc(gridSize);
--+
--+	//	for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
--+	//		checkCudaErrors(cudaMalloc(&(CudaGridPointer[i]), gridSizes[i] * sizeof(unsigned int)));
--+	//		checkCudaErrors(cudaMemcpy(CudaGridPointer[i], grid[i], gridSizes[i] * sizeof(unsigned int), cudaMemcpyHostToDevice));
--+
--+	//	}
--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.grid, gridSize));
--+	//	checkCudaErrors(cudaMalloc(&myMeshOnCuda.gridSizes, gridSizesSize));
--+
--+	//	// copy data to cuda buffers
--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
--+	//	checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
--+
--+	//	free(CudaGridPointer);
--+
--+	//}
--+
--+	//for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
--+	//	free(grid[i]);
--+	//}
--+	//free(grid);
--+	//free(gridSizes);
--+
--+	//return myMeshOnCuda;
--+
--+
+-+	pointers.processWrite[firstPos] = result;
 -+}
+-+
+-+
+-+
 - 
-- void initCUDABuffers()
+- 
+- __global__ void
+-@@ -245,12 +290,21 @@ launch_cudaBlur(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currR
+- }
+- 
+- extern "C" void
+--launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers)
+-+launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval)
 - {
--@@ -458,7 +577,6 @@ void initCUDABuffers()
-- 	checkCudaErrors(cudaMalloc(&cuda_light_buffer_2, size_light_data)); // Allocate CUDA memory for pong buffer
 - 
+--	cudaBlur2 << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio);
+-+	cudaBlur2 << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio, dataInterval);
+- }
 - 
---	#define NUM_ELEMENTS 8
-- 	num_elements = NUM_ELEMENTS;
-- 	size_elements_data = sizeof(objectInfo) * num_elements;
-- 
--@@ -526,6 +644,10 @@ void initCUDABuffers()
-- 	}
-- 	// setup the global grid
-- 
--+	setupGlobalGrid(objects, importedMeshes);
 -+
--+	//gridMeshes = (*unsigned int) malloc(GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE * GLOBAL_GRID_SIZE);
+-+extern "C" void
+-+launch_cudaBlur2SingleChannel(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval)
+-+{
 -+
-- 
-- 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
-- 	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
+-+	cudaBlur2SingleChannel << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio, dataInterval);
+-+}
+-+
+-+
+- extern "C" void
+- launch_cudaDownSampleToHalfRes(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers)
+- {
 -diff --git a/src/sharedStructs.h b/src/sharedStructs.h
--index 0e7d86e..87ee74b 100644
+-index 91e5c5e..9e9af8e 100644
 ---- a/src/sharedStructs.h
 -+++ b/src/sharedStructs.h
--@@ -5,14 +5,14 @@
-- #define AIR_DENSITY 0.001
-- #define AIR_COLOR 1.0*make_float3(53.0/255, 81.0/255, 98.0/255);
-- #define WATER_COLOR make_float3(0,0.0,0.1)
---#define WATER_DENSITY 0.1
--+#define WATER_DENSITY 0.05
-- 
-- 
-- #define WIDTH 1024
-- #define HEIGHT 1024
-- 
---#define LIGHT_BUFFER_WORLD_SIZE 140
---#define LIGHT_PLANE_SIZE 140
--+#define LIGHT_BUFFER_WORLD_SIZE 200
--+#define LIGHT_PLANE_SIZE 200
+-@@ -14,7 +14,7 @@
+- #define LIGHT_BUFFER_WORLD_SIZE 200
+- #define LIGHT_PLANE_SIZE 200
 - #define LIGHT_BUFFER_WIDTH WIDTH
-- #define LIGHT_BUFFER_THICKNESS 4
+--#define LIGHT_BUFFER_THICKNESS 5
+-+#define LIGHT_BUFFER_THICKNESS 3
 - #define LIGHT_BUFFER_THICKNESS_SIZE 150
--@@ -20,6 +20,23 @@
+- 
 - #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
-- #define LIGHT_BUFFER_THICKNESS_WORLD_RATIO (1. / LIGHT_BUFFER_THICKNESS_SIZE)
-- 
--+
--+// total size will be pow(GRID_SIZE,3) bc of xyz
--+#define GRID_SIZE 15
--+#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
--+//#define GRID_DEPTH 1
--+
--+#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
--+
--+#define GLOBAL_GRID_SIZE 4
--+#define GLOBAL_GRID_SIZE2 GLOBAL_GRID_SIZE*GLOBAL_GRID_SIZE
--+#define GLOBAL_GRID_MAX make_float3(500,300,500)
--+#define GLOBAL_GRID_MIN make_float3(-500,-100,-500)
--+#define GLOBAL_GRID_DIMENSIONS (GLOBAL_GRID_MAX - GLOBAL_GRID_MIN) *(1/GLOBAL_GRID_SIZE)
--+
--+#define GLOBAL_GRID_POS(x,y,z) GLOBAL_GRID_SIZE2*x + GLOBAL_GRID_SIZE*y + z
--+
--+
-- struct shapeInfo {
-- 	float3 pos;
-- 	float3 normal;
--@@ -101,15 +118,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
-- 	return o;
-- }
-- 
---// total size will be pow(GRID_SIZE,3) bc of xyz
---#define GRID_SIZE 15
---#define GRID_SIZE2 GRID_SIZE*GRID_SIZE
---#define GRID_DEPTH 1
---
---#define GRID_POS(x,y,z) GRID_SIZE2*x + GRID_SIZE*y + z
-- 
---#define GLOBAL_GRID_SIZE 2
---#define GLOBAL_GRID_CHUNK_SIZE 500
-- 
-- struct triangleMesh {
-- 	float3* vertices; 
--@@ -308,3 +317,78 @@ inline __device__ bool intersectBox(const float3& orig, const float3& dir, const
-- 
-- 
-- }
--+
--+
--+inline __device__ bool intersectsSphere(const float3& origin, const float3& dir, const float3 pos, const float rad, float& t) {
--+
--+	float t0, t1; // solutions for t if the ray intersects 
--+
--+	float rad2 = powf(rad, 2);
--+
--+	float3 L = pos - origin;
--+	float tca = dot(dir, L);
--+	//if (tca < 0) return false;
--+	float d2 = dot(L, L) - tca * tca;
--+	if (d2 > rad2) return false;
--+	float thc = sqrt(rad2 - d2);
--+	t0 = tca - thc;
--+	t1 = tca + thc;
--+
--+	if (t0 > t1) {
--+		float temp = t0;
--+		t0 = t1;
--+		t1 = temp;
--+	}
--+
--+	if (t0 < 0) {
--+		t0 = t1; // if t0 is negative, let's use t1 instead 
--+		if (t0 < 0) return false; // both t0 and t1 are negative 
--+	}
--+	t = t0;
--+	return true;
--+}
--+
--+// plane normal, plane point, ray start, ray dir, point along line
--+inline __device__ bool intersectPlane(const shapeInfo& p, const float3& l0, const float3& l, float& t)
--+{
--+	// assuming vectors are all normalized
--+	float denom = dot(p.normal, l);
--+	if (denom < -1e-8) {
--+		float3 p0l0 = p.pos - l0;
--+		t = dot(p0l0, p.normal) / denom;
--+		return (t >= 0);
--+	}
--+	return false;
--+}
--+
--+inline  __device__ bool RayIntersectsTriangle(float3 rayOrigin,
--+	float3 rayVector,
--+	float3 vertex0, float3 vertex1, float3 vertex2,
--+	float& t, float& u, float& v)
--+{
--+
--+	const float EPSILON = 0.001;
--+	float3 edge1, edge2, h, s, q;
--+	float a, f;
--+	edge1 = vertex1 - vertex0;
--+	edge2 = vertex2 - vertex0;
--+	h = cross(rayVector, edge2);
--+	a = dot(edge1, h);
--+	if (a > -EPSILON && a < EPSILON)
--+		return false;    // This ray is parallel to this triangle.
--+	f = 1.0 / a;
--+	s = rayOrigin - vertex0;
--+	u = f * dot(s, h);
--+	if (u < 0.0 || u > 1.0)
--+		return false;
--+	q = cross(s, edge1);
--+	v = f * dot(rayVector, q);
--+	if (v < 0.0 || u + v > 1.0)
--+		return false;
--+	// At this stage we can compute t to find out where the intersection point is on the line.
--+	t = f * dot(edge2, q);
--+
--+	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
--+}
--+
--+
+diff --git a/src/kernel.cu b/src/kernel.cu
+index 684689f..bd6aadf 100644
+--- a/src/kernel.cu
++++ b/src/kernel.cu
+@@ -161,6 +161,7 @@ __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
+ 		float resultD = combinedUpper* yFactor + (1. - yFactor) * combinedDown;
+ 
+ 		value = resultD;// *zFactor + resultD * (1. - zFactor);
++		//value = lightImage[outDLL];
+ 		return true;
+ 	}
+ 	return false;
+@@ -273,7 +274,6 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
+ 				gridPos = (currPos - currMesh.bbMin) / currMesh.gridBoxDimensions;
+ 
+ 				int stepsBeforeQuit = 1000;
+-				bool hitGrid = false;
+ 				while (--stepsBeforeQuit >= 0 && max(gridPos.x, max(gridPos.y, gridPos.z)) < GRID_SIZE && min(gridPos.x, min(gridPos.y, gridPos.z)) >= 0) {
+ 
+ 					gridPos = make_float3(floor(gridPos.x), floor(gridPos.y), floor(gridPos.z));
 diff --git a/src/main.cpp b/src/main.cpp
-index 0c6750a..afde9e0 100644
+index 63a7507..df05044 100644
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -101,7 +101,9 @@ launch_cudaBloomOutput(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, Po
- extern "C" void
- launch_cudaBlur(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers);
- extern "C" void
--launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers);
-+launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval);
-+extern "C" void
-+launch_cudaBlur2SingleChannel(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval);
- extern "C" void
- launch_cudaDownSampleToHalfRes(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers);
- extern "C" void
-@@ -671,9 +673,9 @@ void initCUDABuffers()
+@@ -633,7 +633,7 @@ void createObjects() {
+ 	objects[1] = make_objectInfo(sphere, s6, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.6, 0.0, 0.0); // refractive 3
+ 	objects[2] = make_objectInfo(water, p1, 0.0, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0); // water top
+ 	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 0); // sand ocean floor
+-	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 2000); // island
++	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 0); // island
+ 	objects[5] = make_objectInfo(sphere, sun, 0.0, 5000 * make_float3(1, 1, 1), 0.0, 1.33, 0.0, 0.0); // sun
+ 	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0); // yellow boi
+ 	objects[7] = make_objectInfo(sphere, s5, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0, 0.0); // refractive 2
+@@ -665,13 +665,13 @@ void initCUDABuffers()
+ 
+ 	auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
+ 	importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
+-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 1000)); // bark
++	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 0)); // bark
+ 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 500)); // palm leaves
+ 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.7*make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
+ 
+ 	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
  	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
- 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 2000 )); //rock
+-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 2000 )); //rock
++	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 0 )); //rock
  
--	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
-+	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 200, make_float3(0.0, -0, -40.0), false);
+ 	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
  	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
--	infos.push_back(make_rayHitInfo(0.0, 0.0, 0., 0.0, make_float3(20,0,0.0), 0)); //le bun
-+	infos.push_back(make_rayHitInfo(0.0, 1.0, 1.5, 0.0, make_float3(20,0,0.0), 0)); //le bun
+@@ -908,7 +908,6 @@ int main(int argc, char* argv[]) {
+ 		auto currTime = std::chrono::system_clock::now();
+ 		auto totalTime = currTime - firstTime;
  
- 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
- 	num_meshes = importedMeshes.size();
-@@ -795,10 +797,10 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
- 	launch_cudaLight(lightGridDraw, block, 0, pointers, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, totalTime.count(), input);
- 
- 
--	//if (blurEnabled) {
--		//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
--		//launch_cudaBlur2(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
--	//}
-+	if (blurEnabled) {
-+		launch_cudaBlur2SingleChannel(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, true, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }, 1); // launch with 0 additional shared memory allocated
-+		launch_cudaBlur2SingleChannel(lightGrid, block, 0, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, false, 1, PostProcessPointers{ (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer_2, (unsigned int*)cuda_light_buffer, (unsigned int*)cuda_dev_render_buffer_2, }, 1); // launch with 0 additional shared memory allocated
-+	}
- 
- 
- 	// main render
-@@ -807,8 +809,8 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
- 
- 	//// bloom passes
- 	launch_cudaBloomSample(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
--	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, true, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
--	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, false, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
-+	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, true, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }, 4); // launch with 0 additional shared memory allocated
-+	launch_cudaBlur2(grid, block, 0, WIDTH, HEIGHT, false, 1,PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, }, 4); // launch with 0 additional shared memory allocated
- 	launch_cudaBloomOutput(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
- 
- 	cudaArray* texture_ptr;
-diff --git a/src/postprocessing.cu b/src/postprocessing.cu
-index fd843d6..fe7ae11 100644
---- a/src/postprocessing.cu
-+++ b/src/postprocessing.cu
-@@ -74,7 +74,7 @@ cudaBlur(PostProcessPointers pointers, int imgw, int imgh, int currRatio)
- #define BLOOM_KERNEL_SIZE 5
- 
- __global__ void
--cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio)
-+cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio, int dataInterval)
- {
- 	extern __shared__ uchar4 sdata[];
- 
-@@ -89,17 +89,18 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
- 	int y = blockIdx.y * bh + ty;
- 	int z = blockIdx.z + bt * tz;
- 
--	int firstPos = (z * (imgw * imgh) + y * imgw + x) * 4;
-+	int firstPos = (z * (imgw * imgh) + y * imgw + x) * dataInterval;
- 	float weight[BLOOM_KERNEL_SIZE] = {0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216}; // 5
- 	//float weight[BLOOM_KERNEL_SIZE] = { 0.104379, 	0.075216, 0.02812, 	0.005441, 0.000543 , 0.000028 , 0.000001 }; // 7
- 
- 
-+
- 	float3 result = make_float3(pointers.processRead[firstPos], pointers.processRead[firstPos + 1], pointers.processRead[firstPos + 2]) * weight[0]; 
- 	if (isHorizontal) {
- 		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
- 		{
--			int xU = min(i, imgw - 1 - x)*4;
--			int xL = min(i, x)*4;
-+			int xU = min(i, imgw - 1 - x)* dataInterval;
-+			int xL = min(i, x)* dataInterval;
- 			result = result + make_float3(pointers.processRead[firstPos + xU], pointers.processRead[firstPos + xU + 1], pointers.processRead[firstPos + xU + 2])*weight[i];
- 			result = result + make_float3(pointers.processRead[firstPos - xL], pointers.processRead[firstPos - xL + 1], pointers.processRead[firstPos - xL + 2])*weight[i];
- 		}
-@@ -107,8 +108,8 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
- 	else {
- 		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
- 		{
--			int yU = min(i, imgh - 1 - y) * 4;
--			int yL = min(i, y) * 4;
-+			int yU = min(i, imgh - 1 - y) * dataInterval;
-+			int yL = min(i, y) * dataInterval;
- 			result = result + make_float3(pointers.processRead[firstPos + yU * imgw *currRatio], pointers.processRead[firstPos + yU * imgw * currRatio  + 1], pointers.processRead[firstPos + yU * imgw * currRatio  + 2]) * weight[i];
- 			result = result + make_float3(pointers.processRead[firstPos - yL * imgw * currRatio], pointers.processRead[firstPos - yL * imgw * currRatio  + 1], pointers.processRead[firstPos - yL * imgw * currRatio + 2]) * weight[i];
- 		}
-@@ -120,6 +121,50 @@ cudaBlur2(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, i
- }
- 
- 
-+__global__ void
-+cudaBlur2SingleChannel(PostProcessPointers pointers, int imgw, int imgh, bool isHorizontal, int currRatio, int dataInterval)
-+{
-+	extern __shared__ uchar4 sdata[];
-+
-+
-+	int tx = threadIdx.x;
-+	int ty = threadIdx.y;
-+	int tz = threadIdx.z;
-+	int bw = blockDim.x;
-+	int bh = blockDim.y;
-+	int bt = blockDim.z;
-+	int x = blockIdx.x * bw + tx;
-+	int y = blockIdx.y * bh + ty;
-+	int z = blockIdx.z + bt * tz;
-+
-+	int firstPos = (z * (imgw * imgh) + y * imgw + x) * dataInterval;
-+	float weight[BLOOM_KERNEL_SIZE] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 }; // 5
-+
-+	float result = pointers.processRead[firstPos]*weight[0];
-+	if (isHorizontal) {
-+		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
-+		{
-+			int xU = min(i, imgw - 1 - x) * dataInterval;
-+			int xL = min(i, x) * dataInterval;
-+			result = result + pointers.processRead[firstPos + xU] * weight[i];
-+			result = result + pointers.processRead[firstPos - xL] * weight[i];
-+		}
-+	}
-+	else {
-+		for (int i = 1; i < BLOOM_KERNEL_SIZE; ++i)
-+		{
-+			int yU = min(i, imgh - 1 - y) * dataInterval;
-+			int yL = min(i, y) * dataInterval;
-+			result = result + pointers.processRead[firstPos + yU * imgw * currRatio] * weight[i];
-+			result = result + pointers.processRead[firstPos - yL * imgw * currRatio] * weight[i];
-+		}
-+	}
-+
-+	pointers.processWrite[firstPos] = result;
-+}
-+
-+
-+
- 
- 
- __global__ void
-@@ -245,12 +290,21 @@ launch_cudaBlur(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currR
- }
- 
- extern "C" void
--launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers)
-+launch_cudaBlur2(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval)
- {
- 
--	cudaBlur2 << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio);
-+	cudaBlur2 << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio, dataInterval);
- }
- 
-+
-+extern "C" void
-+launch_cudaBlur2SingleChannel(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, bool isHorizontal, int currRatio, PostProcessPointers pointers, int dataInterval)
-+{
-+
-+	cudaBlur2SingleChannel << < grid, block, sbytes >> > (pointers, imgw, imgh, isHorizontal, currRatio, dataInterval);
-+}
-+
-+
- extern "C" void
- launch_cudaDownSampleToHalfRes(dim3 grid, dim3 block, int sbytes, int imgw, int imgh, int currRatio, PostProcessPointers pointers)
- {
+-
+ 		display(totalTime, currTime - lastTime);
+ 		std::chrono::duration<double> elapsed_seconds = currTime - lastMeasureTime;
+ 		frameNum++;
 diff --git a/src/sharedStructs.h b/src/sharedStructs.h
-index 91e5c5e..9e9af8e 100644
+index a76aa2a..9eae179 100644
 --- a/src/sharedStructs.h
 +++ b/src/sharedStructs.h
-@@ -14,7 +14,7 @@
+@@ -8,8 +8,8 @@
+ #define WATER_DENSITY 0.07
+ 
+ 
+-#define WIDTH 1024
+-#define HEIGHT 1024
++#define WIDTH 1920
++#define HEIGHT 1080
+ 
  #define LIGHT_BUFFER_WORLD_SIZE 200
  #define LIGHT_PLANE_SIZE 200
- #define LIGHT_BUFFER_WIDTH WIDTH
--#define LIGHT_BUFFER_THICKNESS 5
-+#define LIGHT_BUFFER_THICKNESS 3
- #define LIGHT_BUFFER_THICKNESS_SIZE 150
- 
- #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)

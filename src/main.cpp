@@ -633,7 +633,7 @@ void createObjects() {
 	objects[1] = make_objectInfo(sphere, s6, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.6, 0.0, 0.0); // refractive 3
 	objects[2] = make_objectInfo(water, p1, 0.0, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0); // water top
 	objects[3] = make_objectInfo(plane, p3, 0., make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0, 0); // sand ocean floor
-	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 2000); // island
+	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 0); // island
 	objects[5] = make_objectInfo(sphere, sun, 0.0, 5000 * make_float3(1, 1, 1), 0.0, 1.33, 0.0, 0.0); // sun
 	objects[6] = make_objectInfo(sphere, s2, 0.0, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0); // yellow boi
 	objects[7] = make_objectInfo(sphere, s5, 0.0, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0, 0.0); // refractive 2
@@ -665,13 +665,13 @@ void initCUDABuffers()
 
 	auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 1000)); // bark
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 0.0, 0.0, 0.5*make_float3(133.0/255.0,87.0/255.0,35.0/255.0), 0)); // bark
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.5*make_float3(111.0/255.0,153.0/255,64.0/255), 500)); // palm leaves
 	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.0, 0.0, 0.7*make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
 
 	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
-	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 2000 )); //rock
+	infos.push_back(make_rayHitInfo( 0.0, 0.0, 1.5, 0.0, 0.3*make_float3(215./255,198./255,171./255), 0 )); //rock
 
 	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
@@ -907,7 +907,6 @@ int main(int argc, char* argv[]) {
 	{
 		auto currTime = std::chrono::system_clock::now();
 		auto totalTime = currTime - firstTime;
-
 
 		display(totalTime, currTime - lastTime);
 		std::chrono::duration<double> elapsed_seconds = currTime - lastMeasureTime;
