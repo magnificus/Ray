@@ -47,6 +47,8 @@
     </ClInclude>
     <ClInclude Include="..\..\src\sharedStructs.h" />
     <ClInclude Include="..\..\src\perlin.h" />
+    <ClInclude Include="..\..\src\meshHandler.h" />
+    <ClInclude Include="..\..\src\inputHandler.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />

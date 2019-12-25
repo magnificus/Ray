@@ -8,8 +8,8 @@
 #define WATER_DENSITY 0.07
 
 
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 1920
+#define HEIGHT 1080
 
 #define LIGHT_BUFFER_WORLD_SIZE 200
 #define LIGHT_PLANE_SIZE 200
@@ -82,12 +82,12 @@ inline __device__ planeInfo make_planeInfo(float3 point, float3 normal) {
 enum shape { sphere, plane, water };
 
 struct rayHitInfo {
-	float reflectivity;
-	float refractivity;
+	float reflectivity = 0.;
+	float refractivity = 0.;
 	float refractiveIndex = 1.0;
-	float insideColorDensity;
-	float3 color;
-	float roughness;
+	float insideColorDensity = 0.;
+	float3 color = float3{ 0,0,0 };
+	float roughness = 0.;
 };
 
 
@@ -129,13 +129,18 @@ struct triangleMesh {
 
 	rayHitInfo rayInfo;
 
+	// texture
+	unsigned int* diffuseMap;
+	unsigned int* normalMap;
+
+
 	// acceleration structure
 	float3 bbMin;
 	float3 bbMax;
 	float rad;
 	unsigned int** grid; // lists with unsigned int marking which triangles intersect
 	unsigned int* gridSizes;
-	float3 gridBoxDimensions;
+	float3 gridBoxDimensions = float3{ 0,0,0 };
 };
 
 struct sceneInfo {

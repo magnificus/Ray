@@ -115,8 +115,6 @@ __device__ float3 getDistortion(const float3 normal,const float3 inputPos,const 
 	float d1 =  (h2 - h1) / 2 * d;
 	float d2 =  (h4 - h3) / 2 * d;
 
-	//float h1 = 
-
 
 	return (otherDir1 * d1 + otherDir2 * d2);
 
@@ -127,7 +125,6 @@ __device__ bool getTranslatedPos(float3 position, float3 &translatedPos) {
 	translatedPos = beforeTranslation + make_float3(0.5, 0.5, 0.5);
 	translatedPos = translatedPos * make_float3(LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_WIDTH, LIGHT_BUFFER_THICKNESS);
 	return max(max(abs(beforeTranslation.x), abs(beforeTranslation.y)), abs(beforeTranslation.z)) <= 0.5;
-	//return (translatedPos.x >= 0 && translatedPos.x < LIGHT_BUFFER_WIDTH && translatedPos.y >= 0 && translatedPos.y < LIGHT_BUFFER_WIDTH && translatedPos.z >= 0 && translatedPos.z < LIGHT_BUFFER_THICKNESS);
 }
 
 __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
@@ -220,8 +217,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 					float3 pos = currRayPos + currDist * currRayDir;
 					float3 waveInput = pos * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
 					float strength = 3000;
-					float3 distortion = length(pos - startPos) < MAX_DISTANCE_FROM_CAMERA_FOR_EFFECTS ? getDistortion(normalToUse, waveInput, 4) : make_float3(0,0,0);
-					//float3 distortion = getDistortion(normalToUse, waveInput, 4);
+					//float3 distortion = length(pos - startPos) < MAX_DISTANCE_FROM_CAMERA_FOR_EFFECTS ? getDistortion(normalToUse, waveInput, 4) : make_float3(0,0,0);
+					float3 distortion = getDistortion(normalToUse, waveInput, 4);
 
 					normal = normalize(normalToUse + strength * distortion);
 					toReturn.hit = true;
