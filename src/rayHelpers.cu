@@ -64,3 +64,37 @@ inline __device__ float rand(float2 co) {
 	float val= sinf(dot(make_float2(co.x, co.y), make_float2(12.9898, 78.233)) * 43758.5453);
 	return val - floor(val);
 }
+
+
+
+#define sampleImageAt(pos) make_float3(texture.image[pos], texture.image[pos + 1], texture.image[pos + 2])
+// 8 bit wrap around bilinear sampling
+inline __device__ float3 sampleTexture(float2 pos, inputImage texture) {
+	//pos = make_float2(max(0, pos.x), max(0, pos.y));
+	//float2 Position = make_float2((unsigned int)floor(pos.x) % texture.width, (unsigned int)floor(pos.y) % texture.height);
+
+	int samplePixelPosX = (int) floor(pos.x * texture.width) % texture.width;
+	int samplePixelPosY = (int) floor(pos.y * texture.height) % texture.height;
+	float2 Position = make_float2(samplePixelPosX, samplePixelPosY);
+	int LLPos = ((texture.width * Position.y) + Position.x) * 3;
+	int LRPos = ((texture.width * Position.y) + (int) (Position.x + 1) % texture.width) * 3;
+	int ULPos = ((texture.width * ((int) (Position.y + 1) % texture.height)) + Position.x) * 3;
+	int URPos = ((texture.width * ((int) (Position.y + 1) % texture.height)) + (int) (Position.x+1) % texture.width) * 3;
+
+
+	// bilinear sampling
+	float3 LL = sampleImageAt(LLPos);
+	float3 LR = sampleImageAt(LRPos);
+	float3 UL = sampleImageAt(ULPos);
+	float3 UR = sampleImageAt(URPos);
+
+	float remX = pos.x * texture.width - floor(pos.x * texture.width);
+	float remY = pos.y * texture.height - floor(pos.y * texture.height);
+
+	float3 Lower = remX * LR + (1. - remX) * LL;
+	float3 Upper = remX * UR + (1. - remX) * UL;
+	float3 Combined = remY * Upper + (1. - remY) * Lower;
+
+	return Combined;
+
+}

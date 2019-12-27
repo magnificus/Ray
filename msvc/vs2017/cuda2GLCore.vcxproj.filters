@@ -10,6 +10,9 @@
     <Filter Include="cuda">
       <UniqueIdentifier>{72c86a08-3efd-487c-998b-ce1d7e87365a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lodepng">
+      <UniqueIdentifier>{fc039732-2be0-407f-823a-6f53d6c76263}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\shader_tools\GLSLProgram.cpp">
@@ -19,6 +22,9 @@
       <Filter>shader_tools</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="..\..\src\lodepng\lodepng.cpp">
+      <Filter>lodepng</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\shader_tools\GLSLProgram.h">
@@ -49,6 +55,10 @@
     <ClInclude Include="..\..\src\perlin.h" />
     <ClInclude Include="..\..\src\meshHandler.h" />
     <ClInclude Include="..\..\src\inputHandler.h" />
+    <ClInclude Include="..\..\src\stb.h" />
+    <ClInclude Include="..\..\src\lodepng\lodepng.h">
+      <Filter>lodepng</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />

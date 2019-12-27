@@ -30,8 +30,8 @@ __global__ void kernel() {
 
 
 __device__ float currentTime;
-__device__ sceneInfo scene;
-__device__ unsigned int* lightImage;
+
+__device__ inputPointers iPointers = inputPointers{ nullptr, 0,0 };
 __device__ int imageWidth;
 __device__ int imageHeight;
 __device__ float3 startPos;
@@ -153,8 +153,8 @@ __device__ bool worldPositionToLerpedValue(float3 position, float &value) {
 		float yFactor = fmod(translatedPos.y, 1.f);
 		float zFactor = fmod(translatedPos.z, 1.f);
 
-		float combinedUpper = max(lightImage[outDUL], lightImage[outUUL]) * (1.-xFactor) + max(lightImage[outDUR], lightImage[outUUR]) * (xFactor);
-		float combinedDown = max(lightImage[outDLR], lightImage[outULR]) * xFactor + max(lightImage[outDLL], lightImage[outULL]) * (1. - xFactor);
+		float combinedUpper = max(iPointers.lightImage[outDUL], iPointers.lightImage[outUUL]) * (1.-xFactor) + max(iPointers.lightImage[outDUR], iPointers.lightImage[outUUR]) * (xFactor);
+		float combinedDown = max(iPointers.lightImage[outDLR], iPointers.lightImage[outULR]) * xFactor + max(iPointers.lightImage[outDLL], iPointers.lightImage[outULL]) * (1. - xFactor);
 		float resultD = combinedUpper* yFactor + (1. - yFactor) * combinedDown;
 
 		value = resultD;// *zFactor + resultD * (1. - zFactor);
@@ -176,7 +176,6 @@ __device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
 
 __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 	float closestDist = 1000000;
-	float3 normal;
 	hitInfo toReturn;
 	toReturn.hit = false;
 
@@ -192,8 +191,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 
 
 		// mathematical objects
-		for (int i = 0; i < scene.numObjects; i++) {
-			const objectInfo& curr = scene.objects[i];
+		for (int i = 0; i < iPointers.scene.numObjects; i++) {
+			const objectInfo& curr = iPointers.scene.objects[i];
 			float currDist;
 
 
@@ -216,11 +215,14 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 					toReturn.info = curr.rayInfo;
 					float3 pos = currRayPos + currDist * currRayDir;
 					float3 waveInput = pos * 0.3 + make_float3(1 * currentTime + 10000, 10000, 10000);
-					float strength = 3000;
-					//float3 distortion = length(pos - startPos) < MAX_DISTANCE_FROM_CAMERA_FOR_EFFECTS ? getDistortion(normalToUse, waveInput, 4) : make_float3(0,0,0);
-					float3 distortion = getDistortion(normalToUse, waveInput, 4);
+					float strength = 0.5;
+					float2 UVCoords = 0.05*make_float2(pos.x, pos.z) + make_float2(0.1*currentTime,0)+ make_float2(1000,1000);//make_float2(fmod(abs(pos.x * 0.0001f), 1.f), fmod(abs(pos.z * 0.0001f), 1.f));//make_float2(fmod(abs(pos.x*0.01f + 1000.f), 0.99f), fmod(abs(pos.z*0.01f + 10000.f), 0.99f));
 
-					normal = normalize(normalToUse + strength * distortion);
+					float3 distortionSampled = sampleTexture(UVCoords, iPointers.waterNormal) * (1.0/255.0f) * 2 - make_float3(1.,1.,1.);
+
+					float3 distortion = distortionSampled.x * make_float3(1, 0, 0) + distortionSampled.y * make_float3(0, 0, -1) + distortionSampled.z * make_float3(0, 1, 0);
+
+					toReturn.normal = normalize(normalToUse + strength * distortion);
 					toReturn.hit = true;
 					toReturn.normalIsInversed = needsToCommunicateInversion;
 
@@ -232,7 +234,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				if (intersectPlane(info, currRayPos, currRayDir, currDist) && currDist < closestDist) {
 					closestDist = currDist;
 					toReturn.info = curr.rayInfo;
-					normal = info.normal;
+					toReturn.normal = info.normal;
 					toReturn.hit = true;
 				}
 
@@ -242,7 +244,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 				if (length(info.pos - currRayPos) - info.rad < closestDist && intersectsSphere(currRayPos, currRayDir, info.pos, info.rad, currDist) && currDist < closestDist) {
 					closestDist = currDist;
 					float3 nextPos = currRayPos + currDist * currRayDir;
-					normal = normalize(nextPos - info.pos);
+					toReturn.normal = normalize(nextPos - info.pos);
 					toReturn.info = curr.rayInfo;
 					toReturn.hit = true;
 
@@ -254,8 +256,8 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 
 
 		// meshes
-		for (int i = 0; i < scene.numMeshes; i++) {
-			triangleMesh currMesh = scene.meshes[i];
+		for (int i = 0; i < iPointers.scene.numMeshes; i++) {
+			triangleMesh currMesh = iPointers.scene.meshes[i];
 
 			float tMin = 0;
 			float tMax;
@@ -285,9 +287,13 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 							closestDist = t;
 							toReturn.info = currMesh.rayInfo;
 
-							normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
+							float2 LerpedUVS = (1 - v - u) * currMesh.UVs[currMesh.indices[iPos]] + u * currMesh.UVs[currMesh.indices[iPos + 1]] + v * currMesh.UVs[currMesh.indices[iPos + 2]];
+							toReturn.info.color = toReturn.info.color * LerpedUVS.x;
+
+							toReturn.normal = (1 - v - u) * currMesh.normals[currMesh.indices[iPos]] + u * currMesh.normals[currMesh.indices[iPos + 1]] + v * currMesh.normals[currMesh.indices[iPos + 2]];
 							toReturn.hit = true;
 							toReturn.pos = currPos + t * currRayDir;
+
 							stepsBeforeQuit = 1;
 						}
 					}
@@ -308,7 +314,7 @@ __device__ hitInfo getHit(const float3 currRayPos,const float3 currRayDir) {
 	//}
 
 
-	toReturn.normal = normal;
+	//toReturn.normal = normal;
 	toReturn.pos = currRayPos + closestDist * currRayDir;
 	return toReturn;
 }
@@ -428,12 +434,6 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				float3 nextPos = hit.pos;
 				float3 normal = hit.normal;
 
-				if (hit.info.roughness > 0.001) {
-					float3 distortion = getDistortion(normal, nextPos + make_float3(10000, 10000, 10000), 3);
-					normal = normalize(normal + distortion * hit.info.roughness);
-				}
-
-
 				float extraReflection = 0;
 				float3 extraColor;
 				bool outside = dot(currentRay.currRayDir, normal) < 0;
@@ -527,15 +527,15 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 						float xFactor = fmod(translatedPos.x, 1.f);
 						float yFactor = fmod(translatedPos.y, 1.f);
 
-						atomicAdd(&lightImage[outDLL], strength * (1. - xFactor) * (1. - yFactor));
-						atomicAdd(&lightImage[outDUL], strength * (1. - xFactor) * (yFactor));
-						atomicAdd(&lightImage[outDUR], strength * (xFactor) * (yFactor));
-						atomicAdd(&lightImage[outDLR], strength * (xFactor) * (1. - yFactor));
+						atomicAdd(&iPointers.lightImage[outDLL], strength * (1. - xFactor) * (1. - yFactor));
+						atomicAdd(&iPointers.lightImage[outDUL], strength * (1. - xFactor) * (yFactor));
+						atomicAdd(&iPointers.lightImage[outDUR], strength * (xFactor) * (yFactor));
+						atomicAdd(&iPointers.lightImage[outDLR], strength * (xFactor) * (1. - yFactor));
 
-						atomicAdd(&lightImage[outULL], strength* (1. - xFactor)* (1. - yFactor));
-						atomicAdd(&lightImage[outUUL], strength* (1. - xFactor)* (yFactor));
-						atomicAdd(&lightImage[outUUR], strength* (xFactor)* (yFactor));
-						atomicAdd(&lightImage[outULR], strength* (xFactor)* (1. - yFactor));
+						atomicAdd(&iPointers.lightImage[outULL], strength* (1. - xFactor)* (1. - yFactor));
+						atomicAdd(&iPointers.lightImage[outUUL], strength* (1. - xFactor)* (yFactor));
+						atomicAdd(&iPointers.lightImage[outUUR], strength* (xFactor)* (yFactor));
+						atomicAdd(&iPointers.lightImage[outULR], strength* (xFactor)* (1. - yFactor));
 
 					}
 
@@ -579,8 +579,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 
 
 	currentTime = currTime;
-	scene = pointers.scene;
-	lightImage = pointers.lightImage;
+	pointers = pointers;
 	imageWidth = imgw;
 	imageHeight = imgh;
 
@@ -622,8 +621,7 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 
 
 	currentTime = currTime;
-	scene = pointers.scene;
-	lightImage = pointers.lightImage;
+	iPointers = pointers;
 	imageWidth = imgw;
 	imageHeight = imgh;
 

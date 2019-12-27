@@ -14,7 +14,7 @@
 #define LIGHT_BUFFER_WORLD_SIZE 200
 #define LIGHT_PLANE_SIZE 200
 #define LIGHT_BUFFER_WIDTH 1024
-#define LIGHT_BUFFER_THICKNESS 12
+#define LIGHT_BUFFER_THICKNESS 20
 #define LIGHT_BUFFER_THICKNESS_SIZE 100
 
 #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
@@ -123,6 +123,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 struct triangleMesh {
 	float3* vertices; 
 	float3* normals; 
+	float2* UVs;
 	unsigned int* indices; 
 	int numIndices = 0;
 	int numVertices = 0;
@@ -167,11 +168,18 @@ struct PostProcessPointers {
 	unsigned int *finalOut;
 };
 
+struct inputImage {
+	unsigned char* image = nullptr;
+	unsigned int width = 0;
+	unsigned int height = 0;
+};
+
 
 struct inputPointers {
-	unsigned int* image1; // normal texture position
+	unsigned int* image1; // texture position
 	unsigned int* lightImage; // light texture position
 
+	inputImage waterNormal; 
 	sceneInfo scene;
 
 };
@@ -256,6 +264,19 @@ inline __device__ float3 floor(const float3& a) {
 inline __device__ float2 floor(const float2& a) {
 	return make_float2(floor(a.x), floor(a.y));
 }
+
+inline __device__ float2 operator*(const float& a, const float2& b) {
+	return make_float2(a * b.x, a * b.y);
+}
+
+inline __device__ float2 operator+(const float2& a, const float2& b) {
+	return make_float2(a.x + b.x, a.y + b.y);
+}
+
+inline __device__ float2 operator*(const float2& a, const float2& b) {
+	return make_float2(a.x * b.x, a.y * b.y);
+}
+
 
 inline __device__  float dot(float3 v1, float3 v2)
 {

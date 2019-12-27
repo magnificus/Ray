@@ -22,7 +22,7 @@
 #include "shader_tools/GLSLShader.h"
 #include "gl_tools.h"
 #include "glfw_tools.h"
-
+#include "lodepng/lodepng.h"
 
 #include <iostream>
 #include <chrono>
@@ -62,6 +62,8 @@ void* cuda_ping_buffer; // used for storing intermediate effects
 
 void* cuda_light_buffer; // result of the light pass
 void* cuda_light_buffer_2; // result of the light pass
+
+inputImage waterNormal;
 
 
 void* cuda_custom_objects_buffer; 
@@ -155,6 +157,37 @@ void createGLTextureForCUDA(GLuint* gl_tex, cudaGraphicsResource** cuda_tex, uns
 	SDK_CHECK_ERROR_GL();
 }
 
+
+void loadImageForCUDA(const char* input_file, unsigned char** cuda_texture, unsigned int &width, unsigned int &height) {
+	std::vector<unsigned char> in_image;
+
+	// Load the data
+	unsigned error = lodepng::decode(in_image, width, height, input_file, LodePNGColorType::LCT_RGBA);
+	if (error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+	std::cout << "texture width: " << width << " height: " << height << std::endl;
+
+	// Prepare the data
+	int bufferSize = (in_image.size() * 3) / 4;
+	unsigned char* input_image = new unsigned char[bufferSize];
+	int where = 0;
+	for (int i = 0; i < in_image.size(); ++i) {
+		if ((i + 1) % 4 != 0) {
+			input_image[where] = in_image.at(i);
+			where++;
+		}
+	}
+
+
+	checkCudaErrors(cudaMalloc(cuda_texture, bufferSize* sizeof(unsigned char)));
+	checkCudaErrors(cudaMemcpy(*cuda_texture, input_image, bufferSize * sizeof(unsigned char), cudaMemcpyHostToDevice));
+
+
+	delete[] input_image;
+
+}
+
+
+
 void initGLBuffers()
 {
 	// create texture that will receive the result of cuda kernel
@@ -204,7 +237,7 @@ void createObjects() {
 	objects[2] = make_objectInfo(water, p1, 0.0f, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0f); // water top
 	objects[3] = make_objectInfo(plane, p3, 0.f, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0f, 0); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 0); // island
-	objects[5] = make_objectInfo(sphere, sun, 0.0f, 5000 * make_float3(1, 1, 1), 0.0, 1.33, 0.0f, 0.0); // sun
+	objects[5] = make_objectInfo(sphere, sun, 0.0f, 1000 * make_float3(1, 1, 1), 0.0, 1.33, 0.0f, 0.0); // sun
 	objects[6] = make_objectInfo(sphere, s2, 0.0f, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0f); // yellow boi
 	objects[7] = make_objectInfo(sphere, s5, 0.0f, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0f, 0.0f); // refractive 2
 }
@@ -218,25 +251,29 @@ void setupLevel() {
 	std::vector<triangleMesh> importedMeshes;
 	std::vector<rayHitInfo> infos;
 
-	auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
-	importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
-	infos.push_back(make_rayHitInfo(0.0f, 0.0f, 0.0f, 0.0f, 0.5 * make_float3(133.0 / 255.0, 87.0 / 255.0, 35.0 / 255.0), 0)); // bark
-	infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.5 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 500)); // palm leaves
-	infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.7 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
+	//auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
+	//auto tree = importModel("../../meshes/leafs.obj", 1.0, make_float3(0, 0, 0), false);
+	//importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
+	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 0.0f, 0.0f, 0.5 * make_float3(133.0 / 255.0, 87.0 / 255.0, 35.0 / 255.0), 0)); // bark
+	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.5 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 500)); // palm leaves
+	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.7 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
 
-	std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
-	importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
-	infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.5f, 0.0f, 0.3 * make_float3(215. / 255, 198. / 255, 171. / 255), 0.f)); //rock
+	//std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
+	//importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
+	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.5f, 0.0f, 0.3 * make_float3(215. / 255, 198. / 255, 171. / 255), 0.f)); //rock
 
-	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
-	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20, 0, 0.0), 0)); //le bun
+	//std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
+	//importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
+	//infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20, 0, 0.0), 0)); //le bun
 
-	//std::vector<triangleMesh> wrechMesh = importModel("../../meshes/wreck.obj", 0.1, make_float3(0.0, 10, 0.0), false);
-	//importedMeshes.insert(std::end(importedMeshes), std::begin(wrechMesh), std::end(wrechMesh));
-	//for (int i = 0; i < wrechMesh.size(); i++) {
-	//	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(1, 1, 0.0), 0)); //le crusader
-	//}
+	//int normalSizeX;
+	//int normalSizeY;
+	//int nbrChannels;
+
+	//loadTextureForCUDA(&opengl_water_normal_map, &cuda_water_normal_map, "../../textures/waterNormal.jpeg" ,&normalSizeX, &normalSizeY, &nbrChannels);
+
+	loadImageForCUDA("../../textures/waterNormal.png", &waterNormal.image, waterNormal.width, waterNormal.height);
+
 
 	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = (unsigned int)importedMeshes.size();
@@ -362,7 +399,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 
 	sceneInfo info{ nullptr,nullptr, nullptr, nullptr,(float)totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, NUM_ELEMENTS, (triangleMesh*)cuda_mesh_buffer, (int) num_meshes };
-	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, info };
+	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, waterNormal, info };
 
 	// draw light
 	dim3 lightGridDraw(LIGHT_BUFFER_WIDTH / block.x, LIGHT_BUFFER_WIDTH / block.y, 1); // 2D grid, every thread will compute a pixel
@@ -388,13 +425,12 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	launch_cudaBloomOutput(grid, block, 0, WIDTH, HEIGHT, PostProcessPointers{(unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_ping_buffer, (unsigned int*)cuda_dev_render_buffer_2, (unsigned int*)cuda_dev_render_buffer_2, }); // launch with 0 additional shared memory allocated
 
 	cudaArray* texture_ptr;
-	/*checkCudaErrors(*/cudaGraphicsMapResources(1, &cuda_tex_resource, 0);//);
+	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_resource, 0));
 	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_resource, 0, 0));
-
-
 
 	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dev_render_buffer_2, size_tex_data, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
+
 	cudaDeviceSynchronize();
 
 

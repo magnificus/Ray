@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\lodepng\lodepng.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\shader_tools\GLSLProgram.cpp" />
     <ClCompile Include="..\..\src\shader_tools\GLSLShader.cpp" />
@@ -26,6 +27,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\glfw_tools.h" />
     <ClInclude Include="..\..\src\gl_tools.h" />
+    <ClInclude Include="..\..\src\lodepng\lodepng.h" />
     <ClInclude Include="..\..\src\meshHandler.h" />
     <ClInclude Include="..\..\src\inputHandler.h" />
     <ClInclude Include="..\..\src\libs\helper_cuda.h" />
@@ -36,6 +38,7 @@
     <ClInclude Include="..\..\src\shader_tools\GLSLShader.h" />
     <ClInclude Include="..\..\src\shader_tools\shader_tools_common.h" />
     <ClInclude Include="..\..\src\sharedStructs.h" />
+    <ClInclude Include="..\..\src\stb.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\..\src\kernel.cu" />

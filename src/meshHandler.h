@@ -14,13 +14,17 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb.h"
+
+
 
 std::vector<triangleMesh> importModel(std::string path, float scale, float3 offset, bool switchYZ = false) {
 
 	std::vector<triangleMesh> toReturn;
 
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_GenSmoothNormals);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_GenUVCoords);
 	if (!scene) {
 		std::cout << "ya entered an invalid path to mesh fuccboi\n";
 		return toReturn;
@@ -53,12 +57,15 @@ std::vector<triangleMesh> importModel(std::string path, float scale, float3 offs
 				currIndexPos += 3;
 			}
 		}
+		
 
 		// vertices & normals
 		current.vertices = (float3*)malloc(current.numVertices * sizeof(float3));
 		current.normals = (float3*)malloc(current.numVertices * sizeof(float3));
+		current.UVs = (float2*)malloc(current.numVertices * sizeof(float2));
 		std::cout << "num vertices: " << mesh->mNumVertices << std::endl;
 		std::cout << "num faces: " << current.numIndices / 3 << std::endl;
+		std::cout << "texture coord channels: " << mesh->GetNumUVChannels() << std::endl;
 		for (unsigned int i = 0; i < current.numVertices; i++) {
 			float y = mesh->mVertices[i].y * scale + offset.y;
 			float z = mesh->mVertices[i].z * scale + offset.z;
@@ -69,6 +76,8 @@ std::vector<triangleMesh> importModel(std::string path, float scale, float3 offs
 			//cout << "Adding vertex: " << toReturn.vertices[i].x << " " << toReturn.vertices[i].y << " " << toReturn.vertices[i].z << "\n";
 			if (mesh->HasNormals())
 				current.normals[i] = make_float3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+			if (mesh->HasTextureCoords(0))
+				current.UVs[i] = make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
 		}
 
 		toReturn.push_back(current);
@@ -157,6 +166,7 @@ triangleMesh prepareMeshForCuda(const triangleMesh& myMesh) {
 
 	unsigned int indicesSize = myMesh.numIndices * sizeof(unsigned int);
 	unsigned int verticesSize = myMesh.numVertices * sizeof(float3);
+	unsigned int UVsSize = myMesh.numVertices * sizeof(float2);
 
 
 	if (myMesh.numIndices > 0) {
@@ -164,6 +174,7 @@ triangleMesh prepareMeshForCuda(const triangleMesh& myMesh) {
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.indices, indicesSize));
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.vertices, verticesSize));
 		checkCudaErrors(cudaMalloc(&myMeshOnCuda.normals, verticesSize));
+		checkCudaErrors(cudaMalloc(&myMeshOnCuda.UVs, UVsSize));
 		// this shit is getting convoluted man
 		// gotta allocate for each list in grid separately, then feed the correct pointers to the correct positions
 
@@ -181,6 +192,7 @@ triangleMesh prepareMeshForCuda(const triangleMesh& myMesh) {
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.indices, myMesh.indices, indicesSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.vertices, myMesh.vertices, verticesSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.normals, myMesh.normals, verticesSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(myMeshOnCuda.UVs, myMesh.UVs, UVsSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.grid, CudaGridPointer, gridSize, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(myMeshOnCuda.gridSizes, gridSizes, gridSizesSize, cudaMemcpyHostToDevice));
 
