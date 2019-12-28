@@ -68,7 +68,7 @@ inputImage waterNormal;
 
 void* cuda_custom_objects_buffer; 
 void* cuda_mesh_buffer; 
-
+void* bbm_buffer;
 
 
 struct cudaGraphicsResource* cuda_tex_resource;
@@ -98,7 +98,6 @@ launch_cudaUpSampleToDoubleRes(dim3 grid, dim3 block, int sbytes, int imgw, int 
 
 size_t size_elements_data;
 
-size_t size_meshes_data;
 unsigned int num_meshes;
 
 static const char* glsl_drawtex_vertshader_src =
@@ -232,10 +231,10 @@ void createObjects() {
 	shapeInfo sun = make_shapeInfo(make_float3(0, 2000, 0), make_float3(1, 0, 0), 200);
 
 
-	objects[0] = make_objectInfo(sphere, s3, 1.0f, make_float3(0., 1, 1), 0, 0, 0, 0.0); // reflective
-	objects[1] = make_objectInfo(sphere, s6, 0.0f, make_float3(0.0, 0.0, 0.1), 1.0, 1.6, 0.0f, 0.0f); // refractive 3
-	objects[2] = make_objectInfo(water, p1, 0.0f, WATER_COLOR, 1.0, 1.33, WATER_DENSITY, 1.0f); // water top
-	objects[3] = make_objectInfo(plane, p3, 0.f, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0.0f, 0); // sand ocean floor
+	objects[0] = make_objectInfo(sphere, s3, 1.0f, make_float3(0., 1.f, 1.f), 0, 0, 0, 0.0); // reflective
+	objects[1] = make_objectInfo(sphere, s6, 0.0f, make_float3(0.0f, 0.0f, 0.1f), 1.0, 1.6, 0.0f, 0.0f); // refractive 3
+	objects[2] = make_objectInfo(water, p1, 0.0f, WATER_COLOR, 1.0f, 1.33f, WATER_DENSITY, 1.0f); // water top
+	objects[3] = make_objectInfo(plane, p3, 0.f, make_float3(76.0f / 255.0f, 70.0f / 255.f, 50.0f / 255.f), 0, 0, 0.0f, 0); // sand ocean floor
 	objects[4] = make_objectInfo(sphere, s1, 0, make_float3(76.0 / 255.0, 70.0 / 255, 50.0 / 255), 0, 0, 0, 0); // island
 	objects[5] = make_objectInfo(sphere, sun, 0.0f, 1000 * make_float3(1, 1, 1), 0.0, 1.33, 0.0f, 0.0); // sun
 	objects[6] = make_objectInfo(sphere, s2, 0.0f, make_float3(0.5, 0.5, 0), 0.0, 1.4, 0, 1.0f); // yellow boi
@@ -252,30 +251,24 @@ void setupLevel() {
 	std::vector<rayHitInfo> infos;
 
 	//auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
-	//auto tree = importModel("../../meshes/leafs.obj", 1.0, make_float3(0, 0, 0), false);
-	//importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
-	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 0.0f, 0.0f, 0.5 * make_float3(133.0 / 255.0, 87.0 / 255.0, 35.0 / 255.0), 0)); // bark
-	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.5 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 500)); // palm leaves
+	////auto tree = importModel("../../meshes/leafs.obj", 1.0, make_float3(0, 0, 0), false);
+	////importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
+	////infos.push_back(make_rayHitInfo(0.0f, 0.0f, 0.0f, 0.0f, 0.5 * make_float3(133.0 / 255.0, 87.0 / 255.0, 35.0 / 255.0), 0)); // bark
+	////infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.5 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 500)); // palm leaves
 	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.7 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
 
 	//std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
 	//importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
 	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.5f, 0.0f, 0.3 * make_float3(215. / 255, 198. / 255, 171. / 255), 0.f)); //rock
 
-	//std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
-	//importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	//infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20, 0, 0.0), 0)); //le bun
+	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
+	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
+	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20, 0, 0.0), 0)); //le bun
 
-	//int normalSizeX;
-	//int normalSizeY;
-	//int nbrChannels;
-
-	//loadTextureForCUDA(&opengl_water_normal_map, &cuda_water_normal_map, "../../textures/waterNormal.jpeg" ,&normalSizeX, &normalSizeY, &nbrChannels);
-
-	loadImageForCUDA("../../textures/waterNormal.png", &waterNormal.image, waterNormal.width, waterNormal.height);
+	loadImageForCUDA("../../textures/waternormal.png", &waterNormal.image, waterNormal.width, waterNormal.height);
 
 
-	size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
+	size_t size_meshes_data = sizeof(triangleMesh) * importedMeshes.size();
 	num_meshes = (unsigned int)importedMeshes.size();
 
 	assert(infos.size() == importedMeshes.size());
@@ -287,11 +280,18 @@ void setupLevel() {
 		curr.rayInfo = infos[i];
 		meshesOnCuda[i] = prepareMeshForCuda(curr);
 	}
+
+
 	// setup the global grid
 	//setupGlobalGrid(objects, importedMeshes);
 
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
 	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
+
+	size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SPHERE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES;
+	checkCudaErrors(cudaMalloc(&bbm_buffer, size_bbm_data));
+	//checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
+
 }
 
 void initCUDABuffers()
@@ -330,9 +330,6 @@ bool initGLFW() {
 	return true;
 }
 
-
-
-
 #define MOVE_SPEED 50
 
 void updateObjects(std::chrono::duration<double> deltaTime) {
@@ -345,11 +342,6 @@ void updateObjects(std::chrono::duration<double> deltaTime) {
 
 	cudaMemcpy(cuda_custom_objects_buffer, objects, size_elements_data, cudaMemcpyHostToDevice);
 }
-
-
-
-
-
 
 void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::duration<double> deltaTime)
 {
@@ -392,7 +384,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 
 	prevHitInfo prevMedium;
 	prevMedium.color = input.currPosY < -5 ? WATER_COLOR : AIR_COLOR;
-	prevMedium.insideColorDensity = input.currPosY < -5 ? WATER_DENSITY : AIR_DENSITY;
+	prevMedium.insideColorDensity = input.currPosY < -5.f ? WATER_DENSITY : AIR_DENSITY;
 	prevMedium.refractiveIndex = input.currPosY < -5.0f ? 1.33f : 1.0f;
 	
 	input.beginMedium = prevMedium;

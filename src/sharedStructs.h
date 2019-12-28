@@ -17,6 +17,8 @@
 #define LIGHT_BUFFER_THICKNESS 20
 #define LIGHT_BUFFER_THICKNESS_SIZE 100
 
+
+// dont change these
 #define LIGHT_BUFFER_WORLD_RATIO (1. / LIGHT_BUFFER_WORLD_SIZE)
 #define LIGHT_BUFFER_THICKNESS_WORLD_RATIO (1. / LIGHT_BUFFER_THICKNESS_SIZE)
 
@@ -39,15 +41,15 @@
 
 
 struct shapeInfo {
-	float3 pos;
-	float3 normal;
-	float rad;
+	float3 pos = float3();
+	float3 normal = float3();
+	float rad = 0.;
 };
 
 struct sphereInfo {
-	float3 pos;
-	float rad;
-	float rad2;
+	float3 pos = float3();
+	float rad = 0.;
+	float rad2 = 0.;
 };
 
 inline __device__ shapeInfo make_shapeInfo(float3 pos, float3 normal, float rad) {
@@ -103,9 +105,9 @@ inline __device__ rayHitInfo make_rayHitInfo(float inReflectivity, float inRefra
 }
 
 struct objectInfo {
-	shape s;
-	shapeInfo shapeData;
-	rayHitInfo rayInfo;
+	shape s = shape();
+	shapeInfo shapeData = shapeInfo();
+	rayHitInfo rayInfo = rayHitInfo();
 
 };
 
@@ -123,6 +125,7 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 struct triangleMesh {
 	float3* vertices; 
 	float3* normals; 
+	//float3* tangents; 
 	float2* UVs;
 	unsigned int* indices; 
 	int numIndices = 0;
@@ -134,15 +137,37 @@ struct triangleMesh {
 	unsigned int* diffuseMap;
 	unsigned int* normalMap;
 
-
 	// acceleration structure
-	float3 bbMin;
-	float3 bbMax;
-	float rad;
-	unsigned int** grid; // lists with unsigned int marking which triangles intersect
-	unsigned int* gridSizes;
+	float3 bbMin = float3();
+	float3 bbMax = float3();
+	float rad = 0.;
+	unsigned int** grid = nullptr; // lists with unsigned int marking which triangles intersect
+	unsigned int* gridSizes = nullptr;
 	float3 gridBoxDimensions = float3{ 0,0,0 };
 };
+
+
+struct BBMRes {
+	float3 startP;
+	float3 refractOut;
+	float3 reflectOut;
+	float3 colorOut;
+};
+
+#define DEFAULT_BBM_SPHERE_RES 10
+#define DEFAULT_BBM_ANGLE_RES 1
+
+struct blackBoxMesh {
+	BBMRes* texture = nullptr;
+	int sphereResolution = DEFAULT_BBM_SPHERE_RES;
+	int angleResolution = DEFAULT_BBM_ANGLE_RES;
+};
+
+struct BBMPassInput {
+	blackBoxMesh* bbm = nullptr;
+	triangleMesh* mesh = nullptr;
+};
+
 
 struct sceneInfo {
 
@@ -212,19 +237,19 @@ inline __device__ prevHitInfo make_prevHitInfo(const hitInfo& info) {
 
 
 struct inputStruct {
-	float currPosX;
-	float currPosY = 5;
-	float currPosZ = 10;
+	float currPosX = 0.f;
+	float currPosY = 5.f;
+	float currPosZ = 10.f;
 
-	float forwardX;
-	float forwardY;
-	float forwardZ;
+	float forwardX = 0.f;
+	float forwardY = 0.f;
+	float forwardZ = 0.f;
 
-	float upX;
-	float upY;
-	float upZ;
+	float upX = 0.f;
+	float upY = 0.f;
+	float upZ = 0.f;
 
-	prevHitInfo beginMedium;
+	prevHitInfo beginMedium = prevHitInfo();
 };
 
 
@@ -431,7 +456,7 @@ inline  __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 	// At this stage we can compute t to find out where the intersection point is on the line.
 	t = f * dot(edge2, q);
 
-	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || u + v > 1.0));
+	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || (u + v > 1.0)));
 }
 
 
