@@ -31,7 +31,6 @@ inline __device__ float3 intToRgb(int val)
 	return make_float3(r, g, b);
 }
 
-
 inline __device__ float3 rotateAngleAxis(const float3 vector, const float angleDeg, const float3& axis) 
 {
 	double S, C;

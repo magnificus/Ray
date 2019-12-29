@@ -39,6 +39,10 @@
 
 #define GLOBAL_GRID_POS(x,y,z) GLOBAL_GRID_SIZE2*x + GLOBAL_GRID_SIZE*y + z
 
+#define PI 3.141592654f
+#define DEG(rad) rad*57.2957795
+#define RAD(deg) deg/57.2957795
+
 
 struct shapeInfo {
 	float3 pos = float3();
@@ -148,29 +152,40 @@ struct triangleMesh {
 
 
 struct BBMRes {
-	float3 startP;
-	float3 refractOut;
-	float3 reflectOut;
-	float3 colorOut;
+	bool hit = false;
+	float3 startP = float3();
+	float3 colorOut = float3();
+
+	float ray1Power = 0.f;
+	float3 ray1Orig = float3();
+	float3 ray1Dir = float3();
+	float ray2Power = 0.f;
+	float3 ray2Orig = float3();
+	float3 ray2Dir = float3();
+
 };
 
-#define DEFAULT_BBM_SPHERE_RES 10
-#define DEFAULT_BBM_ANGLE_RES 1
+#define DEFAULT_BBM_SPHERE_RES 512
+#define DEFAULT_BBM_ANGLE_RES 3
 
 struct blackBoxMesh {
 	BBMRes* texture = nullptr;
+	float3 center;
+	float rad;
+
 	int sphereResolution = DEFAULT_BBM_SPHERE_RES;
 	int angleResolution = DEFAULT_BBM_ANGLE_RES;
 };
 
 struct BBMPassInput {
-	blackBoxMesh* bbm = nullptr;
-	triangleMesh* mesh = nullptr;
+	blackBoxMesh bbm = blackBoxMesh();
+	triangleMesh mesh = triangleMesh();
 };
 
 
 struct sceneInfo {
 
+	// unused stuff for global grid
 	unsigned int** gridMeshes;
 	unsigned int** gridObjects;
 	unsigned int* gridMeshesSizes;
@@ -183,6 +198,9 @@ struct sceneInfo {
 
 	triangleMesh* meshes;
 	int numMeshes;
+
+	blackBoxMesh* bbMeshes;
+	int numBBMeshes = 0;
 
 };
 
@@ -451,12 +469,45 @@ inline  __device__ bool RayIntersectsTriangle(float3 rayOrigin,
 		return false;
 	q = cross(s, edge1);
 	v = f * dot(rayVector, q);
-	if (v < 0.0 || u + v > 1.0)
+	if (v < 0.0 || (u + v) > 1.0)
 		return false;
 	// At this stage we can compute t to find out where the intersection point is on the line.
 	t = f * dot(edge2, q);
 
-	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || (u + v > 1.0)));
+	return t > EPSILON && !((u < 0.0 || u > 1.0) || (v < 0.0 || ((u + v) > 1.0)));
 }
 
+inline __device__ float3 sphericalCoordsToRectangular(const float3 sphere) {
+	return make_float3(sphere.x * sin(sphere.z) * cos(sphere.y), sphere.x * sin(sphere.z) * sin(sphere.y), sphere.x * cos(sphere.z));
+}
+
+inline __device__ float3 rectangularCoordsToSpherical(const float3 rect) {
+
+	float r = sqrt(rect.x * rect.x + rect.y * rect.y + rect.z * rect.z);
+	float p = atan2(rect.y, rect.x);
+	float o = acos(rect.z / r);
+	return make_float3(r, p, o);
+}
+
+inline __device__ int rectangularCoordsToSphericalIndex(const float3 contactPos, const float3 lookingDir, int sphereResolution, int angleRotation) {
+	float3 sphericalDir = rectangularCoordsToSpherical(contactPos);
+
+	// move into positive
+	//sphericalDir.y = sphericalDir.y < 0 ? sphericalDir.y + 2*PI : sphericalDir.y;
+	//sphericalDir.z = sphericalDir.z < 0 ? sphericalDir.z + 2 * PI : sphericalDir.z;
+	//sphericalDir.y = sphericalDir.y < 0 ? 0 : sphericalDir.y;
+	//sphericalDir.z = sphericalDir.z < 0 ? 0 : sphericalDir.z;
+
+	sphericalDir.y = fmod(sphericalDir.y + 2 * PI,2 * PI);
+	sphericalDir.z = fmod(sphericalDir.z + 2 * PI,2 * PI);
+
+
+	int indexX = round((sphericalDir.y / (2 * PI)) * sphereResolution);
+	int indexY = round((sphericalDir.z / (2* PI) * sphereResolution));
+
+	//indexX = indexX < 0 ? sphereResolution + indexX : indexX;
+	//indexY = indexY < 0 ? sphereResolution + indexY : indexY;
+
+	return sphereResolution * indexY + indexX;
+}
 

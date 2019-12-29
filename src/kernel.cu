@@ -2,6 +2,7 @@
 #include "rayHelpers.cu"
 #include "perlin.h"
 #include "cuda.h"
+#include "cuda_runtime.h"
 
 
 
@@ -175,7 +176,7 @@ __device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
 
 
 
-__device__ hitInfo traceMesh(const float3 currRayPos, const float3 currRayDir, const triangleMesh currMesh, float &closestDist, hitInfo &toReturn) {
+__device__ void traceMesh(const float3 currRayPos, const float3 currRayDir, const triangleMesh currMesh, float &closestDist, hitInfo &toReturn) {
 
 	float tMin = 0;
 	float tMax;
@@ -302,6 +303,10 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 				toReturn.info = curr.rayInfo;
 				toReturn.hit = true;
 
+				//float3 stuff =  sphericalCoordsToRectangular(toReturn.normal);
+				//toReturn.info.color = stuff;
+
+
 			}
 			break;
 		}
@@ -313,18 +318,57 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 	for (int i = 0; i < iPointers.scene.numMeshes; i++) {
 		traceMesh(currRayPos, currRayDir, iPointers.scene.meshes[i], closestDist, toReturn);
 	}
+	for (int i = 0; i < iPointers.scene.numBBMeshes; i++) {
+		blackBoxMesh BBM = iPointers.scene.bbMeshes[i];
+		float currDist;
+
+		if (/*length(BBM.center - currRayPos) - BBM.rad < closestDist && */intersectsSphere(currRayPos, currRayDir, BBM.center, BBM.rad, currDist)) {
+
+			float3 nextPos = currRayPos + currDist * currRayDir;
+
+			float3 lookingDir = normalize(BBM.center - nextPos);
+			//float3 sphericalDir = rectangularCoordsToSpherical(lookingDir);
+			//int indexX = (sphericalDir.y / 2 * PI) * BBM.sphereResolution;
+			//int indexY = (sphericalDir.z /PI) * BBM.sphereResolution;
+
+			//indexX = indexX < 0 ? BBM.sphereResolution + indexX: indexX;
+			//indexY = indexY < 0 ? BBM.sphereResolution + indexY: indexY;
+
+			//indexX = indexX < 0 ? 0 : indexX;
+			//indexY = indexY < 0 ? 0 : indexY;
+
+			int index = rectangularCoordsToSphericalIndex(lookingDir, currRayDir, BBM.sphereResolution, BBM.angleResolution);
+
+			BBMRes currBBMRes = BBM.texture[index];
+
+			currDist = length(currRayPos - currBBMRes.startP);
+			if (currBBMRes.hit/* && currDist < closestDist*/) {
+				toReturn = hitInfo();
+				closestDist = currDist;
+				//nextPos = currBBMRes.startP;
+				toReturn.hit = true;
+				toReturn.info.reflectivity = 0;
+				toReturn.info.refractivity = 0.0;
+				toReturn.info.color = currBBMRes.colorOut;// *(10.f / length(currBBMRes.startP - BBM.center));//make_float3(1, 1, 1);
+				toReturn.pos = nextPos;
+
+				toReturn.normal = normalize(nextPos - BBM.center);
+
+			}
+
+
+			//toHit.
+
+		}
+		//float3 
+		//float3 DirectionVector = 
+
+	}
+
 
 	toReturn.pos = currRayPos + closestDist * currRayDir;
 	return toReturn;
 }
-
-
-
-//__device__ hitInfo getMeshHit(const float3 currRayPos, const float3 currRayDir, const triangleMesh currMesh) {
-//	traceMesh(currRayPos, currRayDir, currMesh, closestDi)
-//
-//}
-
 
 __device__ float getShadowTerm(const float3 originalPos, const float3 normal) {
 
@@ -419,12 +463,6 @@ enum class TracePassType {
 	MAIN,
 	LIGHT
 };
-
-//__device__ BBMRes traceBBM(const float3 initialRayPos, const float3 initialRayDir, int remainingDepth, const prevHitInfo prevHitToAddDepthFrom, const prevHitInfo prev2Hit, float totalContributionRemaining = 1.0) {
-//
-//	return BBMRes();
-//}
-
 
 __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 initialRayDir, int remainingDepth, const prevHitInfo prevHitToAddDepthFrom, const prevHitInfo prev2Hit, float totalContributionRemaining = 1.0, TracePassType type = TracePassType::MAIN) {
 
@@ -557,7 +595,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 	return accumColor;
 }
 
-__device__ float2 getXYCoords(int &x, int &y) {
+__device__ void getXYCoords(int &x, int &y) {
 	int tx = threadIdx.x;
 	int ty = threadIdx.y;
 	int bw = blockDim.x;
@@ -602,8 +640,10 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	airMedium.insideColorDensity = AIR_DENSITY;
 	airMedium.refractiveIndex = 1.0;
 	//float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
-	float3 out = 255 * 3 * traceNonRecursive(startPos, dirVector, 10, input.beginMedium, airMedium, 1.0);
+	float3 out = 255 * 3 * traceNonRecursive(startPos, dirVector, 5, input.beginMedium, airMedium, 1.0);
 
+	//out = rectangularCoordsToSpherical(sphericalCoordsToRectangular(out));
+	//out = sphericalCoordsToRectangular(rectangularCoordsToSpherical(out));
 
 	int firstPos = (y * imgw + x) * 4;
 	pointers.image1[firstPos] = out.x;
@@ -639,10 +679,126 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 
 }
 
+
+
 __global__ void
 cudaBBMRender(BBMPassInput input) {
 	int x, y;
 	getXYCoords(x, y);
+
+	BBMRes toReturn;
+
+	float3 sphereCoords = make_float3(1, x * 1.0f * PI / input.bbm.sphereResolution, y * 2.0 * PI / input.bbm.sphereResolution);
+
+	float3 initialRayDir = sphericalCoordsToRectangular(sphereCoords);
+	float3 initialRayPos = input.bbm.center + input.mesh.rad*inverse(initialRayDir)*1;
+
+	//initialRayDir = ;
+
+	Ray firstRay = make_ray(initialRayPos, make_float3(0, 0, -1), prevHitInfo(), prevHitInfo(), 1.f);
+	float3 accumColor = make_float3(0, 0, 0);
+
+	int currentNbrRays = 1;
+	Ray AllRays[2];
+	AllRays[0] = firstRay;
+
+	for (int i = 0; i < 20 && currentNbrRays > 0; i++) {
+		for (int j = 0; j < currentNbrRays; j++) {
+			Ray currentRay = AllRays[j];
+
+			hitInfo hit;
+			float closestDist = 100000;
+			traceMesh(currentRay.currRayPos, currentRay.currRayDir, input.mesh, closestDist, hit);
+			currentNbrRays = 0;
+
+			if (!hit.hit) {
+				toReturn.hit = false;
+				break;
+			}
+
+			else {
+				rayHitInfo info = hit.info;
+
+				float3 reflected = make_float3(0, 0, 0);
+				float3 refracted = make_float3(0, 0, 0);
+				float3 normal = hit.normal;
+				float3 nextPos = hit.pos;
+
+				toReturn.hit = true;
+				toReturn.startP = nextPos;
+				toReturn.colorOut = make_float3(1, 1, 1);// info.color;
+				break;
+
+				float extraReflection = 0;
+				bool outside = dot(currentRay.currRayDir, normal) < 0;
+				float3 refractBias = 0.002 * normal;
+				refractBias = outside ? inverse(refractBias) : refractBias;
+				float3 reflectBias = inverse(refractBias);
+
+
+				float before = currentRay.totalContributionRemaining;
+				float prevColorMP = 1 - powf(1. - currentRay.lastMaterialHit.insideColorDensity, length(nextPos - currentRay.currRayPos));
+				accumColor = accumColor + prevColorMP * currentRay.lastMaterialHit.color * currentRay.totalContributionRemaining;
+				currentRay.totalContributionRemaining *= (1. - prevColorMP);
+
+				if (info.refractivity * currentRay.totalContributionRemaining > 0.001) {
+					float kr = 1.0;
+
+					// this gets the last material we passed through, for example if inside a glass submerged in water, it gets the water, need to remember the medium
+					prevHitInfo PrevMaterialHit = getPrevMaterialHit(make_prevHitInfo(hit), currentRay.lastMaterialHit, currentRay.prevMaterialHit);
+					prevHitInfo EnteringInfo = !outside || hit.normalIsInversed ? PrevMaterialHit : make_prevHitInfo(hit);
+
+					fresnel(currentRay.currRayDir, normal, outside ? info.refractiveIndex / currentRay.prevMaterialHit.refractiveIndex : EnteringInfo.refractiveIndex / info.refractiveIndex, kr);
+
+					if (kr < 1) {
+						if (currentNbrRays < MAX_RAYS) {
+							float3 refractionDirection = normalize(refract(currentRay.currRayDir, normal, info.refractiveIndex));
+							float3 refractionRayOrig = nextPos + refractBias;
+							float refracMP = max(0., (1 - kr));
+							Ray nextRay = make_ray(refractionRayOrig, refractionDirection, EnteringInfo, currentRay.lastMaterialHit, info.refractivity * refracMP * currentRay.totalContributionRemaining);
+							AllRays[currentNbrRays] = nextRay;
+							currentNbrRays++;
+						}
+
+					}
+
+					extraReflection = max(0.0, min(1., kr) * info.refractivity);
+				}
+				float reflecMP = (info.reflectivity + extraReflection) * currentRay.totalContributionRemaining;
+				float3 reflectionOrig = nextPos + reflectBias;
+
+
+				if ((info.reflectivity + extraReflection) > 0.33 ) {
+					if (currentNbrRays < MAX_RAYS) {
+						float3 reflectDir = reflect(currentRay.currRayDir, normal);
+						Ray nextRay = make_ray(reflectionOrig, reflectDir, currentRay.lastMaterialHit, currentRay.prevMaterialHit, reflecMP);
+						AllRays[currentNbrRays] = nextRay;
+						currentNbrRays++;
+					}
+				}
+
+				float colorMultiplier = max(0., (1. - max(0.f, info.reflectivity) - extraReflection - info.refractivity)) * currentRay.totalContributionRemaining;
+
+
+				//if (colorMultiplier > 0.33) {
+					float3 color = colorMultiplier * info.color;
+					float3 light_dir = STATIC_LIGHT_DIR;
+					float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
+					float shadowFactor = getShadowTerm(reflectionOrig, normal);
+					accumColor = accumColor + ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color);
+				//}
+			}
+			AllRays[j] = AllRays[currentNbrRays - 1];
+			currentNbrRays--;
+		}
+	}
+
+	// store our result for later use
+	int index = rectangularCoordsToSphericalIndex(initialRayDir, sphericalCoordsToRectangular(sphereCoords),input.bbm.sphereResolution, input.bbm.angleResolution);
+
+	input.bbm.texture[index] = toReturn;
+
+
 
 }
 

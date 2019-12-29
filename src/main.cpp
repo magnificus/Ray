@@ -71,10 +71,14 @@ void* cuda_mesh_buffer;
 void* bbm_buffer;
 
 
+
 struct cudaGraphicsResource* cuda_tex_resource;
 GLuint opengl_tex_cuda;  // OpenGL Texture for cuda result
 
 
+
+extern "C" void
+launch_cudaBBMRender(dim3 grid, dim3 block, int sbytes, BBMPassInput input);
 extern "C" void
 launch_cudaRender(dim3 grid, dim3 block, int sbytes, inputPointers pointers, int imgw, int imgh, float currTime, inputStruct input);
 extern "C" void
@@ -245,6 +249,23 @@ void setupLevel() {
 	// add objects
 	createObjects();
 
+	//float3 sphereCoords = make_float3(1, 0 * 2 * PI / DEFAULT_BBM_SPHERE_RES, 0 * PI / DEFAULT_BBM_SPHERE_RES);
+	//sphereCoords = sphericalCoordsToRectangular(sphereCoords);
+	//std::cout << "spherical x: " << sphereCoords.x << " y: " << sphereCoords.y << " z: " << sphereCoords.z;
+
+	//float3 simpleman = make_float3(0, 0, -1);
+	//float3 sphere = rectangularCoordsToSpherical(simpleman);
+	//std::cout << "spherical x: " << sphere.x << " y: " << sphere.y << " z: " << sphere.z;
+
+	//float3 simpleman2 = make_float3(0, -1, 1);
+	//float3 sphere2 = rectangularCoordsToSpherical(simpleman2);
+	//std::cout << "spherical 2 x: " << sphere2.x << " y: " << sphere2.y << " z: " << sphere2.z;
+
+	//float3 simpleman3 = make_float3(0, 1, 0);
+	//float3 sphere3 = rectangularCoordsToSpherical(simpleman3);
+	//std::cout << "spherical 3 x: " << sphere3.x << " y: " << sphere3.y << " z: " << sphere3.z;
+
+
 
 	// add meshes
 	std::vector<triangleMesh> importedMeshes;
@@ -261,7 +282,8 @@ void setupLevel() {
 	//importedMeshes.insert(std::end(importedMeshes), std::begin(rockMesh), std::end(rockMesh));
 	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.5f, 0.0f, 0.3 * make_float3(215. / 255, 198. / 255, 171. / 255), 0.f)); //rock
 
-	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
+	//std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
+	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, 0.0, 0.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
 	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20, 0, 0.0), 0)); //le bun
 
@@ -288,8 +310,42 @@ void setupLevel() {
 	checkCudaErrors(cudaMalloc(&cuda_mesh_buffer, size_meshes_data));
 	checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
 
-	size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SPHERE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES;
-	checkCudaErrors(cudaMalloc(&bbm_buffer, size_bbm_data));
+
+	// ALL BELOW HERE IS WIP
+	// just one for now
+	size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SPHERE_RES * DEFAULT_BBM_SPHERE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES;
+
+	BBMRes* BBMTexture;
+	checkCudaErrors(cudaMalloc(&BBMTexture, size_bbm_data));
+
+
+	//triangleMesh* meshesOnCuda2 = (triangleMesh*)malloc(sizeof(triangleMesh));
+	importedMeshes[0].rayInfo = infos[0];
+	triangleMesh meshOnCuda = prepareMeshForCuda(importedMeshes[0]);
+
+	blackBoxMesh toExec = blackBoxMesh{ BBMTexture, (meshOnCuda.bbMax + meshOnCuda.bbMin) * 0.5, meshOnCuda.rad, DEFAULT_BBM_SPHERE_RES , DEFAULT_BBM_ANGLE_RES };
+	BBMPassInput BBMInput = BBMPassInput{ toExec, meshOnCuda };
+
+	dim3 block(8, 8, 1);
+	dim3 grid(BBMInput.bbm.sphereResolution / block.x, BBMInput.bbm.sphereResolution / block.y, BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution);
+
+	launch_cudaBBMRender(grid, block, 0, BBMInput);
+
+	size_t allBBMMeshesSize = sizeof(blackBoxMesh);
+	checkCudaErrors(cudaMalloc(&bbm_buffer, allBBMMeshesSize));
+	blackBoxMesh* allBBMMeshes = (blackBoxMesh*) malloc(sizeof(blackBoxMesh));
+	allBBMMeshes[0] = toExec;
+	checkCudaErrors(cudaMemcpy(bbm_buffer, allBBMMeshes, allBBMMeshesSize, cudaMemcpyHostToDevice));
+	free(allBBMMeshes);
+
+
+
+
+
+
+	//cudaDeviceSynchronize();
+
+
 	//checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));
 
 }
@@ -390,7 +446,7 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	input.beginMedium = prevMedium;
 
 
-	sceneInfo info{ nullptr,nullptr, nullptr, nullptr,(float)totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, NUM_ELEMENTS, (triangleMesh*)cuda_mesh_buffer, (int) num_meshes };
+	sceneInfo info{ nullptr,nullptr, nullptr, nullptr,(float)totalTime.count(), (objectInfo*)cuda_custom_objects_buffer, NUM_ELEMENTS, (triangleMesh*)cuda_mesh_buffer, (int) num_meshes, (blackBoxMesh*)bbm_buffer, 1 };
 	inputPointers pointers{ (unsigned int*)cuda_dev_render_buffer, (unsigned int*)cuda_light_buffer, waterNormal, info };
 
 	// draw light
@@ -424,8 +480,6 @@ void generateCUDAImage(std::chrono::duration<double> totalTime, std::chrono::dur
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_resource, 0));
 
 	cudaDeviceSynchronize();
-
-
 
 }
 
