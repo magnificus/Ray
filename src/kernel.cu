@@ -341,18 +341,17 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 
 			BBMRes currBBMRes = BBM.texture[index];
 
-			currDist = length(currRayPos - currBBMRes.startP);
+			//currDist = length(currRayPos - currBBMRes.startP);
 			if (currBBMRes.hit/* && currDist < closestDist*/) {
 				toReturn = hitInfo();
 				closestDist = currDist;
-				//nextPos = currBBMRes.startP;
 				toReturn.hit = true;
 				toReturn.info.reflectivity = 0;
 				toReturn.info.refractivity = 0.0;
 				toReturn.info.color = currBBMRes.colorOut;// *(10.f / length(currBBMRes.startP - BBM.center));//make_float3(1, 1, 1);
-				toReturn.pos = nextPos;
+				//toReturn.pos = currBBMRes.startP;
 
-				toReturn.normal = normalize(nextPos - BBM.center);
+				//toReturn.normal = currBBMRes.startPNormal;
 
 			}
 
@@ -595,13 +594,17 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 	return accumColor;
 }
 
-__device__ void getXYCoords(int &x, int &y) {
+__device__ void getXYZCoords(int &x, int &y, int &z) {
+
 	int tx = threadIdx.x;
 	int ty = threadIdx.y;
+	int tz = threadIdx.z;
 	int bw = blockDim.x;
 	int bh = blockDim.y;
+	int bt = blockDim.z;
 	x = blockIdx.x * bw + tx;
 	y = blockIdx.y * bh + ty;
+	z = blockIdx.z + bt * tz;
 }
 
 __global__ void
@@ -609,8 +612,8 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 {
 	extern __shared__ uchar4 sdata[];
 
-	int x, y;
-	getXYCoords(x, y);
+	int x, y,z;
+	getXYZCoords(x, y,z);
 
 	float3 forwardV = make_float3(input.forwardX, input.forwardY, input.forwardZ);
 	float3 upV = make_float3(input.upX, input.upY, input.upZ);
@@ -643,7 +646,7 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	float3 out = 255 * 3 * traceNonRecursive(startPos, dirVector, 5, input.beginMedium, airMedium, 1.0);
 
 	//out = rectangularCoordsToSpherical(sphericalCoordsToRectangular(out));
-	//out = sphericalCoordsToRectangular(rectangularCoordsToSpherical(out));
+	out = sphericalCoordsToRectangular(rectangularCoordsToSpherical(out));
 
 	int firstPos = (y * imgw + x) * 4;
 	pointers.image1[firstPos] = out.x;
@@ -656,8 +659,8 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 {
 	extern __shared__ uchar4 sdata[];
 
-	int x, y;
-	getXYCoords(x, y);
+	int x, y, z;
+	getXYZCoords(x, y,z);
 
 	float3 forwardV = STATIC_LIGHT_DIR;
 	float3 upV = make_float3(1, 0, 0);
@@ -683,19 +686,33 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 
 __global__ void
 cudaBBMRender(BBMPassInput input) {
-	int x, y;
-	getXYCoords(x, y);
+	int x, y,z;
+	getXYZCoords(x, y,z);
 
 	BBMRes toReturn;
 
-	float3 sphereCoords = make_float3(1, x * 1.0f * PI / input.bbm.sphereResolution, y * 2.0 * PI / input.bbm.sphereResolution);
+	float3 sphereCoords = make_float3(1, x * 2.0f * PI / input.bbm.sphereResolution, y *1.0 * PI / input.bbm.sphereResolution);
+	float3 sphereCoordsRectangular = sphericalCoordsToRectangular(sphereCoords);
 
-	float3 initialRayDir = sphericalCoordsToRectangular(sphereCoords);
-	float3 initialRayPos = input.bbm.center + input.mesh.rad*inverse(initialRayDir)*1;
+	int adjustedY = (z / input.bbm.angleResolution);
+	int adjustedZ = (z % input.bbm.angleResolution);
+	int stepsInAdjustmentDirY =  adjustedY - ((input.bbm.angleResolution - 1)/2);
+	int stepsInAdjustmentDirZ =  adjustedZ - ((input.bbm.angleResolution - 1) / 2);
+	float stepLen = PI / (input.bbm.angleResolution + 1);
+	float nextY = sphereCoords.y + stepsInAdjustmentDirY *stepLen;
+	float nextZ = sphereCoords.z + stepsInAdjustmentDirZ* stepLen;
+	float3 adjustedAngle = make_float3(1, nextY , nextZ );
 
-	//initialRayDir = ;
+	//float3 adjustedAngle = make_float3(//sphereCoords + adjustmentAngle;
+	//int mid = input.bbm.angleResolution / 2;
 
-	Ray firstRay = make_ray(initialRayPos, make_float3(0, 0, -1), prevHitInfo(), prevHitInfo(), 1.f);
+
+	//float3 angleAdjusted = make_float3(0, /*input.bbm.angleResolution + (z-1)/2*/)
+
+	float3 initialRayDir = sphericalCoordsToRectangular(adjustedAngle);// sphericalCoordsToRectangular(sphereCoords);
+	float3 initialRayPos = input.bbm.center + input.mesh.rad*inverse(sphereCoordsRectangular);
+
+	Ray firstRay = make_ray(initialRayPos, initialRayDir, prevHitInfo(), prevHitInfo(), 1.f);
 	float3 accumColor = make_float3(0, 0, 0);
 
 	int currentNbrRays = 1;
@@ -725,8 +742,9 @@ cudaBBMRender(BBMPassInput input) {
 				float3 nextPos = hit.pos;
 
 				toReturn.hit = true;
-				toReturn.startP = nextPos;
-				toReturn.colorOut = make_float3(1, 1, 1);// info.color;
+				//toReturn.startP = nextPos;
+				toReturn.colorOut = /*make_float3(1, 1, 1);//*/ info.color;
+				//toReturn.startPNormal = normal;
 				break;
 
 				float extraReflection = 0;
@@ -794,7 +812,7 @@ cudaBBMRender(BBMPassInput input) {
 	}
 
 	// store our result for later use
-	int index = rectangularCoordsToSphericalIndex(initialRayDir, sphericalCoordsToRectangular(sphereCoords),input.bbm.sphereResolution, input.bbm.angleResolution);
+	int index = rectangularCoordsToSphericalIndex(sphereCoordsRectangular, initialRayDir,input.bbm.sphereResolution, input.bbm.angleResolution);
 
 	input.bbm.texture[index] = toReturn;
 
@@ -807,15 +825,8 @@ cudaClear(unsigned int* buffer, int imgw)
 {
 	extern __shared__ uchar4 sdata[];
 
-	int tx = threadIdx.x;
-	int ty = threadIdx.y;
-	int tz = threadIdx.z;
-	int bw = blockDim.x;
-	int bh = blockDim.y;
-	int bt = blockDim.z;
-	int x = blockIdx.x * bw + tx;
-	int y = blockIdx.y * bh + ty;
-	int z = blockIdx.z + bt * tz;
+	int x, y, z;
+	getXYZCoords(x, y, z);
 
 	int firstPos = (z * (imgw * imgw) + y * imgw + x);
 	buffer[firstPos] = 0;

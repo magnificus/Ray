@@ -297,11 +297,11 @@ void setupLevel() {
 
 	triangleMesh* meshesOnCuda = (triangleMesh*)malloc(size_meshes_data);
 
-	for (int i = 0; i < importedMeshes.size(); i++) {
-		triangleMesh curr = importedMeshes[i];
-		curr.rayInfo = infos[i];
-		meshesOnCuda[i] = prepareMeshForCuda(curr);
-	}
+	//for (int i = 0; i < importedMeshes.size(); i++) {
+	//	triangleMesh curr = importedMeshes[i];
+	//	curr.rayInfo = infos[i];
+	//	meshesOnCuda[i] = prepareMeshForCuda(curr);
+	//}
 
 
 	// setup the global grid
@@ -329,7 +329,9 @@ void setupLevel() {
 	dim3 block(8, 8, 1);
 	dim3 grid(BBMInput.bbm.sphereResolution / block.x, BBMInput.bbm.sphereResolution / block.y, BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution);
 
+	//clock::now
 	launch_cudaBBMRender(grid, block, 0, BBMInput);
+	//std::cout << "bbm rendering took"
 
 	size_t allBBMMeshesSize = sizeof(blackBoxMesh);
 	checkCudaErrors(cudaMalloc(&bbm_buffer, allBBMMeshesSize));

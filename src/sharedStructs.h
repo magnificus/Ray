@@ -153,20 +153,21 @@ struct triangleMesh {
 
 struct BBMRes {
 	bool hit = false;
-	float3 startP = float3();
+	//float3 startP = float3();
 	float3 colorOut = float3();
+	//float3 startPNormal = float3();
 
-	float ray1Power = 0.f;
-	float3 ray1Orig = float3();
-	float3 ray1Dir = float3();
-	float ray2Power = 0.f;
-	float3 ray2Orig = float3();
-	float3 ray2Dir = float3();
+	//float ray1Power = 0.f;
+	//float3 ray1Orig = float3();
+	//float3 ray1Dir = float3();
+	//float ray2Power = 0.f;
+	//float3 ray2Orig = float3();
+	//float3 ray2Dir = float3();
 
 };
 
-#define DEFAULT_BBM_SPHERE_RES 512
-#define DEFAULT_BBM_ANGLE_RES 3
+#define DEFAULT_BBM_SPHERE_RES 128
+#define DEFAULT_BBM_ANGLE_RES 51
 
 struct blackBoxMesh {
 	BBMRes* texture = nullptr;
@@ -489,25 +490,45 @@ inline __device__ float3 rectangularCoordsToSpherical(const float3 rect) {
 	return make_float3(r, p, o);
 }
 
-inline __device__ int rectangularCoordsToSphericalIndex(const float3 contactPos, const float3 lookingDir, int sphereResolution, int angleRotation) {
-	float3 sphericalDir = rectangularCoordsToSpherical(contactPos);
+#define MAX(a,b) a < b ? b : a
+#define MIN(a,b) a > b ? b : a
+
+inline __device__ int rectangularCoordsToSphericalIndex(const float3 inwardsDir, const float3 lookingDir, int sphereResolution, int angleResolution) {
+	float3 sphericalDir = rectangularCoordsToSpherical(inwardsDir);
+	float3 direction = rectangularCoordsToSpherical(lookingDir);
+
 
 	// move into positive
-	//sphericalDir.y = sphericalDir.y < 0 ? sphericalDir.y + 2*PI : sphericalDir.y;
-	//sphericalDir.z = sphericalDir.z < 0 ? sphericalDir.z + 2 * PI : sphericalDir.z;
-	//sphericalDir.y = sphericalDir.y < 0 ? 0 : sphericalDir.y;
-	//sphericalDir.z = sphericalDir.z < 0 ? 0 : sphericalDir.z;
+	sphericalDir.y = fmod(sphericalDir.y + 2 * PI, 2 * PI);
+	sphericalDir.z = fmod(sphericalDir.z + 2 * PI, 2 * PI);
 
-	sphericalDir.y = fmod(sphericalDir.y + 2 * PI,2 * PI);
-	sphericalDir.z = fmod(sphericalDir.z + 2 * PI,2 * PI);
+	direction.y = fmod(direction.y + 2 * PI, 2 * PI);
+	direction.z = fmod(direction.z + 2 * PI, 2 * PI);
 
+
+	float stepLen = PI / (angleResolution + 1);
+	
+	float startY = sphericalDir.y - stepLen * ((angleResolution-1)/2);
+	float startZ = sphericalDir.z - stepLen * ((angleResolution - 1) / 2);
+
+	float diffY = direction.y - startY;
+	float diffZ = direction.z - startZ;
+
+	//diffY = fmod(diffY + 2 * PI, 2 * PI);
+	//diffZ = fmod(diffZ + 2 * PI, 2 * PI);
+
+	int stepsY = MIN(MAX(0,round(diffY / stepLen)), angleResolution-1);
+	int stepsZ = MIN(MAX(0, round(diffZ / stepLen)), angleResolution - 1);
+
+	int adjustedAngleIndex =  stepsY * angleResolution + stepsZ;
+
+	//// move into positive
+	//sphericalDir.y = fmod(sphericalDir.y + 2 * PI,2 * PI);
+	//sphericalDir.z = fmod(sphericalDir.z + 2 * PI,2 * PI);
 
 	int indexX = round((sphericalDir.y / (2 * PI)) * sphereResolution);
 	int indexY = round((sphericalDir.z / (2* PI) * sphereResolution));
 
-	//indexX = indexX < 0 ? sphereResolution + indexX : indexX;
-	//indexY = indexY < 0 ? sphereResolution + indexY : indexY;
-
-	return sphereResolution * indexY + indexX;
+	return (sphereResolution * indexY + indexX)* angleResolution* angleResolution + adjustedAngleIndex;
 }
 
