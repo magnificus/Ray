@@ -253,13 +253,17 @@ void setupLevel() {
 	//sphereCoords = sphericalCoordsToRectangular(sphereCoords);
 	//std::cout << "spherical x: " << sphereCoords.x << " y: " << sphereCoords.y << " z: " << sphereCoords.z;
 
-	//float3 simpleman = make_float3(0, 0, -1);
-	//float3 sphere = rectangularCoordsToSpherical(simpleman);
-	//std::cout << "spherical x: " << sphere.x << " y: " << sphere.y << " z: " << sphere.z;
+	float3 simpleman = make_float3(0, 1, 0);
+	float3 sphere = rectangularCoordsToSpherical(simpleman);
+	std::cout << "spherical x: " << simpleman.x << " y: " << simpleman.y << " z: " << simpleman.z << std::endl;
 
-	//float3 simpleman2 = make_float3(0, -1, 1);
-	//float3 sphere2 = rectangularCoordsToSpherical(simpleman2);
-	//std::cout << "spherical 2 x: " << sphere2.x << " y: " << sphere2.y << " z: " << sphere2.z;
+
+	float3 sphere2 = sphericalCoordsToRectangular(sphere + make_float3(0,PI/2,0));
+	std::cout << "spherical 2 x: " << sphere2.x << " y: " << sphere2.y << " z: " << sphere2.z << std::endl;
+
+
+	float3 sphere3 = /*sphere + make_float3(0, 0, PI/2));// */cross(simpleman, sphere2);
+	std::cout << "spherical 3 x: " << sphere3.x << " y: " << sphere3.y << " z: " << sphere3.z << std::endl;
 
 	//float3 simpleman3 = make_float3(0, 1, 0);
 	//float3 sphere3 = rectangularCoordsToSpherical(simpleman3);
@@ -272,10 +276,10 @@ void setupLevel() {
 	std::vector<rayHitInfo> infos;
 
 	//auto tree = importModel("../../meshes/Palm_Tree.obj", 7.0, make_float3(0, 0, 0), false);
-	////auto tree = importModel("../../meshes/leafs.obj", 1.0, make_float3(0, 0, 0), false);
-	////importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
-	////infos.push_back(make_rayHitInfo(0.0f, 0.0f, 0.0f, 0.0f, 0.5 * make_float3(133.0 / 255.0, 87.0 / 255.0, 35.0 / 255.0), 0)); // bark
-	////infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.5 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 500)); // palm leaves
+	//auto tree = importModel("../../meshes/leafs.obj", 1.0, make_float3(0, 0, 0), false);
+	//importedMeshes.insert(std::end(importedMeshes), std::begin(tree), std::end(tree));
+	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 0.0f, 0.0f, 0.5 * make_float3(133.0 / 255.0, 87.0 / 255.0, 35.0 / 255.0), 0)); // bark
+	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.5 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 500)); // palm leaves
 	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.0f, 0.0f, 0.7 * make_float3(111.0 / 255.0, 153.0 / 255, 64.0 / 255), 0)); // palm leaves 2
 
 	//std::vector<triangleMesh> rockMesh = importModel("../../meshes/rock.obj", 0.05, make_float3(80.0, -80, 50.0), false);
@@ -297,11 +301,11 @@ void setupLevel() {
 
 	triangleMesh* meshesOnCuda = (triangleMesh*)malloc(size_meshes_data);
 
-	//for (int i = 0; i < importedMeshes.size(); i++) {
-	//	triangleMesh curr = importedMeshes[i];
-	//	curr.rayInfo = infos[i];
-	//	meshesOnCuda[i] = prepareMeshForCuda(curr);
-	//}
+	for (int i = 0; i < importedMeshes.size(); i++) {
+		triangleMesh curr = importedMeshes[i];
+		curr.rayInfo = infos[i];
+		meshesOnCuda[i] = prepareMeshForCuda(curr);
+	}
 
 
 	// setup the global grid
@@ -313,7 +317,7 @@ void setupLevel() {
 
 	// ALL BELOW HERE IS WIP
 	// just one for now
-	size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SPHERE_RES * DEFAULT_BBM_SPHERE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES;
+	size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SIDE_RES * DEFAULT_BBM_SIDE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES * 6;
 
 	BBMRes* BBMTexture;
 	checkCudaErrors(cudaMalloc(&BBMTexture, size_bbm_data));
@@ -323,11 +327,11 @@ void setupLevel() {
 	importedMeshes[0].rayInfo = infos[0];
 	triangleMesh meshOnCuda = prepareMeshForCuda(importedMeshes[0]);
 
-	blackBoxMesh toExec = blackBoxMesh{ BBMTexture, (meshOnCuda.bbMax + meshOnCuda.bbMin) * 0.5, meshOnCuda.rad, DEFAULT_BBM_SPHERE_RES , DEFAULT_BBM_ANGLE_RES };
+	blackBoxMesh toExec = blackBoxMesh{ BBMTexture, meshOnCuda.bbMin, meshOnCuda.bbMax, DEFAULT_BBM_SIDE_RES , DEFAULT_BBM_ANGLE_RES };
 	BBMPassInput BBMInput = BBMPassInput{ toExec, meshOnCuda };
 
 	dim3 block(8, 8, 1);
-	dim3 grid(BBMInput.bbm.sphereResolution / block.x, BBMInput.bbm.sphereResolution / block.y, BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution);
+	dim3 grid(BBMInput.bbm.sideResolution / block.x, BBMInput.bbm.sideResolution / block.y, (BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution * 6)/block.z);
 
 	//clock::now
 	launch_cudaBBMRender(grid, block, 0, BBMInput);
@@ -345,7 +349,7 @@ void setupLevel() {
 
 
 
-	//cudaDeviceSynchronize();
+	cudaDeviceSynchronize();
 
 
 	//checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));

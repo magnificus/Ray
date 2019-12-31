@@ -176,7 +176,7 @@ __device__ bool worldPositionToTextureCoordinate(float3 position, int& out) {
 
 
 
-__device__ void traceMesh(const float3 currRayPos, const float3 currRayDir, const triangleMesh currMesh, float &closestDist, hitInfo &toReturn) {
+__device__ void traceMesh(const float3 currRayPos, const float3 currRayDir, const triangleMesh currMesh, float& closestDist, hitInfo& toReturn) {
 
 	float tMin = 0;
 	float tMax;
@@ -283,6 +283,9 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 
 			}
 
+			toReturn.pos = currRayPos + closestDist * currRayDir;
+
+
 			break;
 		}
 		case plane: {
@@ -291,6 +294,8 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 				toReturn.info = curr.rayInfo;
 				toReturn.normal = info.normal;
 				toReturn.hit = true;
+				toReturn.pos = currRayPos + closestDist * currRayDir;
+
 			}
 
 			break;
@@ -302,6 +307,8 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 				toReturn.normal = normalize(nextPos - info.pos);
 				toReturn.info = curr.rayInfo;
 				toReturn.hit = true;
+				toReturn.pos = currRayPos + closestDist * currRayDir;
+
 
 				//float3 stuff =  sphericalCoordsToRectangular(toReturn.normal);
 				//toReturn.info.color = stuff;
@@ -318,41 +325,31 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 	for (int i = 0; i < iPointers.scene.numMeshes; i++) {
 		traceMesh(currRayPos, currRayDir, iPointers.scene.meshes[i], closestDist, toReturn);
 	}
+	// BBM
 	for (int i = 0; i < iPointers.scene.numBBMeshes; i++) {
 		blackBoxMesh BBM = iPointers.scene.bbMeshes[i];
 		float currDist;
 
-		if (/*length(BBM.center - currRayPos) - BBM.rad < closestDist && */intersectsSphere(currRayPos, currRayDir, BBM.center, BBM.rad, currDist)) {
+		float tMin = 0;
+		float tMax;
 
-			float3 nextPos = currRayPos + currDist * currRayDir;
+		if (intersectBox(currRayPos, currRayDir, BBM.bbMin, BBM.bbMax, tMin, tMax) && tMin < closestDist && tMin > 0) {
 
-			float3 lookingDir = normalize(BBM.center - nextPos);
-			//float3 sphericalDir = rectangularCoordsToSpherical(lookingDir);
-			//int indexX = (sphericalDir.y / 2 * PI) * BBM.sphereResolution;
-			//int indexY = (sphericalDir.z /PI) * BBM.sphereResolution;
+			float3 nextPos = currRayPos + tMin  * currRayDir;
 
-			//indexX = indexX < 0 ? BBM.sphereResolution + indexX: indexX;
-			//indexY = indexY < 0 ? BBM.sphereResolution + indexY: indexY;
-
-			//indexX = indexX < 0 ? 0 : indexX;
-			//indexY = indexY < 0 ? 0 : indexY;
-
-			int index = rectangularCoordsToSphericalIndex(lookingDir, currRayDir, BBM.sphereResolution, BBM.angleResolution);
+			int index = rectangularCoordsToIndex(nextPos, currRayDir, BBM);
 
 			BBMRes currBBMRes = BBM.texture[index];
 
 			//currDist = length(currRayPos - currBBMRes.startP);
-			if (currBBMRes.hit/* && currDist < closestDist*/) {
+			if (currBBMRes.hit) {
 				toReturn = hitInfo();
-				closestDist = currDist;
+				closestDist = tMin;
 				toReturn.hit = true;
 				toReturn.info.reflectivity = 0;
 				toReturn.info.refractivity = 0.0;
-				toReturn.info.color = currBBMRes.colorOut;// *(10.f / length(currBBMRes.startP - BBM.center));//make_float3(1, 1, 1);
-				//toReturn.pos = currBBMRes.startP;
-
-				//toReturn.normal = currBBMRes.startPNormal;
-
+				toReturn.info.color = currBBMRes.colorOut;// make_float3(1, 1, 1)* (10.f / length(currBBMRes.startP - BBM.center));//make_float3(1, 1, 1);
+				toReturn.pos = nextPos;// currBBMRes.startP;
 			}
 
 
@@ -365,7 +362,6 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 	}
 
 
-	toReturn.pos = currRayPos + closestDist * currRayDir;
 	return toReturn;
 }
 
@@ -594,7 +590,7 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 	return accumColor;
 }
 
-__device__ void getXYZCoords(int &x, int &y, int &z) {
+__device__ void getXYZCoords(int& x, int& y, int& z) {
 
 	int tx = threadIdx.x;
 	int ty = threadIdx.y;
@@ -612,8 +608,8 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 {
 	extern __shared__ uchar4 sdata[];
 
-	int x, y,z;
-	getXYZCoords(x, y,z);
+	int x, y, z;
+	getXYZCoords(x, y, z);
 
 	float3 forwardV = make_float3(input.forwardX, input.forwardY, input.forwardZ);
 	float3 upV = make_float3(input.upX, input.upY, input.upZ);
@@ -660,7 +656,7 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 	extern __shared__ uchar4 sdata[];
 
 	int x, y, z;
-	getXYZCoords(x, y,z);
+	getXYZCoords(x, y, z);
 
 	float3 forwardV = STATIC_LIGHT_DIR;
 	float3 upV = make_float3(1, 0, 0);
@@ -686,22 +682,23 @@ cudaLightRender(inputPointers pointers, int imgw, int imgh, float currTime, inpu
 
 __global__ void
 cudaBBMRender(BBMPassInput input) {
-	int x, y,z;
-	getXYZCoords(x, y,z);
+	int x, y, z;
+	getXYZCoords(x, y, z);
 
 	BBMRes toReturn;
 
-	float3 sphereCoords = make_float3(1, x * 2.0f * PI / input.bbm.sphereResolution, y *1.0 * PI / input.bbm.sphereResolution);
-	float3 sphereCoordsRectangular = sphericalCoordsToRectangular(sphereCoords);
+	//float3 sphereCoords = make_float3(1, x * 1.0f * PI / input.bbm.sphereResolution, y *2.0 * PI / input.bbm.sphereResolution);
+	//float3 sphereCoordsRectangular = sphericalCoordsToRectangular(sphereCoords);
 
-	int adjustedY = (z / input.bbm.angleResolution);
-	int adjustedZ = (z % input.bbm.angleResolution);
-	int stepsInAdjustmentDirY =  adjustedY - ((input.bbm.angleResolution - 1)/2);
-	int stepsInAdjustmentDirZ =  adjustedZ - ((input.bbm.angleResolution - 1) / 2);
-	float stepLen = PI / (input.bbm.angleResolution + 1);
-	float nextY = sphereCoords.y + stepsInAdjustmentDirY *stepLen;
-	float nextZ = sphereCoords.z + stepsInAdjustmentDirZ* stepLen;
-	float3 adjustedAngle = make_float3(1, nextY , nextZ );
+	//int adjustedY = (z / input.bbm.angleResolution);
+	//int adjustedZ = (z % input.bbm.angleResolution);
+	//int stepsInAdjustmentDirY =  adjustedY - ((input.bbm.angleResolution - 1)/2);
+	//int stepsInAdjustmentDirZ =  adjustedZ - ((input.bbm.angleResolution - 1) / 2);
+	//float stepLen = PI / (input.bbm.angleResolution + 1);
+	//float nextY = sphereCoords.y + stepsInAdjustmentDirY *stepLen;
+	//float nextZ = sphereCoords.z + stepsInAdjustmentDirZ* stepLen;
+	//float3 adjustedAngle = make_float3(1, nextY , nextZ );
+
 
 	//float3 adjustedAngle = make_float3(//sphereCoords + adjustmentAngle;
 	//int mid = input.bbm.angleResolution / 2;
@@ -709,8 +706,34 @@ cudaBBMRender(BBMPassInput input) {
 
 	//float3 angleAdjusted = make_float3(0, /*input.bbm.angleResolution + (z-1)/2*/)
 
-	float3 initialRayDir = sphericalCoordsToRectangular(adjustedAngle);// sphericalCoordsToRectangular(sphereCoords);
-	float3 initialRayPos = input.bbm.center + input.mesh.rad*inverse(sphereCoordsRectangular);
+	int directionIndex = z / (input.bbm.angleResolution * input.bbm.angleResolution);
+	float3 direction = /*make_float3(0, 0, 1);//*/intToDirection(directionIndex);
+
+	float3 center = (input.bbm.bbMin + input.bbm.bbMax)*0.5f;
+	float3 diachongus = input.bbm.bbMax - input.bbm.bbMin;
+
+	float3 tan = /*make_float3(0, 1, 0);//*/ getTan(direction);
+	float3 biTan = /*make_float3(1, 0, 0);//*/ cross(direction, tan);
+
+	//tan = make_float3(round(tan.x), round(tan.y), round(tan.z));
+	//biTan = make_float3(round(biTan.x), round(biTan.y), round(biTan.z));
+
+	float3 dirDistFromCenter = (direction * diachongus) *  0.501f;
+
+	//float xMid = (input.bbm.sideResolution / 2);
+	//float yMid = (input.bbm.sideResolution / 2);
+
+	////float xPos = (x - xMid) / input.bbm.sideResolution;
+	////float yPos = (y - yMid) / input.bbm.sideResolution;
+
+	//float xPos = ((float)x - xMid) / (float)input.bbm.sideResolution;
+	//float yPos = ((float)y - yMid)/ (float)input.bbm.sideResolution;
+
+	float3 offsetTan = tan* (((x - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution))* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
+	float3 offsetBiTan =  biTan* ((y - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution)* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
+
+	float3 initialRayDir = direction;
+	float3 initialRayPos = (center - dirDistFromCenter) +offsetTan + offsetBiTan;
 
 	Ray firstRay = make_ray(initialRayPos, initialRayDir, prevHitInfo(), prevHitInfo(), 1.f);
 	float3 accumColor = make_float3(0, 0, 0);
@@ -724,16 +747,16 @@ cudaBBMRender(BBMPassInput input) {
 			Ray currentRay = AllRays[j];
 
 			hitInfo hit;
-			float closestDist = 100000;
+			float closestDist = 10000000;
 			traceMesh(currentRay.currRayPos, currentRay.currRayDir, input.mesh, closestDist, hit);
 			currentNbrRays = 0;
 
 			if (!hit.hit) {
 				toReturn.hit = false;
-				break;
-			}
+				toReturn.colorOut = make_float3(0, 1, 0);// info.color;
 
-			else {
+				break;
+			}else {
 				rayHitInfo info = hit.info;
 
 				float3 reflected = make_float3(0, 0, 0);
@@ -742,8 +765,8 @@ cudaBBMRender(BBMPassInput input) {
 				float3 nextPos = hit.pos;
 
 				toReturn.hit = true;
-				//toReturn.startP = nextPos;
-				toReturn.colorOut = /*make_float3(1, 1, 1);//*/ info.color;
+				toReturn.startP = nextPos;
+				toReturn.colorOut = make_float3(1, 1, 1);// info.color;
 				//toReturn.startPNormal = normal;
 				break;
 
@@ -786,7 +809,7 @@ cudaBBMRender(BBMPassInput input) {
 				float3 reflectionOrig = nextPos + reflectBias;
 
 
-				if ((info.reflectivity + extraReflection) > 0.33 ) {
+				if ((info.reflectivity + extraReflection) > 0.33) {
 					if (currentNbrRays < MAX_RAYS) {
 						float3 reflectDir = reflect(currentRay.currRayDir, normal);
 						Ray nextRay = make_ray(reflectionOrig, reflectDir, currentRay.lastMaterialHit, currentRay.prevMaterialHit, reflecMP);
@@ -799,11 +822,11 @@ cudaBBMRender(BBMPassInput input) {
 
 
 				//if (colorMultiplier > 0.33) {
-					float3 color = colorMultiplier * info.color;
-					float3 light_dir = STATIC_LIGHT_DIR;
-					float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
-					float shadowFactor = getShadowTerm(reflectionOrig, normal);
-					accumColor = accumColor + ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color);
+				float3 color = colorMultiplier * info.color;
+				float3 light_dir = STATIC_LIGHT_DIR;
+				float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, normal)));
+				float shadowFactor = getShadowTerm(reflectionOrig, normal);
+				accumColor = accumColor + ((0.8 * shadowFactor * angleFactor + 0.2) * 1.0 * color);
 				//}
 			}
 			AllRays[j] = AllRays[currentNbrRays - 1];
@@ -812,7 +835,7 @@ cudaBBMRender(BBMPassInput input) {
 	}
 
 	// store our result for later use
-	int index = rectangularCoordsToSphericalIndex(sphereCoordsRectangular, initialRayDir,input.bbm.sphereResolution, input.bbm.angleResolution);
+	int index = rectangularCoordsToIndex(initialRayPos, initialRayDir, input.bbm);
 
 	input.bbm.texture[index] = toReturn;
 

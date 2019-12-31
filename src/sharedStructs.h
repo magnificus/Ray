@@ -127,11 +127,11 @@ inline __device__ objectInfo make_objectInfo(shape s, shapeInfo shapeData, float
 
 
 struct triangleMesh {
-	float3* vertices; 
-	float3* normals; 
+	float3* vertices;
+	float3* normals;
 	//float3* tangents; 
 	float2* UVs;
-	unsigned int* indices; 
+	unsigned int* indices;
 	int numIndices = 0;
 	int numVertices = 0;
 
@@ -153,7 +153,7 @@ struct triangleMesh {
 
 struct BBMRes {
 	bool hit = false;
-	//float3 startP = float3();
+	float3 startP = float3();
 	float3 colorOut = float3();
 	//float3 startPNormal = float3();
 
@@ -166,15 +166,16 @@ struct BBMRes {
 
 };
 
-#define DEFAULT_BBM_SPHERE_RES 128
-#define DEFAULT_BBM_ANGLE_RES 51
+#define DEFAULT_BBM_SIDE_RES 128	
+#define DEFAULT_BBM_ANGLE_RES 1
 
 struct blackBoxMesh {
 	BBMRes* texture = nullptr;
-	float3 center;
-	float rad;
+	float3 bbMin = make_float3(0, 0, 0);
+	float3 bbMax = make_float3(0,0,0);
+	//float rad;
 
-	int sphereResolution = DEFAULT_BBM_SPHERE_RES;
+	int sideResolution = DEFAULT_BBM_SIDE_RES;
 	int angleResolution = DEFAULT_BBM_ANGLE_RES;
 };
 
@@ -206,10 +207,10 @@ struct sceneInfo {
 };
 
 struct PostProcessPointers {
-	unsigned int *inputImage;
-	unsigned int *processRead;
-	unsigned int *processWrite;
-	unsigned int *finalOut;
+	unsigned int* inputImage;
+	unsigned int* processRead;
+	unsigned int* processWrite;
+	unsigned int* finalOut;
 };
 
 struct inputImage {
@@ -223,7 +224,7 @@ struct inputPointers {
 	unsigned int* image1; // texture position
 	unsigned int* lightImage; // light texture position
 
-	inputImage waterNormal; 
+	inputImage waterNormal;
 	sceneInfo scene;
 
 };
@@ -302,7 +303,7 @@ inline __device__ float3 operator-(const float3& a, const float3& b) {
 }
 
 inline __device__ float3 floor(const float3& a) {
-	return make_float3(floor(a.x), floor(a.y),floor(a.z));
+	return make_float3(floor(a.x), floor(a.y), floor(a.z));
 }
 
 inline __device__ float2 floor(const float2& a) {
@@ -358,7 +359,7 @@ inline __device__ float3 normalize(float3 v)
 	return invLen * v;
 }
 
-inline __device__ bool intersectBox(const float3& orig, const float3& dir, const float3& min, const float3 max, float &tmin, float &tmax)
+inline __device__ bool intersectBox(const float3 orig, const float3 dir, const float3 min, const float3 max, float& tmin, float& tmax)
 {
 	tmin = (min.x - orig.x) / dir.x;
 	tmax = (max.x - orig.x) / dir.x;
@@ -493,42 +494,100 @@ inline __device__ float3 rectangularCoordsToSpherical(const float3 rect) {
 #define MAX(a,b) a < b ? b : a
 #define MIN(a,b) a > b ? b : a
 
-inline __device__ int rectangularCoordsToSphericalIndex(const float3 inwardsDir, const float3 lookingDir, int sphereResolution, int angleResolution) {
+inline __device__ int rectangularCoordsToLerpedValue(const float3 inwardsDir, const float3 lookingDir, int sphereResolution, int angleResolution) {
 	float3 sphericalDir = rectangularCoordsToSpherical(inwardsDir);
 	float3 direction = rectangularCoordsToSpherical(lookingDir);
+	return 0;
+
+}
 
 
-	// move into positive
-	sphericalDir.y = fmod(sphericalDir.y + 2 * PI, 2 * PI);
-	sphericalDir.z = fmod(sphericalDir.z + 2 * PI, 2 * PI);
-
-	direction.y = fmod(direction.y + 2 * PI, 2 * PI);
-	direction.z = fmod(direction.z + 2 * PI, 2 * PI);
+inline __device__ float3 getTan(float3 vec) {
+	float3 spherical = rectangularCoordsToSpherical(vec);
+	return sphericalCoordsToRectangular(spherical + make_float3(0, 0, PI/2));
+}
 
 
-	float stepLen = PI / (angleResolution + 1);
-	
-	float startY = sphericalDir.y - stepLen * ((angleResolution-1)/2);
-	float startZ = sphericalDir.z - stepLen * ((angleResolution - 1) / 2);
 
-	float diffY = direction.y - startY;
-	float diffZ = direction.z - startZ;
 
-	//diffY = fmod(diffY + 2 * PI, 2 * PI);
-	//diffZ = fmod(diffZ + 2 * PI, 2 * PI);
+inline __device__ int directionToInt(float3 dir) {
+	if (dot(dir, make_float3(1, 0, 0)) > 0.99) {
+		return 0;
+	}
+	else if (dot(dir, make_float3(-1, 0, 0)) > 0.99) {
+		return 1;
+	}
+	else if (dot(dir, make_float3(0, 1, 0)) > 0.99) {
+		return 2;
+	}
+	else if (dot(dir, make_float3(0, -1, 0)) > 0.99) {
+		return 3;
+	}
+	else if (dot(dir, make_float3(0, 0, 1)) > 0.99) {
+		return 4;
+	}
+	else if (dot(dir, make_float3(0, 0, -1)) > 0.99) {
+		return 5;
+	}
+	return  -1000000; // you dun goofed if this happens
 
-	int stepsY = MIN(MAX(0,round(diffY / stepLen)), angleResolution-1);
-	int stepsZ = MIN(MAX(0, round(diffZ / stepLen)), angleResolution - 1);
 
-	int adjustedAngleIndex =  stepsY * angleResolution + stepsZ;
+}
 
-	//// move into positive
-	//sphericalDir.y = fmod(sphericalDir.y + 2 * PI,2 * PI);
-	//sphericalDir.z = fmod(sphericalDir.z + 2 * PI,2 * PI);
+inline __device__ float3 intToDirection(int directionIndex) {
+	float3 direction = make_float3(0,0,0);
+	switch (directionIndex) {
+	case 0: direction = make_float3(1, 0, 0); break;
+	case 1: direction = make_float3(-1, 0, 0); break;
+	case 2: direction = make_float3(0, 1, 0); break;
+	case 3: direction = make_float3(0, -1, 0); break;
+	case 4: direction = make_float3(0, 0, 1); break;
+	case 5: direction = make_float3(0, 0, -1); break;
+	}
+	return direction;
+}
 
-	int indexX = round((sphericalDir.y / (2 * PI)) * sphereResolution);
-	int indexY = round((sphericalDir.z / (2* PI) * sphereResolution));
 
-	return (sphereResolution * indexY + indexX)* angleResolution* angleResolution + adjustedAngleIndex;
+inline __device__ int rectangularCoordsToIndex(const float3 position, const float3 lookingDir, const blackBoxMesh bbm) {
+
+	float3 center = (bbm.bbMax + bbm.bbMin) * 0.5;
+	float3 centerToContact = position - center;
+	float3 bbMinToContact = position - bbm.bbMin;
+
+	float3 bbmChongos = (bbm.bbMax - bbm.bbMin);
+	float3 adjustedCenterToContact = centerToContact / bbmChongos;
+
+	//first find contact point
+	float3 majorDir;// = abs(centerToContact.x) > abs(centerToContact.y) ? (abs(centerToContact.x) > abs(centerToContact.z) ? make_float3(centerToContact.x) :
+	if ((abs(adjustedCenterToContact.x) >= abs(adjustedCenterToContact.y) )&& (abs(adjustedCenterToContact.x) >= abs(adjustedCenterToContact.z))) {
+		majorDir = make_float3(centerToContact.x, 0, 0);
+	}
+	else if (abs(adjustedCenterToContact.y) >= abs(adjustedCenterToContact.z)) {
+		majorDir =  make_float3(0, centerToContact.y, 0);
+	}
+	else {
+		majorDir = make_float3(0, 0, centerToContact.z);
+	}
+	majorDir = (majorDir *(1 / length(majorDir))); // normalize length
+
+	//majorDir = make_float3(0, 0, 1);
+	float3 tan = /*make_float3(0, 1, 0);//*/ (getTan(majorDir));
+	float3 biTan = /* make_float3(1, 0, 0);//*/ (cross(majorDir, tan));
+
+	float distT = dot(tan, bbMinToContact);
+	float distB = dot(biTan, bbMinToContact);
+
+	float maxDistT =  dot(tan, bbmChongos);
+	float maxDistB =  dot(biTan, bbmChongos);
+
+	float ratT = distT / maxDistT;
+	float ratB = distB / maxDistB;
+
+	int directionIndex = directionToInt(majorDir);
+	int XIndex = (int) round(ratT * bbm.sideResolution) % bbm.sideResolution;
+	int YIndex = (int) round(ratB * bbm.sideResolution) % bbm.sideResolution;
+	int XYIndex = YIndex * bbm.sideResolution + XIndex;
+
+	return directionIndex * (bbm.sideResolution*bbm.sideResolution)* (bbm.angleResolution * bbm.angleResolution) + XYIndex * (bbm.angleResolution * bbm.angleResolution);
 }
 
