@@ -289,7 +289,7 @@ void setupLevel() {
 	//std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
 	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, 0.0, 0.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
-	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(20, 0, 0.0), 0)); //le bun
+	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(1, 0, 0.0), 0)); //le bun
 
 	loadImageForCUDA("../../textures/waternormal.png", &waterNormal.image, waterNormal.width, waterNormal.height);
 
@@ -301,11 +301,11 @@ void setupLevel() {
 
 	triangleMesh* meshesOnCuda = (triangleMesh*)malloc(size_meshes_data);
 
-	for (int i = 0; i < importedMeshes.size(); i++) {
-		triangleMesh curr = importedMeshes[i];
-		curr.rayInfo = infos[i];
-		meshesOnCuda[i] = prepareMeshForCuda(curr);
-	}
+	//for (int i = 0; i < importedMeshes.size(); i++) {
+	//	triangleMesh curr = importedMeshes[i];
+	//	curr.rayInfo = infos[i];
+	//	meshesOnCuda[i] = prepareMeshForCuda(curr);
+	//}
 
 
 	// setup the global grid

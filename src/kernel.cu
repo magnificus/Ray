@@ -350,6 +350,10 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 				toReturn.info.refractivity = 0.0;
 				toReturn.info.color = currBBMRes.colorOut;// make_float3(1, 1, 1)* (10.f / length(currBBMRes.startP - BBM.center));//make_float3(1, 1, 1);
 				toReturn.pos = nextPos;// currBBMRes.startP;
+				toReturn.normal = currBBMRes.startPNormal;
+				if (index == 0) {
+					toReturn.info.color = make_float3(0, 1, 0);
+				}
 			}
 
 
@@ -707,18 +711,39 @@ cudaBBMRender(BBMPassInput input) {
 	//float3 angleAdjusted = make_float3(0, /*input.bbm.angleResolution + (z-1)/2*/)
 
 	int directionIndex = z / (input.bbm.angleResolution * input.bbm.angleResolution);
-	float3 direction = /*make_float3(0, 0, 1);//*/intToDirection(directionIndex);
+	float3 direction =/* make_float3(0, 0, -1);//*/intToDirection(directionIndex);
 
 	float3 center = (input.bbm.bbMin + input.bbm.bbMax)*0.5f;
 	float3 diachongus = input.bbm.bbMax - input.bbm.bbMin;
 
-	float3 tan = /*make_float3(0, 1, 0);//*/ getTan(direction);
+	float3 tan =/* make_float3(0, 1, 0);//*/ getTan(direction);
 	float3 biTan = /*make_float3(1, 0, 0);//*/ cross(direction, tan);
+
+	int adjustedY = (z % (input.bbm.angleResolution * input.bbm.angleResolution)) / input.bbm.angleResolution;
+	int adjustedZ = (z % input.bbm.angleResolution);
+
+	float stepLen = /*PI / 4;//*/ PI / (input.bbm.angleResolution + 1);
+	int stepsToTakeInYDir = /*(input.bbm.angleResolution - 1) / 2;// */adjustedY - ((input.bbm.angleResolution - 1) / 2);
+	int stepsToTakeInZDir = /*(input.bbm.angleResolution - 1) / 2;// */adjustedZ - ((input.bbm.angleResolution - 1) / 2);
+
+	float3 unitV = make_float3(1, 1, 1);
+
+
+	float3 rotationV = make_float3(0, stepLen * stepsToTakeInYDir, stepLen * stepsToTakeInZDir);
+	float3 sphericalDir = rectangularCoordsToSpherical(direction);
+	float3 lookDir = sphericalCoordsToRectangular(sphericalDir + rotationV);
+	float3 lookDir2 = sphericalCoordsToRectangular(sphericalDir);
+
+	//float3 lookDir = rotateAngleAxis(direction, (stepsToTakeInYDir*stepLen), tan);
+	//lookDir = rotateAngleAxis(lookDir, (stepsToTakeInZDir*stepLen), biTan);
+	//direction =	rotateAngleAxis(direction, DEG(stepsToTakeInZDir*stepLen), biTan);
+
+
 
 	//tan = make_float3(round(tan.x), round(tan.y), round(tan.z));
 	//biTan = make_float3(round(biTan.x), round(biTan.y), round(biTan.z));
 
-	float3 dirDistFromCenter = (direction * diachongus) *  0.501f;
+	float3 dirDistFromCenter = (direction * diachongus) *  .5001f;
 
 	//float xMid = (input.bbm.sideResolution / 2);
 	//float yMid = (input.bbm.sideResolution / 2);
@@ -732,7 +757,7 @@ cudaBBMRender(BBMPassInput input) {
 	float3 offsetTan = tan* (((x - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution))* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
 	float3 offsetBiTan =  biTan* ((y - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution)* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
 
-	float3 initialRayDir = direction;
+	float3 initialRayDir = lookDir;
 	float3 initialRayPos = (center - dirDistFromCenter) +offsetTan + offsetBiTan;
 
 	Ray firstRay = make_ray(initialRayPos, initialRayDir, prevHitInfo(), prevHitInfo(), 1.f);
@@ -753,7 +778,6 @@ cudaBBMRender(BBMPassInput input) {
 
 			if (!hit.hit) {
 				toReturn.hit = false;
-				toReturn.colorOut = make_float3(0, 1, 0);// info.color;
 
 				break;
 			}else {
@@ -766,8 +790,8 @@ cudaBBMRender(BBMPassInput input) {
 
 				toReturn.hit = true;
 				toReturn.startP = nextPos;
-				toReturn.colorOut = make_float3(1, 1, 1);// info.color;
-				//toReturn.startPNormal = normal;
+				toReturn.colorOut = info.color;
+				toReturn.startPNormal = normal;
 				break;
 
 				float extraReflection = 0;

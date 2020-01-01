@@ -155,7 +155,7 @@ struct BBMRes {
 	bool hit = false;
 	float3 startP = float3();
 	float3 colorOut = float3();
-	//float3 startPNormal = float3();
+	float3 startPNormal = float3();
 
 	//float ray1Power = 0.f;
 	//float3 ray1Orig = float3();
@@ -166,8 +166,8 @@ struct BBMRes {
 
 };
 
-#define DEFAULT_BBM_SIDE_RES 128	
-#define DEFAULT_BBM_ANGLE_RES 1
+#define DEFAULT_BBM_SIDE_RES 32
+#define DEFAULT_BBM_ANGLE_RES 41
 
 struct blackBoxMesh {
 	BBMRes* texture = nullptr;
@@ -555,24 +555,50 @@ inline __device__ int rectangularCoordsToIndex(const float3 position, const floa
 	float3 bbMinToContact = position - bbm.bbMin;
 
 	float3 bbmChongos = (bbm.bbMax - bbm.bbMin);
-	float3 adjustedCenterToContact = centerToContact / bbmChongos;
+	float3 adjustedCenterToContact =  centerToContact / bbmChongos;
 
-	//first find contact point
-	float3 majorDir;// = abs(centerToContact.x) > abs(centerToContact.y) ? (abs(centerToContact.x) > abs(centerToContact.z) ? make_float3(centerToContact.x) :
-	if ((abs(adjustedCenterToContact.x) >= abs(adjustedCenterToContact.y) )&& (abs(adjustedCenterToContact.x) >= abs(adjustedCenterToContact.z))) {
-		majorDir = make_float3(centerToContact.x, 0, 0);
+	float3 majorDir;
+	float3 tan;
+	float3 biTan;
+	if ((abs(adjustedCenterToContact.z) > abs(adjustedCenterToContact.y) )&& (abs(adjustedCenterToContact.z) > abs(adjustedCenterToContact.x))) {
+		majorDir = make_float3(0, 0, 1);
+		tan = make_float3(0, 1, 0);
+		biTan = make_float3(1, 0, 0);
+		//majorDir = make_float3(centerToContact.x, 0, 0);
 	}
-	else if (abs(adjustedCenterToContact.y) >= abs(adjustedCenterToContact.z)) {
-		majorDir =  make_float3(0, centerToContact.y, 0);
+	else if (abs(adjustedCenterToContact.y) > abs(adjustedCenterToContact.x)) {
+		majorDir = make_float3(0, 1, 0);
+		tan = make_float3(0, 0, 1);
+		biTan = make_float3(1, 0, 0);
+		//majorDir =  make_float3(0, centerToContact.y, 0);
 	}
 	else {
-		majorDir = make_float3(0, 0, centerToContact.z);
+		majorDir = make_float3(1, 0, 0);
+		tan = make_float3(0, 1, 0);
+		biTan = make_float3(0, 0, 1);
+		//majorDir = make_float3(0, 0, centerToContact.z);
 	}
-	majorDir = (majorDir *(1 / length(majorDir))); // normalize length
+	if (dot(majorDir, centerToContact) < 0) {
+		//majorDir = inverse(majorDir);
+		//tan = inverse(tan);
+		//biTan = inverse(biTan);
+	}
+	//if (abs(abs(bbmChongos.x/2) - abs(centerToContact.x)) < 0.01){
+	//	majorDir = make_float3(centerToContact.x, 0, 0);
+	//}
+	//else if (abs(abs(bbmChongos.y / 2) - abs(centerToContact.y)) < 0.01) {
+	//	majorDir =  make_float3(0, centerToContact.y, 0);
+	//}
+	//else {
+	//	majorDir = make_float3(0, 0, centerToContact.z);
+	//}
+	//majorDir = make_float3(1, 0, 0);
 
-	//majorDir = make_float3(0, 0, 1);
-	float3 tan = /*make_float3(0, 1, 0);//*/ (getTan(majorDir));
-	float3 biTan = /* make_float3(1, 0, 0);//*/ (cross(majorDir, tan));
+
+	//majorDir = /*make_float3(0, 0, 1);//*/ (majorDir * (1 / length(majorDir))); // normalize length
+
+	//float3 tan = /*make_float3(0, 1, 0);//*/ getTan(majorDir);
+	//float3 biTan = /*make_float3(1, 0, 0);//*/ cross(majorDir, tan);
 
 	float distT = dot(tan, bbMinToContact);
 	float distB = dot(biTan, bbMinToContact);
@@ -583,11 +609,46 @@ inline __device__ int rectangularCoordsToIndex(const float3 position, const floa
 	float ratT = distT / maxDistT;
 	float ratB = distB / maxDistB;
 
+
+
 	int directionIndex = directionToInt(majorDir);
-	int XIndex = (int) round(ratT * bbm.sideResolution) % bbm.sideResolution;
-	int YIndex = (int) round(ratB * bbm.sideResolution) % bbm.sideResolution;
+	int XIndex = (int) round(ratT * bbm.sideResolution); //% bbm.sideResolution;
+	int YIndex = (int) round(ratB * bbm.sideResolution); //% bbm.sideResolution;
+
+	XIndex = MIN(XIndex, bbm.sideResolution - 1);
+	YIndex = MIN(YIndex, bbm.sideResolution - 1);
 	int XYIndex = YIndex * bbm.sideResolution + XIndex;
 
-	return directionIndex * (bbm.sideResolution*bbm.sideResolution)* (bbm.angleResolution * bbm.angleResolution) + XYIndex * (bbm.angleResolution * bbm.angleResolution);
+	// direction
+	float3 sphericalDir = rectangularCoordsToSpherical(inverse(majorDir));
+	float3 actualDir = rectangularCoordsToSpherical(lookingDir);
+
+	float stepLen = /*PI / 4;//*/ PI / (bbm.angleResolution + 1);
+	float lowestP = /*-PI / 4;//*/ -stepLen * ((bbm.angleResolution - 1) / 2);
+
+
+	actualDir = make_float3(actualDir.x, fmod(actualDir.y +2 * PI, 2 * PI), fmod(actualDir.z + 2 * PI, 2 * PI));
+	sphericalDir = make_float3(sphericalDir.x, fmod(sphericalDir.y + 2 * PI, 2 * PI), fmod(sphericalDir.z + 2 * PI, 2 * PI));
+	float3 diff = actualDir - sphericalDir - make_float3(0, lowestP, lowestP);
+
+	//diff = make_float3(diff.x, diff.y + 2 * PI, diff.z + 2 * PI);
+	int angleStepsY = /*(bbm.angleResolution - 1) / 2;//*/ MIN(MAX(round(diff.y / stepLen),0),(bbm.angleResolution-1));
+	int angleStepsZ = /*(bbm.angleResolution - 1) / 2;//*/ MIN(MAX(round(diff.z / stepLen), 0), (bbm.angleResolution - 1));
+
+
+
+	int angleIndex = angleStepsY * bbm.angleResolution + angleStepsZ;
+
+	if (dot(lookingDir, inverse(centerToContact)) < 0) {
+		//angleStepsY = 0;// bbm.angleResolution - 1 - angleStepsY;
+		//angleStepsZ = 0;
+		//tan = inverse(tan);
+		//biTan = inverse(biTan);
+		angleIndex = 0;
+		directionIndex = 0;
+		XYIndex = 0;
+	}
+
+	return directionIndex * (bbm.sideResolution*bbm.sideResolution)* (bbm.angleResolution * bbm.angleResolution) + XYIndex * (bbm.angleResolution * bbm.angleResolution) + angleIndex;
 }
 
