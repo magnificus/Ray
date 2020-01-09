@@ -1,8 +1,6 @@
 #pragma once
 #include "rayHelpers.cu"
 #include "perlin.h"
-#include "cuda.h"
-#include "cuda_runtime.h"
 
 
 
@@ -328,7 +326,6 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 	// BBM
 	for (int i = 0; i < iPointers.scene.numBBMeshes; i++) {
 		blackBoxMesh BBM = iPointers.scene.bbMeshes[i];
-		float currDist;
 
 		float tMin = 0;
 		float tMax;
@@ -337,23 +334,25 @@ __device__ hitInfo getHit(const float3 currRayPos, const float3 currRayDir) {
 
 			float3 nextPos = currRayPos + tMin  * currRayDir;
 
-			int index = rectangularCoordsToIndex(nextPos, currRayDir, BBM);
+			//int index = rectangularCoordsToIndex(nextPos, currRayDir, BBM);
 
-			BBMRes currBBMRes = BBM.texture[index];
+			BBMRes currBBMRes = rectangularCoordsToLerpedValue(nextPos, currRayDir, BBM);//BBM.texture[index];
 
 			//currDist = length(currRayPos - currBBMRes.startP);
-			if (currBBMRes.hit) {
+
+
+			if (currBBMRes.hitRatio >= 0.5) {
+			//if (currBBMRes.hitRatio >= 0.01) {
 				toReturn = hitInfo();
 				closestDist = tMin;
 				toReturn.hit = true;
-				toReturn.info.reflectivity = 0;
-				toReturn.info.refractivity = 0.0;
+				//toReturn.info.reflectivity = currBBMRes.;
+				toReturn.info.refractivity = 0.;// 1. - currBBMRes.hitRatio;
+				toReturn.info.refractiveIndex = 1.0;
 				toReturn.info.color = currBBMRes.colorOut;// make_float3(1, 1, 1)* (10.f / length(currBBMRes.startP - BBM.center));//make_float3(1, 1, 1);
 				toReturn.pos = nextPos;// currBBMRes.startP;
 				toReturn.normal = currBBMRes.startPNormal;
-				if (index == 0) {
-					toReturn.info.color = make_float3(0, 1, 0);
-				}
+
 			}
 
 
@@ -645,9 +644,6 @@ cudaRender(inputPointers pointers, int imgw, int imgh, float currTime, inputStru
 	//float3 out = 255 * 3 * trace(firstPlanePos, dirVector, 10, input.beginMedium, 1.0);
 	float3 out = 255 * 3 * traceNonRecursive(startPos, dirVector, 5, input.beginMedium, airMedium, 1.0);
 
-	//out = rectangularCoordsToSpherical(sphericalCoordsToRectangular(out));
-	out = sphericalCoordsToRectangular(rectangularCoordsToSpherical(out));
-
 	int firstPos = (y * imgw + x) * 4;
 	pointers.image1[firstPos] = out.x;
 	pointers.image1[firstPos + 1] = out.y;
@@ -716,48 +712,33 @@ cudaBBMRender(BBMPassInput input) {
 	float3 center = (input.bbm.bbMin + input.bbm.bbMax)*0.5f;
 	float3 diachongus = input.bbm.bbMax - input.bbm.bbMin;
 
+
 	float3 tan =/* make_float3(0, 1, 0);//*/ getTan(direction);
 	float3 biTan = /*make_float3(1, 0, 0);//*/ cross(direction, tan);
 
 	int adjustedY = (z % (input.bbm.angleResolution * input.bbm.angleResolution)) / input.bbm.angleResolution;
 	int adjustedZ = (z % input.bbm.angleResolution);
 
-	float stepLen = /*PI / 4;//*/ PI / (input.bbm.angleResolution + 1);
+	float stepLen = /*PI / 4;//*/ PI / ((input.bbm.angleResolution + 1));
 	int stepsToTakeInYDir = /*(input.bbm.angleResolution - 1) / 2;// */adjustedY - ((input.bbm.angleResolution - 1) / 2);
 	int stepsToTakeInZDir = /*(input.bbm.angleResolution - 1) / 2;// */adjustedZ - ((input.bbm.angleResolution - 1) / 2);
 
-	float3 unitV = make_float3(1, 1, 1);
+	float randV1 = rand(make_float2(adjustedY*0.001, adjustedZ));
+	float randV2 = rand(make_float2(adjustedY*0.001, randV1));
 
+	float xOffset = (randV1 - 0.5)* stepLen;
+	float yOffset = (randV2 - 0.5)* stepLen;
+	
 
-	float3 rotationV = make_float3(0, stepLen * stepsToTakeInYDir, stepLen * stepsToTakeInZDir);
-	float3 sphericalDir = rectangularCoordsToSpherical(direction);
-	float3 lookDir = sphericalCoordsToRectangular(sphericalDir + rotationV);
-	float3 lookDir2 = sphericalCoordsToRectangular(sphericalDir);
+	float3 lookDir = rotateAngleAxis(direction, stepsToTakeInYDir*stepLen, tan);
+	lookDir = rotateAngleAxis(lookDir, stepsToTakeInZDir*stepLen, biTan);
 
-	//float3 lookDir = rotateAngleAxis(direction, (stepsToTakeInYDir*stepLen), tan);
-	//lookDir = rotateAngleAxis(lookDir, (stepsToTakeInZDir*stepLen), biTan);
-	//direction =	rotateAngleAxis(direction, DEG(stepsToTakeInZDir*stepLen), biTan);
-
-
-
-	//tan = make_float3(round(tan.x), round(tan.y), round(tan.z));
-	//biTan = make_float3(round(biTan.x), round(biTan.y), round(biTan.z));
-
-	float3 dirDistFromCenter = (direction * diachongus) *  .5001f;
-
-	//float xMid = (input.bbm.sideResolution / 2);
-	//float yMid = (input.bbm.sideResolution / 2);
-
-	////float xPos = (x - xMid) / input.bbm.sideResolution;
-	////float yPos = (y - yMid) / input.bbm.sideResolution;
-
-	//float xPos = ((float)x - xMid) / (float)input.bbm.sideResolution;
-	//float yPos = ((float)y - yMid)/ (float)input.bbm.sideResolution;
+	float3 dirDistFromCenter = (direction * diachongus) *  .501f;
 
 	float3 offsetTan = tan* (((x - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution))* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
 	float3 offsetBiTan =  biTan* ((y - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution)* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
 
-	float3 initialRayDir = lookDir;
+	float3 initialRayDir = lookDir;// normalize(lookDir + tan * xOffset + biTan * yOffset);
 	float3 initialRayPos = (center - dirDistFromCenter) +offsetTan + offsetBiTan;
 
 	Ray firstRay = make_ray(initialRayPos, initialRayDir, prevHitInfo(), prevHitInfo(), 1.f);
@@ -777,7 +758,7 @@ cudaBBMRender(BBMPassInput input) {
 			currentNbrRays = 0;
 
 			if (!hit.hit) {
-				toReturn.hit = false;
+				toReturn.hitRatio = 0.f;// 1.f;
 
 				break;
 			}else {
@@ -788,7 +769,7 @@ cudaBBMRender(BBMPassInput input) {
 				float3 normal = hit.normal;
 				float3 nextPos = hit.pos;
 
-				toReturn.hit = true;
+				toReturn.hitRatio = 1.0f;
 				toReturn.startP = nextPos;
 				toReturn.colorOut = info.color;
 				toReturn.startPNormal = normal;
@@ -801,7 +782,6 @@ cudaBBMRender(BBMPassInput input) {
 				float3 reflectBias = inverse(refractBias);
 
 
-				float before = currentRay.totalContributionRemaining;
 				float prevColorMP = 1 - powf(1. - currentRay.lastMaterialHit.insideColorDensity, length(nextPos - currentRay.currRayPos));
 				accumColor = accumColor + prevColorMP * currentRay.lastMaterialHit.color * currentRay.totalContributionRemaining;
 				currentRay.totalContributionRemaining *= (1. - prevColorMP);
