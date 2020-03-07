@@ -39,9 +39,151 @@
 
 #define GLOBAL_GRID_POS(x,y,z) GLOBAL_GRID_SIZE2*x + GLOBAL_GRID_SIZE*y + z
 
+
+
+// BBM stuff
+#define DEFAULT_BBM_SIDE_RES 32
+#define DEFAULT_BBM_ANGLE_RES 31
+
+
 #define PI 3.141592654f
 #define DEG(rad) rad*57.2957795
 #define RAD(deg) deg/57.2957795
+
+
+
+inline __device__ float3 operator+(const float3& a, const float3& b) {
+	return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+inline __device__ float3 operator+(const float3& a, const float& b) {
+	return make_float3(a.x + b, a.y + b, a.z + b);
+}
+
+inline __device__ float3 operator*(const float3& a, const float3& b) {
+	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+inline __device__ float3 operator/(const float3& a, const float3& b) {
+	return make_float3(a.x / b.x, a.y / b.y, a.z / b.z);
+}
+
+
+inline __device__ float3 operator*(const float& a, const float3& b) {
+	return make_float3(a * b.x, a * b.y, a * b.z);
+}
+
+inline __device__ float3 operator*(const float3& b, const float& a) {
+	return make_float3(a * b.x, a * b.y, a * b.z);
+}
+
+inline __device__ float3 operator-(const float3& a, const float3& b) {
+	return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+inline __device__ float3 fromShort(const short3& a) {
+	return make_float3(a.x, a.y, a.z);
+}
+
+
+
+
+// shorties
+inline __device__ short3 operator+(const short3& a, const short3& b) {
+	return make_short3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+inline __device__ short3 operator+(const short3& a, const short& b) {
+	return make_short3(a.x + b, a.y + b, a.z + b);
+}
+
+inline __device__ short3 operator*(const short3& a, const short3& b) {
+	return make_short3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+inline __device__ short3 operator/(const short3& a, const short3& b) {
+	return make_short3(a.x / b.x, a.y / b.y, a.z / b.z);
+}
+
+
+inline __device__ short3 operator*(const short& a, const short3& b) {
+	return make_short3(a * b.x, a * b.y, a * b.z);
+}
+
+inline __device__ short3 operator*(const short3& b, const short& a) {
+	return make_short3(a * b.x, a * b.y, a * b.z);
+}
+
+inline __device__ short3 operator-(const short3& a, const short3& b) {
+	return make_short3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+inline __device__ short3 fromLong(const float3& a) {
+	return make_short3(a.x, a.y, a.z);
+}
+
+
+
+
+
+inline __device__ float3 floor(const float3& a) {
+	return make_float3(floor(a.x), floor(a.y), floor(a.z));
+}
+
+inline __device__ float2 floor(const float2& a) {
+	return make_float2(floor(a.x), floor(a.y));
+}
+
+inline __device__ float2 operator*(const float& a, const float2& b) {
+	return make_float2(a * b.x, a * b.y);
+}
+
+inline __device__ float2 operator+(const float2& a, const float2& b) {
+	return make_float2(a.x + b.x, a.y + b.y);
+}
+
+inline __device__ float2 operator*(const float2& a, const float2& b) {
+	return make_float2(a.x * b.x, a.y * b.y);
+}
+
+
+inline __device__  float dot(float3 v1, float3 v2)
+{
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+inline __device__  float dot(float2 v1, float2 v2)
+{
+	return v1.x * v2.x + v1.y * v2.y;
+}
+
+inline __device__  float3 cross(float3 v1, float3 v2)
+{
+	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
+}
+
+inline __device__ float length(float3 v)
+{
+	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+inline __device__ float length1(float3 v)
+{
+	return v.x + v.y + v.z;
+}
+
+inline __device__ float3 inverse(float3 v)
+{
+	return make_float3(-v.x, -v.y, -v.z);
+}
+
+inline __device__ float3 normalize(float3 v)
+{
+	float invLen = 1 / sqrtf(dot(v, v));
+	return invLen * v;
+}
+
+
 
 
 struct shapeInfo {
@@ -157,23 +299,44 @@ struct BBMRes {
 	float3 colorOut = make_float3(0,0,0);
 	float3 startPNormal = float3();
 
-	float ray1Power = 0.f;
+	short ray1Power = 0.f;
 	float3 ray1Orig = float3();
 	float3 ray1Dir = float3();
+	//half 2;
 	//float ray2Power = 0.f;
 	//float3 ray2Orig = float3();
 	//float3 ray2Dir = float3();
 
 };
 
+inline __device__ BBMRes operator+(const BBMRes& a, const BBMRes& b) {
+	#define ADDBBMITEM(Name) toReturn . Name = a . Name + b . Name ;
+	BBMRes toReturn;
+	ADDBBMITEM(hitRatio)
+		ADDBBMITEM(startP)
+		ADDBBMITEM(colorOut)
+		ADDBBMITEM(startPNormal)
+		ADDBBMITEM(ray1Power)
+		ADDBBMITEM(ray1Orig)
+		ADDBBMITEM(ray1Dir)
+		return toReturn;
+}
+inline __device__ BBMRes operator*(const BBMRes& a, const float& b) {
+	#define MULBBMItem(Name) toReturn . Name = a . Name * b ;
+	BBMRes toReturn;
+	MULBBMItem(hitRatio)
+		MULBBMItem(startP)
+		MULBBMItem(colorOut)
+		MULBBMItem(startPNormal)
+		MULBBMItem(ray1Power)
+		MULBBMItem(ray1Orig)
+		MULBBMItem(ray1Dir)
+		return toReturn;
+}
 
 
 
 
-
-
-#define DEFAULT_BBM_SIDE_RES 128
-#define DEFAULT_BBM_ANGLE_RES 31
 
 struct blackBoxMesh {
 	BBMRes* texture = nullptr;
@@ -243,6 +406,9 @@ struct hitInfo {
 	float3 normal;
 
 	bool normalIsInversed = false;
+
+	BBMRes bbmHit;
+	//bool isBBM = false;
 };
 
 struct prevHitInfo {
@@ -279,102 +445,15 @@ struct inputStruct {
 };
 
 
-inline __device__ float3 operator+(const float3& a, const float3& b) {
-	return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
-}
-
-inline __device__ float3 operator+(const float3& a, const float& b) {
-	return make_float3(a.x + b, a.y + b, a.z + b);
-}
-
-inline __device__ float3 operator*(const float3& a, const float3& b) {
-	return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
-}
-
-inline __device__ float3 operator/(const float3& a, const float3& b) {
-	return make_float3(a.x / b.x, a.y / b.y, a.z / b.z);
-}
-
-
-inline __device__ float3 operator*(const float& a, const float3& b) {
-	return make_float3(a * b.x, a * b.y, a * b.z);
-}
-
-inline __device__ float3 operator*(const float3& b, const float& a) {
-	return make_float3(a * b.x, a * b.y, a * b.z);
-}
-
-inline __device__ float3 operator-(const float3& a, const float3& b) {
-	return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
-}
-
-inline __device__ float3 floor(const float3& a) {
-	return make_float3(floor(a.x), floor(a.y), floor(a.z));
-}
-
-inline __device__ float2 floor(const float2& a) {
-	return make_float2(floor(a.x), floor(a.y));
-}
-
-inline __device__ float2 operator*(const float& a, const float2& b) {
-	return make_float2(a * b.x, a * b.y);
-}
-
-inline __device__ float2 operator+(const float2& a, const float2& b) {
-	return make_float2(a.x + b.x, a.y + b.y);
-}
-
-inline __device__ float2 operator*(const float2& a, const float2& b) {
-	return make_float2(a.x * b.x, a.y * b.y);
-}
-
-
-inline __device__  float dot(float3 v1, float3 v2)
-{
-	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-}
-
-inline __device__  float dot(float2 v1, float2 v2)
-{
-	return v1.x * v2.x + v1.y * v2.y;
-}
-
-inline __device__  float3 cross(float3 v1, float3 v2)
-{
-	return make_float3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
-}
-
-inline __device__ float length(float3 v)
-{
-	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
-inline __device__ float length1(float3 v)
-{
-	return v.x + v.y + v.z;
-}
-
-inline __device__ float3 inverse(float3 v)
-{
-	return make_float3(-v.x, -v.y, -v.z);
-}
-
-inline __device__ float3 normalize(float3 v)
-{
-	float invLen = 1 / sqrtf(dot(v, v));
-	return invLen * v;
-}
-
-
-inline __device__ BBMRes LerpBBM(const BBMRes b1, const BBMRes b2, const float fac) {
 #define LERP_BBM(name) toReturn . name = b1 . name + ((b2 . name ) - ( b1. name )) * fac
+inline __device__ BBMRes LerpBBM(const BBMRes b1, const BBMRes b2, const float fac) {
 	BBMRes toReturn;
 	LERP_BBM(hitRatio);
 	LERP_BBM(startP);
 	LERP_BBM(colorOut);
-	if (b1.hitRatio < 0.1) {toReturn.colorOut = b2.colorOut; }else if (b2.hitRatio < 0.1) { toReturn.colorOut = b1.colorOut; }
+	if (b1.hitRatio < 0.5) {toReturn.colorOut = b2.colorOut; }else if (b2.hitRatio < 0.5) { toReturn.colorOut = b1.colorOut; }
 	LERP_BBM(startPNormal);
-	if (b1.hitRatio < 0.1) {toReturn.startPNormal = b2.startPNormal; }else if (b2.hitRatio < 0.1) { toReturn.startPNormal = b1.startPNormal; }
+	if (b1.hitRatio < 0.5) {toReturn.startPNormal = b2.startPNormal; }else if (b2.hitRatio < 0.5) { toReturn.startPNormal = b1.startPNormal; }
 
 	//LERP_BBM(ray1Power);
 	//LERP_BBM(ray1Orig);
@@ -532,22 +611,22 @@ inline __device__ float3 getTan(float3 vec) {
 
 
 inline __device__ int directionToInt(float3 dir) {
-	if (dot(dir, make_float3(1, 0, 0)) > 0.99) {
+	if (dot(dir, make_float3(1, 0, 0)) > 0.999) {
 		return 0;
 	}
-	else if (dot(dir, make_float3(-1, 0, 0)) > 0.99) {
+	else if (dot(dir, make_float3(-1, 0, 0)) > 0.999) {
 		return 1;
 	}
-	else if (dot(dir, make_float3(0, 1, 0)) > 0.99) {
+	else if (dot(dir, make_float3(0, 1, 0)) > 0.999) {
 		return 2;
 	}
-	else if (dot(dir, make_float3(0, -1, 0)) > 0.99) {
+	else if (dot(dir, make_float3(0, -1, 0)) > 0.999) {
 		return 3;
 	}
-	else if (dot(dir, make_float3(0, 0, 1)) > 0.99) {
+	else if (dot(dir, make_float3(0, 0, 1)) > 0.999) {
 		return 4;
 	}
-	else if (dot(dir, make_float3(0, 0, -1)) > 0.99) {
+	else if (dot(dir, make_float3(0, 0, -1)) > 0.999) {
 		return 5;
 	}
 	return  -1000000; // you dun goofed if this happens
@@ -609,7 +688,7 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 	float prelAngleZPos = dot(lookingDir, biTan);
 
 
-	float stepLen = /*PI / 4;//*/ PI / ((bbm.angleResolution + 1));
+	float stepLen = /*PI / 2 / bbm.angleResolution + 1;//*/ PI / ((bbm.angleResolution + 1));
 	float lowestP = /*-PI / 4;//*/ -stepLen * ((bbm.angleResolution - 1) / 2);
 
 	angleYPos = (asin(prelAngleYPos) - lowestP)/stepLen;
@@ -649,7 +728,6 @@ inline __device__ BBMRes rectangularCoordsToLerpedAngleValue(int directionIndex,
 	BBMRes combinedDown = LerpBBM(LL, LR, angleStepsRatY);
 
 	BBMRes combined = LerpBBM(combinedUpper, combinedDown, angleStepsRatZ);
-
 	return combined;
 }
 
@@ -677,12 +755,6 @@ inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, c
 
 	BBMRes combined = LerpBBM(combinedDown, combinedUpper, yRat);
 	return combined;
-
-	//return rectangularCoordsToLerpedAngleValue(directionIndex, xPos, yPos, yAnglePos, zAnglePos, bbm);
-
-
-
-
 }
 
 

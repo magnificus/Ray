@@ -287,7 +287,8 @@ void setupLevel() {
 	//infos.push_back(make_rayHitInfo(0.0f, 0.0f, 1.5f, 0.0f, 0.3 * make_float3(215. / 255, 198. / 255, 171. / 255), 0.f)); //rock
 
 	//std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, -70, -250.0), false);
-	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 100, make_float3(0.0, 0.0, 0.0), false);
+	std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/bun2.ply", 500, make_float3(0.0, 0.0, 0.0), false);
+	//std::vector<triangleMesh> bunnyMesh = importModel("../../meshes/rock.obj", 0.01, make_float3(0.0, 0.0, 0.0), false);
 	importedMeshes.insert(std::end(importedMeshes), std::begin(bunnyMesh), std::end(bunnyMesh));
 	infos.push_back(make_rayHitInfo(0.0, 0.0, 0.0, 0.0, make_float3(1, 0, 0.0), 0)); //le bun
 
