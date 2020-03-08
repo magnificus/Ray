@@ -490,11 +490,11 @@ __device__ float3 traceNonRecursive(const float3 initialRayPos, const float3 ini
 				float angleFactor = (0. + 1.0 * max(0.0, dot(light_dir, hit.bbmHit.startPNormal)));
 				accumColor = accumColor + ((0.8 * angleFactor + 0.2)  * color);
 
-				//if (hit.bbmHit.hitRatio < 0.99) {
-				//	Ray nextRay = make_ray(hit.bbmHit.startP + currentRay.currRayDir*1, currentRay.currRayDir, currentRay.lastMaterialHit, currentRay.prevMaterialHit, currentRay.totalContributionRemaining *(1.f-hit.bbmHit.hitRatio));
-				//	AllRays[currentNbrRays] = nextRay;
-				//	currentNbrRays++;
-				//}
+				if (hit.bbmHit.ray1Power > 0.01) {
+					Ray nextRay = make_ray(hit.bbmHit.ray1Orig, hit.bbmHit.ray1Dir, currentRay.lastMaterialHit, currentRay.prevMaterialHit, currentRay.totalContributionRemaining *(1.f-hit.bbmHit.hitRatio));
+					AllRays[currentNbrRays] = nextRay;
+					currentNbrRays++;
+				}
 			}
 			else {
 				rayHitInfo info = hit.info;

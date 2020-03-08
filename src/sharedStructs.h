@@ -42,8 +42,8 @@
 
 
 // BBM stuff
-#define DEFAULT_BBM_SIDE_RES 16
-#define DEFAULT_BBM_ANGLE_RES 31
+#define DEFAULT_BBM_SIDE_RES 8
+#define DEFAULT_BBM_ANGLE_RES 101
 
 
 #define PI 3.141592654f
@@ -674,8 +674,10 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 	float maxDistT = dot(tan, bbmChongos);
 	float maxDistB = dot(biTan, bbmChongos);
 
-	xPos = (distT / maxDistT)* bbm.sideResolution;
-	yPos = (distB / maxDistB) * bbm.sideResolution;
+	xPos = (distT / maxDistT)* bbm.sideResolution - 0.5f;
+	yPos = (distB / maxDistB) * bbm.sideResolution - 0.5f;
+	xPos = min(max(xPos, 0.0f), (float) bbm.sideResolution - 1);
+	yPos = min(max(yPos, 0.0f), (float) bbm.sideResolution - 1);
 
 
 	// angle
@@ -733,6 +735,8 @@ inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, c
 	float xPos, yPos, yAnglePos, zAnglePos;
 
 	getXYAndAngleCoordinates(position, lookingDir, bbm, directionIndex, xPos, yPos, yAnglePos, zAnglePos);
+	//xPos += 0.5f;
+	//yPos += 0.5f;
 
 	int floorX = floor(xPos);
 	int floorY = floor(yPos);
@@ -745,6 +749,15 @@ inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, c
 	BBMRes LR = rectangularCoordsToLerpedAngleValue(directionIndex, floorX +1, floorY, yAnglePos, zAnglePos, bbm);
 	BBMRes UL = rectangularCoordsToLerpedAngleValue(directionIndex, floorX, floorY +1, yAnglePos, zAnglePos, bbm);
 	BBMRes UR = rectangularCoordsToLerpedAngleValue(directionIndex, floorX +1, floorY +1, yAnglePos, zAnglePos, bbm);
+
+	//if (xPos < 0) {
+	//	LL = BBMRes();
+	//	UL = BBMRes();
+	//}
+	//if (yPos < 0) {
+	//	LL = BBMRes();
+	//	LR = BBMRes();
+	//}
 
 	BBMRes combinedUpper = LerpBBM(UL, UR, xRat);
 	BBMRes combinedDown = LerpBBM(LL, LR, xRat);
@@ -763,8 +776,8 @@ inline __device__ int rectangularCoordsToIndex(const float3 position, const floa
 	float xPos, yPos, yAnglePos, zAnglePos;
 	getXYAndAngleCoordinates(position, lookingDir, bbm, directionIndex, xPos, yPos, yAnglePos, zAnglePos);
 
-	int XIndex = (int) floor(xPos); 
-	int YIndex = (int) floor(yPos);
+	int XIndex = (int) round(xPos); 
+	int YIndex = (int) round(yPos);
 
 	XIndex = MAX(MIN(XIndex, bbm.sideResolution - 1),0);
 	YIndex = MAX(MIN(YIndex, bbm.sideResolution - 1),0);
