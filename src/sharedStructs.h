@@ -42,8 +42,8 @@
 
 
 // BBM stuff
-#define DEFAULT_BBM_SIDE_RES 8
-#define DEFAULT_BBM_ANGLE_RES 101
+#define DEFAULT_BBM_SIDE_RES 64
+#define DEFAULT_BBM_ANGLE_RES 61
 
 
 #define PI 3.141592654f
