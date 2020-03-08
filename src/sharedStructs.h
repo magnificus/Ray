@@ -42,7 +42,7 @@
 
 
 // BBM stuff
-#define DEFAULT_BBM_SIDE_RES 32
+#define DEFAULT_BBM_SIDE_RES 16
 #define DEFAULT_BBM_ANGLE_RES 31
 
 
@@ -302,36 +302,31 @@ struct BBMRes {
 	short ray1Power = 0.f;
 	float3 ray1Orig = float3();
 	float3 ray1Dir = float3();
-	//half 2;
-	//float ray2Power = 0.f;
-	//float3 ray2Orig = float3();
-	//float3 ray2Dir = float3();
-
 };
 
 inline __device__ BBMRes operator+(const BBMRes& a, const BBMRes& b) {
 	#define ADDBBMITEM(Name) toReturn . Name = a . Name + b . Name ;
 	BBMRes toReturn;
 	ADDBBMITEM(hitRatio)
-		ADDBBMITEM(startP)
-		ADDBBMITEM(colorOut)
-		ADDBBMITEM(startPNormal)
-		ADDBBMITEM(ray1Power)
-		ADDBBMITEM(ray1Orig)
-		ADDBBMITEM(ray1Dir)
-		return toReturn;
+	ADDBBMITEM(startP)
+	ADDBBMITEM(colorOut)
+	ADDBBMITEM(startPNormal)
+	ADDBBMITEM(ray1Power)
+	ADDBBMITEM(ray1Orig)
+	ADDBBMITEM(ray1Dir)
+	return toReturn;
 }
 inline __device__ BBMRes operator*(const BBMRes& a, const float& b) {
 	#define MULBBMItem(Name) toReturn . Name = a . Name * b ;
 	BBMRes toReturn;
 	MULBBMItem(hitRatio)
-		MULBBMItem(startP)
-		MULBBMItem(colorOut)
-		MULBBMItem(startPNormal)
-		MULBBMItem(ray1Power)
-		MULBBMItem(ray1Orig)
-		MULBBMItem(ray1Dir)
-		return toReturn;
+	MULBBMItem(startP)
+	MULBBMItem(colorOut)
+	MULBBMItem(startPNormal)
+	MULBBMItem(ray1Power)
+	MULBBMItem(ray1Orig)
+	MULBBMItem(ray1Dir)
+	return toReturn;
 }
 
 
@@ -451,9 +446,9 @@ inline __device__ BBMRes LerpBBM(const BBMRes b1, const BBMRes b2, const float f
 	LERP_BBM(hitRatio);
 	LERP_BBM(startP);
 	LERP_BBM(colorOut);
-	if (b1.hitRatio < 0.5) {toReturn.colorOut = b2.colorOut; }else if (b2.hitRatio < 0.5) { toReturn.colorOut = b1.colorOut; }
+	if (b1.hitRatio < 0.1) {toReturn.colorOut = b2.colorOut; }else if (b2.hitRatio < 0.1) { toReturn.colorOut = b1.colorOut; }
 	LERP_BBM(startPNormal);
-	if (b1.hitRatio < 0.5) {toReturn.startPNormal = b2.startPNormal; }else if (b2.hitRatio < 0.5) { toReturn.startPNormal = b1.startPNormal; }
+	if (b1.hitRatio < 0.1) {toReturn.startPNormal = b2.startPNormal; }else if (b2.hitRatio < 0.1) { toReturn.startPNormal = b1.startPNormal; }
 
 	//LERP_BBM(ray1Power);
 	//LERP_BBM(ray1Orig);
@@ -736,6 +731,7 @@ inline __device__ BBMRes rectangularCoordsToLerpedAngleValue(int directionIndex,
 inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, const float3 lookingDir, const blackBoxMesh bbm) {
 	int directionIndex;
 	float xPos, yPos, yAnglePos, zAnglePos;
+
 	getXYAndAngleCoordinates(position, lookingDir, bbm, directionIndex, xPos, yPos, yAnglePos, zAnglePos);
 
 	int floorX = floor(xPos);
@@ -767,11 +763,11 @@ inline __device__ int rectangularCoordsToIndex(const float3 position, const floa
 	float xPos, yPos, yAnglePos, zAnglePos;
 	getXYAndAngleCoordinates(position, lookingDir, bbm, directionIndex, xPos, yPos, yAnglePos, zAnglePos);
 
-	int XIndex = (int) round(xPos); 
-	int YIndex = (int) round(yPos);
+	int XIndex = (int) floor(xPos); 
+	int YIndex = (int) floor(yPos);
 
-	XIndex = MIN(XIndex, bbm.sideResolution - 1);
-	YIndex = MIN(YIndex, bbm.sideResolution - 1);
+	XIndex = MAX(MIN(XIndex, bbm.sideResolution - 1),0);
+	YIndex = MAX(MIN(YIndex, bbm.sideResolution - 1),0);
 	//int XYIndex = YIndex * bbm.sideResolution + XIndex;
 
 
