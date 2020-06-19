@@ -42,8 +42,8 @@
 
 
 // BBM stuff
-#define DEFAULT_BBM_SIDE_RES 64
-#define DEFAULT_BBM_ANGLE_RES 61
+#define DEFAULT_BBM_SIDE_RES 16
+#define DEFAULT_BBM_ANGLE_RES 15
 
 
 #define PI 3.141592654f
@@ -676,8 +676,8 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 
 	xPos = (distT / maxDistT)* bbm.sideResolution - 0.5f;
 	yPos = (distB / maxDistB) * bbm.sideResolution - 0.5f;
-	xPos = min(max(xPos, 0.0f), (float) bbm.sideResolution - 1);
-	yPos = min(max(yPos, 0.0f), (float) bbm.sideResolution - 1);
+	xPos = MIN(MAX(xPos, 0.0f), (float) bbm.sideResolution - 1);
+	yPos = MIN(MAX(yPos, 0.0f), (float) bbm.sideResolution - 1);
 
 
 	// angle
