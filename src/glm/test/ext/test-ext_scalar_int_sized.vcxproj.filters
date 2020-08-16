@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\ext_scalar_int_sized.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{BF4616A8-DD10-30A3-B13A-2C81E4146AA8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

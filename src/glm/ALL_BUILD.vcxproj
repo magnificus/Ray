@@ -1,0 +1,929 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{01A925C6-2C03-3DCC-97D4-C0839DED6A30}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>x64</Platform>
+    <ProjectName>ALL_BUILD</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeLists.txt">
+      <StdOutEncoding>UTF-8</StdOutEncoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Tobias/Desktop/Ray/libs/glm -BC:/Users/Tobias/Desktop/Ray/libs/glm --check-stamp-file C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompileFeatures.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.18\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\WindowsPaths.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeCXXCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeRCCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Tobias/Desktop/Ray/libs/glm -BC:/Users/Tobias/Desktop/Ray/libs/glm --check-stamp-file C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompileFeatures.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.18\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\WindowsPaths.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeCXXCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeRCCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Tobias/Desktop/Ray/libs/glm -BC:/Users/Tobias/Desktop/Ray/libs/glm --check-stamp-file C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompileFeatures.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.18\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\WindowsPaths.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeCXXCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeRCCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Tobias/Desktop/Ray/libs/glm -BC:/Users/Tobias/Desktop/Ray/libs/glm --check-stamp-file C:/Users/Tobias/Desktop/Ray/libs/glm/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompileFeatures.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.18\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.18\Modules\Platform\WindowsPaths.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeCXXCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeRCCompiler.cmake;C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\3.18.1\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\Tobias\Desktop\Ray\libs\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\ZERO_CHECK.vcxproj">
+      <Project>{DF6082F2-5DB2-30FD-9C6B-E0C79B89C277}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\bug\test-bug_ms_vec_static.vcxproj">
+      <Project>{54FB417C-002F-35AE-9119-E066175ABFDF}</Project>
+      <Name>test-bug_ms_vec_static</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_cpp_constexpr.vcxproj">
+      <Project>{0BD0DE28-488C-3995-844F-175A87A9C823}</Project>
+      <Name>test-core_cpp_constexpr</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_cpp_defaulted_ctor.vcxproj">
+      <Project>{DA31D8D8-A321-37EA-893C-E7BA14B21A6D}</Project>
+      <Name>test-core_cpp_defaulted_ctor</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_aligned_gentypes.vcxproj">
+      <Project>{0F7263BB-0256-386F-B123-A625B67098B7}</Project>
+      <Name>test-core_force_aligned_gentypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_arch_unknown.vcxproj">
+      <Project>{4230EABA-4DF6-3265-AEA8-DCB25B7DAA94}</Project>
+      <Name>test-core_force_arch_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_compiler_unknown.vcxproj">
+      <Project>{42797DD7-2EED-303A-93E7-FEDF1490344A}</Project>
+      <Name>test-core_force_compiler_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_ctor_init.vcxproj">
+      <Project>{D110740E-ADCD-35EC-B6B0-127FDEC365BA}</Project>
+      <Name>test-core_force_ctor_init</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_cxx03.vcxproj">
+      <Project>{54CD670F-6956-3ADA-A729-4F31A413F15A}</Project>
+      <Name>test-core_force_cxx03</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_cxx98.vcxproj">
+      <Project>{DBC2B49D-22E5-3486-B684-5FA796566D0F}</Project>
+      <Name>test-core_force_cxx98</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_cxx_unknown.vcxproj">
+      <Project>{767E9FF8-3284-3EC1-BB35-3E6E21F92680}</Project>
+      <Name>test-core_force_cxx_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_explicit_ctor.vcxproj">
+      <Project>{CF30A5F3-155F-35D3-8785-6395F630FD24}</Project>
+      <Name>test-core_force_explicit_ctor</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_inline.vcxproj">
+      <Project>{82920F6D-5E96-3C19-8FFB-32D10AFC29FF}</Project>
+      <Name>test-core_force_inline</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_platform_unknown.vcxproj">
+      <Project>{F9328C3B-E4C6-36F9-825F-F92219708F9D}</Project>
+      <Name>test-core_force_platform_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_pure.vcxproj">
+      <Project>{1B7A4DD8-DA31-34B8-B38D-2982FD91F6D3}</Project>
+      <Name>test-core_force_pure</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_quat_wxyz.vcxproj">
+      <Project>{585C7915-9C73-30C5-AF27-630057119986}</Project>
+      <Name>test-core_force_quat_wxyz</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_unrestricted_gentype.vcxproj">
+      <Project>{2CB6EF4C-3EE1-34D1-BF5E-C421ECE09ADF}</Project>
+      <Name>test-core_force_unrestricted_gentype</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_force_xyzw_only.vcxproj">
+      <Project>{A2A2FE36-AC7A-3C25-B13E-289EB9AC2794}</Project>
+      <Name>test-core_force_xyzw_only</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_common.vcxproj">
+      <Project>{62064ED8-C4F8-3C7C-AD46-2F005C61D209}</Project>
+      <Name>test-core_func_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_exponential.vcxproj">
+      <Project>{B0F43193-AC58-31DB-99FC-EF3B3E25E232}</Project>
+      <Name>test-core_func_exponential</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_geometric.vcxproj">
+      <Project>{5859BFBD-E491-38BD-ADA5-E8202A002914}</Project>
+      <Name>test-core_func_geometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_integer.vcxproj">
+      <Project>{556C3BB5-3931-390D-8B0C-5BD1372A18A2}</Project>
+      <Name>test-core_func_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_integer_bit_count.vcxproj">
+      <Project>{70A897FF-3823-38F1-A3BE-FDE281075A4C}</Project>
+      <Name>test-core_func_integer_bit_count</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_integer_find_lsb.vcxproj">
+      <Project>{5D30D1E5-2510-31CC-ABD6-547A6A52C781}</Project>
+      <Name>test-core_func_integer_find_lsb</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_integer_find_msb.vcxproj">
+      <Project>{1E4854B3-1CDE-32B3-9026-13974D9C0A59}</Project>
+      <Name>test-core_func_integer_find_msb</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_matrix.vcxproj">
+      <Project>{C4986FD4-72A0-347A-B276-6BBAF8F60467}</Project>
+      <Name>test-core_func_matrix</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_noise.vcxproj">
+      <Project>{545D7CE5-3E63-3058-AB2E-9BAD7A4B7CB7}</Project>
+      <Name>test-core_func_noise</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_packing.vcxproj">
+      <Project>{FEB078C4-A02E-3C19-B802-F945759D1463}</Project>
+      <Name>test-core_func_packing</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_swizzle.vcxproj">
+      <Project>{D24DD2DD-E221-3656-83E2-F6FF23F08510}</Project>
+      <Name>test-core_func_swizzle</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_trigonometric.vcxproj">
+      <Project>{26122C29-4960-364F-BF6A-C3C4E594E779}</Project>
+      <Name>test-core_func_trigonometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_func_vector_relational.vcxproj">
+      <Project>{F35352C7-2FBE-3E4B-9218-FD6DDE30ACE9}</Project>
+      <Name>test-core_func_vector_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_setup_force_cxx98.vcxproj">
+      <Project>{566F8629-86D4-3D75-83EA-91BCA3D61B4F}</Project>
+      <Name>test-core_setup_force_cxx98</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_setup_force_size_t_length.vcxproj">
+      <Project>{F5A53F9B-CB3C-3117-A47E-E656446F2251}</Project>
+      <Name>test-core_setup_force_size_t_length</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_setup_message.vcxproj">
+      <Project>{5B899AD7-5439-3AB4-A504-08A079480214}</Project>
+      <Name>test-core_setup_message</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_setup_platform_unknown.vcxproj">
+      <Project>{4E5759B5-0FA6-3CB1-AF48-E47C64793305}</Project>
+      <Name>test-core_setup_platform_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_setup_precision.vcxproj">
+      <Project>{2FD25F7A-A8ED-3871-BE70-B4B8464F65C9}</Project>
+      <Name>test-core_setup_precision</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_aligned.vcxproj">
+      <Project>{DD9652F0-7819-3ED5-A8A9-862E68604651}</Project>
+      <Name>test-core_type_aligned</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_cast.vcxproj">
+      <Project>{3F0F23D1-1F1D-3F9A-B916-F07792E7FF96}</Project>
+      <Name>test-core_type_cast</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_ctor.vcxproj">
+      <Project>{2EA8A998-90EB-3F30-8F93-66208D2771AD}</Project>
+      <Name>test-core_type_ctor</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_int.vcxproj">
+      <Project>{CDA03C76-47BC-363F-A0B2-5901A7AEB94C}</Project>
+      <Name>test-core_type_int</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_length.vcxproj">
+      <Project>{89D074A9-BBE4-3166-B7B3-362830A1D460}</Project>
+      <Name>test-core_type_length</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat2x2.vcxproj">
+      <Project>{0A745E47-2F3E-30BF-A1BA-0B7DEE2FB180}</Project>
+      <Name>test-core_type_mat2x2</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat2x3.vcxproj">
+      <Project>{664BA1A9-5964-3877-9E18-7FCD68C8E835}</Project>
+      <Name>test-core_type_mat2x3</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat2x4.vcxproj">
+      <Project>{D447C9B0-659E-3D9D-AAD0-E319B08CA026}</Project>
+      <Name>test-core_type_mat2x4</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat3x2.vcxproj">
+      <Project>{27BEEF45-BEFC-378F-92EA-50728C1CC19B}</Project>
+      <Name>test-core_type_mat3x2</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat3x3.vcxproj">
+      <Project>{A345CF9A-C6C9-31F6-9332-FA2A40BC7241}</Project>
+      <Name>test-core_type_mat3x3</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat3x4.vcxproj">
+      <Project>{343CB7B0-8382-365E-8BDD-DCFB0E247F11}</Project>
+      <Name>test-core_type_mat3x4</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat4x2.vcxproj">
+      <Project>{52E0E9E9-799A-3E12-8B70-409ACF6228EC}</Project>
+      <Name>test-core_type_mat4x2</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat4x3.vcxproj">
+      <Project>{22380828-B13D-32EF-862A-B40F905C78C3}</Project>
+      <Name>test-core_type_mat4x3</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_mat4x4.vcxproj">
+      <Project>{677E02ED-EB5E-3366-AB76-FBA5A4E21D8D}</Project>
+      <Name>test-core_type_mat4x4</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_vec1.vcxproj">
+      <Project>{E4960BC8-E708-3A88-A5BB-1C6DAA461CE3}</Project>
+      <Name>test-core_type_vec1</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_vec2.vcxproj">
+      <Project>{56EAEC3E-0784-39D6-A85B-2AD92FAF956D}</Project>
+      <Name>test-core_type_vec2</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_vec3.vcxproj">
+      <Project>{DE402F79-F1E1-313A-818C-8DF98D7A2896}</Project>
+      <Name>test-core_type_vec3</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\core\test-core_type_vec4.vcxproj">
+      <Project>{ED8ED3BE-3869-39D4-B283-6D4CF81DCECE}</Project>
+      <Name>test-core_type_vec4</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_common.vcxproj">
+      <Project>{45D81DBD-C61B-3B13-BDBB-FB965CEC9E62}</Project>
+      <Name>test-ext_matrix_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int2x2_sized.vcxproj">
+      <Project>{850A5405-3F56-3B0E-A7C6-E8B0D6EFC341}</Project>
+      <Name>test-ext_matrix_int2x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int2x3_sized.vcxproj">
+      <Project>{20CAEC1C-40E4-3658-B390-A28CEF417108}</Project>
+      <Name>test-ext_matrix_int2x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int2x4_sized.vcxproj">
+      <Project>{9C5E17A4-FE97-3068-B568-3AC317E07D67}</Project>
+      <Name>test-ext_matrix_int2x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int3x2_sized.vcxproj">
+      <Project>{BFD43ABD-E8B1-3A19-9C6E-EF659C138AF6}</Project>
+      <Name>test-ext_matrix_int3x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int3x3_sized.vcxproj">
+      <Project>{5CB0656A-1E81-379E-9446-7632D7954685}</Project>
+      <Name>test-ext_matrix_int3x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int3x4_sized.vcxproj">
+      <Project>{18E17351-A775-3A92-8F69-9977DF754485}</Project>
+      <Name>test-ext_matrix_int3x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int4x2_sized.vcxproj">
+      <Project>{436907C0-8F29-3C05-8006-DF28E92CB695}</Project>
+      <Name>test-ext_matrix_int4x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int4x3_sized.vcxproj">
+      <Project>{1F3CA743-B853-3629-8156-4C7880A93354}</Project>
+      <Name>test-ext_matrix_int4x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_int4x4_sized.vcxproj">
+      <Project>{03AC3E69-4F70-375E-8E6E-55E180174238}</Project>
+      <Name>test-ext_matrix_int4x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_relational.vcxproj">
+      <Project>{956158B5-8D57-3A5F-963E-6EE4283E684E}</Project>
+      <Name>test-ext_matrix_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_transform.vcxproj">
+      <Project>{0ABD983D-5345-35CD-91F7-72F5A1F129E5}</Project>
+      <Name>test-ext_matrix_transform</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint2x2_sized.vcxproj">
+      <Project>{9BF22E86-F0AD-3946-AA57-BC36773205D8}</Project>
+      <Name>test-ext_matrix_uint2x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint2x3_sized.vcxproj">
+      <Project>{D541485E-5B38-3C2B-9031-4F544C440896}</Project>
+      <Name>test-ext_matrix_uint2x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint2x4_sized.vcxproj">
+      <Project>{1CEEE488-51D3-3D84-988E-A6E51C7225F2}</Project>
+      <Name>test-ext_matrix_uint2x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint3x2_sized.vcxproj">
+      <Project>{7660301C-F0CC-3D49-A2EF-320754009C7F}</Project>
+      <Name>test-ext_matrix_uint3x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint3x3_sized.vcxproj">
+      <Project>{4AE95875-030C-3E8B-8A23-F887BC3DC22C}</Project>
+      <Name>test-ext_matrix_uint3x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint3x4_sized.vcxproj">
+      <Project>{EFA9B524-046E-3447-BA11-D12EE6372A9B}</Project>
+      <Name>test-ext_matrix_uint3x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint4x2_sized.vcxproj">
+      <Project>{2113454B-120D-3F43-B1D8-A472D20A216D}</Project>
+      <Name>test-ext_matrix_uint4x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint4x3_sized.vcxproj">
+      <Project>{CA139C9B-D856-3449-A78A-AF43415E9C9C}</Project>
+      <Name>test-ext_matrix_uint4x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_matrix_uint4x4_sized.vcxproj">
+      <Project>{E4577083-CF9C-3107-BF67-0399B2FADCF5}</Project>
+      <Name>test-ext_matrix_uint4x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_common.vcxproj">
+      <Project>{4796A42C-31C9-311D-81C7-E633CA48CDCE}</Project>
+      <Name>test-ext_quaternion_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_exponential.vcxproj">
+      <Project>{80CBCD7B-D115-3FE8-A0B0-570460DB59F0}</Project>
+      <Name>test-ext_quaternion_exponential</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_geometric.vcxproj">
+      <Project>{62F965D6-1924-3B75-A5B8-7FF8CAD45D54}</Project>
+      <Name>test-ext_quaternion_geometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_relational.vcxproj">
+      <Project>{E22DFBF4-D45A-3AD8-86B0-AFFA60B23BB1}</Project>
+      <Name>test-ext_quaternion_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_transform.vcxproj">
+      <Project>{3840AB10-BC2C-32F3-A8D6-2A3B75ADD1A1}</Project>
+      <Name>test-ext_quaternion_transform</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_trigonometric.vcxproj">
+      <Project>{35974C2D-9BF9-3F57-B8A0-D59388EFA682}</Project>
+      <Name>test-ext_quaternion_trigonometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_quaternion_type.vcxproj">
+      <Project>{18EA8BA2-B244-342C-BE3A-D37802B14833}</Project>
+      <Name>test-ext_quaternion_type</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_common.vcxproj">
+      <Project>{65446195-A769-302D-8397-DB395C92C625}</Project>
+      <Name>test-ext_scalar_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_constants.vcxproj">
+      <Project>{226F98B3-348B-33BC-80D5-65E58F9AEADB}</Project>
+      <Name>test-ext_scalar_constants</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_int_sized.vcxproj">
+      <Project>{50559FC5-FEC2-3D36-93B7-05310EFDCAB2}</Project>
+      <Name>test-ext_scalar_int_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_integer.vcxproj">
+      <Project>{E1CE6CC7-5DC9-368B-BCF4-7DD5DF56C171}</Project>
+      <Name>test-ext_scalar_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_relational.vcxproj">
+      <Project>{DD2C205C-0CA0-340A-BF5B-A7BFAA066F88}</Project>
+      <Name>test-ext_scalar_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_uint_sized.vcxproj">
+      <Project>{8C718605-DEA1-3B06-94BA-D70AC71C9B13}</Project>
+      <Name>test-ext_scalar_uint_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_scalar_ulp.vcxproj">
+      <Project>{1D95ED15-DF23-335D-85C4-7ADC27EB251F}</Project>
+      <Name>test-ext_scalar_ulp</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vec1.vcxproj">
+      <Project>{51A70258-7C67-32F8-9DE6-C2B44B4333E1}</Project>
+      <Name>test-ext_vec1</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_bool1.vcxproj">
+      <Project>{ED94E8E1-D73E-3F81-80EF-757EC5A94550}</Project>
+      <Name>test-ext_vector_bool1</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_common.vcxproj">
+      <Project>{2B342E92-4982-3D24-82FC-5A5F98E32432}</Project>
+      <Name>test-ext_vector_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_iec559.vcxproj">
+      <Project>{B2F19054-BA0B-3FA5-9800-9F9ED14E948D}</Project>
+      <Name>test-ext_vector_iec559</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_int1_sized.vcxproj">
+      <Project>{3279046B-D079-3D5D-8FE3-63F3777ACF96}</Project>
+      <Name>test-ext_vector_int1_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_int2_sized.vcxproj">
+      <Project>{7D7FF3CC-7971-35F5-A726-39F17B64D319}</Project>
+      <Name>test-ext_vector_int2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_int3_sized.vcxproj">
+      <Project>{C68F008C-F748-3CFF-AC1B-12ED50070F6C}</Project>
+      <Name>test-ext_vector_int3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_int4_sized.vcxproj">
+      <Project>{D109D712-8D69-3A9F-A927-CF933331C590}</Project>
+      <Name>test-ext_vector_int4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_integer.vcxproj">
+      <Project>{A09A6BE8-B6F0-3387-ABED-048BA2D9EDC9}</Project>
+      <Name>test-ext_vector_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_integer_sized.vcxproj">
+      <Project>{723CB582-9002-3BB4-8086-D040824F64A0}</Project>
+      <Name>test-ext_vector_integer_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_relational.vcxproj">
+      <Project>{0EBC9977-F1CE-3D0E-B611-49F2B66E9C09}</Project>
+      <Name>test-ext_vector_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_uint1_sized.vcxproj">
+      <Project>{8277219D-FD1E-3BEB-8698-716E2A201BDD}</Project>
+      <Name>test-ext_vector_uint1_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_uint2_sized.vcxproj">
+      <Project>{ED4D3700-0F52-3A33-A8AC-D8AD4FAED828}</Project>
+      <Name>test-ext_vector_uint2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_uint3_sized.vcxproj">
+      <Project>{BF3CA72A-2B05-320A-99CB-94B793B36942}</Project>
+      <Name>test-ext_vector_uint3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_uint4_sized.vcxproj">
+      <Project>{43748AF4-150A-31F0-A9AA-90B1D7B3EE06}</Project>
+      <Name>test-ext_vector_uint4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\ext\test-ext_vector_ulp.vcxproj">
+      <Project>{729DBB1B-5C92-3D90-8B66-D294D0031C71}</Project>
+      <Name>test-ext_vector_ulp</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_bitfield.vcxproj">
+      <Project>{A7B7BB88-A707-31A6-96F1-E3511BDC5CFF}</Project>
+      <Name>test-gtc_bitfield</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_color_space.vcxproj">
+      <Project>{E717FDFF-86D1-3D7F-A811-4DED9D795331}</Project>
+      <Name>test-gtc_color_space</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_constants.vcxproj">
+      <Project>{68305EFB-106D-38C0-9368-DE410B84058E}</Project>
+      <Name>test-gtc_constants</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_epsilon.vcxproj">
+      <Project>{F286662E-ED61-3DD5-87F4-10667538466D}</Project>
+      <Name>test-gtc_epsilon</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_integer.vcxproj">
+      <Project>{4F549260-6737-36CD-AD6E-409499F2895F}</Project>
+      <Name>test-gtc_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_matrix_access.vcxproj">
+      <Project>{D5B64D35-0CF5-323F-9BDE-D2362AFE7D32}</Project>
+      <Name>test-gtc_matrix_access</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_matrix_integer.vcxproj">
+      <Project>{9B2F0941-AD92-3A82-87B7-BFB5C47D1911}</Project>
+      <Name>test-gtc_matrix_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_matrix_inverse.vcxproj">
+      <Project>{E4917E98-298B-3AAE-BED0-B66BF265450F}</Project>
+      <Name>test-gtc_matrix_inverse</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_matrix_transform.vcxproj">
+      <Project>{3D2DFC1C-BB4B-3B5B-B8A0-96FB6996879F}</Project>
+      <Name>test-gtc_matrix_transform</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_noise.vcxproj">
+      <Project>{B176D63B-5D09-3F0D-B9E4-7AB1162C2FF1}</Project>
+      <Name>test-gtc_noise</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_packing.vcxproj">
+      <Project>{8E2B0698-2352-385B-A230-102F08A69D82}</Project>
+      <Name>test-gtc_packing</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_quaternion.vcxproj">
+      <Project>{11B71122-83EE-33B9-8097-EAA5843FB4B3}</Project>
+      <Name>test-gtc_quaternion</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_random.vcxproj">
+      <Project>{7E56063D-321D-38BA-A43A-CAF9B2500E69}</Project>
+      <Name>test-gtc_random</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_reciprocal.vcxproj">
+      <Project>{4A22B5B4-3E62-30CF-8A8C-D984938DEC54}</Project>
+      <Name>test-gtc_reciprocal</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_round.vcxproj">
+      <Project>{3FD5C834-27C5-31C4-81B2-0B260E8B9AAF}</Project>
+      <Name>test-gtc_round</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_type_aligned.vcxproj">
+      <Project>{A7ECBE3A-C327-37CE-BB34-CA517EB2A5F7}</Project>
+      <Name>test-gtc_type_aligned</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_type_precision.vcxproj">
+      <Project>{91AD148A-839A-381A-BFC7-742279FC1E1A}</Project>
+      <Name>test-gtc_type_precision</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_type_ptr.vcxproj">
+      <Project>{C1AA4C92-4C55-3C60-A1F0-74574856886A}</Project>
+      <Name>test-gtc_type_ptr</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_ulp.vcxproj">
+      <Project>{DF4F3476-562A-3190-BF1F-FDB5C4CA3B58}</Project>
+      <Name>test-gtc_ulp</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtc\test-gtc_vec1.vcxproj">
+      <Project>{99E36135-C71A-3EED-AC59-33AF35B14CD0}</Project>
+      <Name>test-gtc_vec1</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx.vcxproj">
+      <Project>{1E1AE702-476E-3B3F-9671-313523EF824A}</Project>
+      <Name>test-gtx</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_associated_min_max.vcxproj">
+      <Project>{616BAFE7-A9C0-39E1-9A5F-297DAE1059C0}</Project>
+      <Name>test-gtx_associated_min_max</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_closest_point.vcxproj">
+      <Project>{F26F0FAE-D032-3FAB-B453-E196EF804DEB}</Project>
+      <Name>test-gtx_closest_point</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_color_encoding.vcxproj">
+      <Project>{57C9A3FD-60A4-3E0B-8F59-3AEA30E44B02}</Project>
+      <Name>test-gtx_color_encoding</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_color_space.vcxproj">
+      <Project>{14609FBB-0F92-33B4-905A-BA12E54FB09D}</Project>
+      <Name>test-gtx_color_space</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_color_space_YCoCg.vcxproj">
+      <Project>{D8A6B2E0-AD29-3636-B71B-11E52C788742}</Project>
+      <Name>test-gtx_color_space_YCoCg</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_common.vcxproj">
+      <Project>{0B10CD53-DB9E-33A3-891C-BC3D25FD71E1}</Project>
+      <Name>test-gtx_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_compatibility.vcxproj">
+      <Project>{C533FBC4-1821-333F-819A-65D7125C583B}</Project>
+      <Name>test-gtx_compatibility</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_component_wise.vcxproj">
+      <Project>{77A67B15-70DE-3007-907C-BA5EA3FBCBB1}</Project>
+      <Name>test-gtx_component_wise</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_dual_quaternion.vcxproj">
+      <Project>{60A724D3-2372-36DA-8AD1-CC45A85F4F99}</Project>
+      <Name>test-gtx_dual_quaternion</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_easing.vcxproj">
+      <Project>{C152DAFB-5257-3132-9267-B5D925AF63BC}</Project>
+      <Name>test-gtx_easing</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_euler_angle.vcxproj">
+      <Project>{C7569616-AB72-3301-ADF3-3BFFB1716317}</Project>
+      <Name>test-gtx_euler_angle</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_extend.vcxproj">
+      <Project>{EE6D7E2A-1BC1-3F50-A334-99F04C754764}</Project>
+      <Name>test-gtx_extend</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_extended_min_max.vcxproj">
+      <Project>{8E4372E8-11E7-332D-B157-BF3F59122E77}</Project>
+      <Name>test-gtx_extended_min_max</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_exterior_product.vcxproj">
+      <Project>{82ED5DEF-CFBE-3889-861C-0B08324D6964}</Project>
+      <Name>test-gtx_exterior_product</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_fast_exponential.vcxproj">
+      <Project>{B72CE392-319A-3E9C-BD02-72A8F68229F3}</Project>
+      <Name>test-gtx_fast_exponential</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_fast_square_root.vcxproj">
+      <Project>{9C47A39A-506E-3DA1-AD4B-5BABE5E3EDF4}</Project>
+      <Name>test-gtx_fast_square_root</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_fast_trigonometry.vcxproj">
+      <Project>{11EBE658-C0B9-390C-8ED0-6CB4027451C7}</Project>
+      <Name>test-gtx_fast_trigonometry</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_functions.vcxproj">
+      <Project>{092BF26C-80B7-3A49-ACA0-51C251F970E7}</Project>
+      <Name>test-gtx_functions</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_gradient_paint.vcxproj">
+      <Project>{ABEFF98A-3305-3EBA-AFAF-B1E7F62F310A}</Project>
+      <Name>test-gtx_gradient_paint</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_handed_coordinate_space.vcxproj">
+      <Project>{A764D010-EF0C-3957-AFEB-996E204E9807}</Project>
+      <Name>test-gtx_handed_coordinate_space</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_integer.vcxproj">
+      <Project>{3CA95C81-E81E-3BD9-A692-3DE9142361E8}</Project>
+      <Name>test-gtx_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_intersect.vcxproj">
+      <Project>{AEFEF248-A2C6-3248-9BD2-FF455436CD31}</Project>
+      <Name>test-gtx_intersect</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_io.vcxproj">
+      <Project>{A74C2E30-BA77-32A3-A9F9-39D85940C306}</Project>
+      <Name>test-gtx_io</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_load.vcxproj">
+      <Project>{92E47212-90AA-32A3-BAF8-8011BDBF3FD9}</Project>
+      <Name>test-gtx_load</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_log_base.vcxproj">
+      <Project>{C46DE554-6983-39A6-ABBB-DE9B8164D2B3}</Project>
+      <Name>test-gtx_log_base</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_cross_product.vcxproj">
+      <Project>{29E86F6B-86CA-3F3E-BA70-240CB2720ED3}</Project>
+      <Name>test-gtx_matrix_cross_product</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_decompose.vcxproj">
+      <Project>{0333F013-3E5A-3EC4-B09E-835208E1EE65}</Project>
+      <Name>test-gtx_matrix_decompose</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_factorisation.vcxproj">
+      <Project>{D626F8F4-60D2-3CB4-83BB-369B463D124F}</Project>
+      <Name>test-gtx_matrix_factorisation</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_interpolation.vcxproj">
+      <Project>{F074604A-832B-38A3-8166-42E0DFA05F08}</Project>
+      <Name>test-gtx_matrix_interpolation</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_major_storage.vcxproj">
+      <Project>{71AFE08D-13A3-36A8-AD97-52925DF6116F}</Project>
+      <Name>test-gtx_matrix_major_storage</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_operation.vcxproj">
+      <Project>{C9708341-07C2-3E39-BE23-929786C33B37}</Project>
+      <Name>test-gtx_matrix_operation</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_query.vcxproj">
+      <Project>{EF4693F8-7AF7-3C5A-A1D6-7BD614AC6263}</Project>
+      <Name>test-gtx_matrix_query</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_matrix_transform_2d.vcxproj">
+      <Project>{D86B0043-36FD-392F-9E40-27D8AB6216A1}</Project>
+      <Name>test-gtx_matrix_transform_2d</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_norm.vcxproj">
+      <Project>{18820548-EDD5-350C-8296-F13770D48AF1}</Project>
+      <Name>test-gtx_norm</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_normal.vcxproj">
+      <Project>{A2AFD313-E531-35C5-8847-0863D606CACE}</Project>
+      <Name>test-gtx_normal</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_normalize_dot.vcxproj">
+      <Project>{BECCDBAA-9659-30D7-83C3-256BEA25CF46}</Project>
+      <Name>test-gtx_normalize_dot</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_number_precision.vcxproj">
+      <Project>{BB2EDC36-FF67-3292-A972-6B60713C0F98}</Project>
+      <Name>test-gtx_number_precision</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_optimum_pow.vcxproj">
+      <Project>{EE8DA0A4-6CE2-36EC-B1D2-C1FA9130D7C0}</Project>
+      <Name>test-gtx_optimum_pow</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_orthonormalize.vcxproj">
+      <Project>{FC1A3F84-2739-3D04-A9FE-A386D90547E9}</Project>
+      <Name>test-gtx_orthonormalize</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_perpendicular.vcxproj">
+      <Project>{3B699556-25A0-3BCD-8020-9297A6F3D676}</Project>
+      <Name>test-gtx_perpendicular</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_polar_coordinates.vcxproj">
+      <Project>{B227FB86-27C5-3608-A210-D3553B69D8A4}</Project>
+      <Name>test-gtx_polar_coordinates</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_projection.vcxproj">
+      <Project>{D5DF5807-5579-33BA-A430-08D795C31EB1}</Project>
+      <Name>test-gtx_projection</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_quaternion.vcxproj">
+      <Project>{E9C097C3-8EAA-3C8D-960C-4A186FCD1687}</Project>
+      <Name>test-gtx_quaternion</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_range.vcxproj">
+      <Project>{553E3598-61C8-320F-8F8A-01E9110AD831}</Project>
+      <Name>test-gtx_range</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_rotate_normalized_axis.vcxproj">
+      <Project>{C458A77D-0276-3D9C-BAE2-40C25C2C3C07}</Project>
+      <Name>test-gtx_rotate_normalized_axis</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_rotate_vector.vcxproj">
+      <Project>{DE019077-269E-3C97-84E0-432B34672D59}</Project>
+      <Name>test-gtx_rotate_vector</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_scalar_multiplication.vcxproj">
+      <Project>{1B54800F-2DD7-3DE9-A60D-A7410F92230C}</Project>
+      <Name>test-gtx_scalar_multiplication</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_scalar_relational.vcxproj">
+      <Project>{1C80E268-D01F-3FFD-AB39-97EF33B6E1CA}</Project>
+      <Name>test-gtx_scalar_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_spline.vcxproj">
+      <Project>{97901CC0-9E60-38F6-B31A-414EC32932F4}</Project>
+      <Name>test-gtx_spline</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_string_cast.vcxproj">
+      <Project>{3DF9F7AF-245B-3BCF-83DB-A156FDCA71C9}</Project>
+      <Name>test-gtx_string_cast</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_texture.vcxproj">
+      <Project>{EEB75D18-F5B4-33CC-8423-1A2E7BDE45B8}</Project>
+      <Name>test-gtx_texture</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_type_aligned.vcxproj">
+      <Project>{E1B4AB70-57AD-398D-A427-FBD83F2FA223}</Project>
+      <Name>test-gtx_type_aligned</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_type_trait.vcxproj">
+      <Project>{81796F43-340D-3BE1-A2D1-8D0FF3B7354D}</Project>
+      <Name>test-gtx_type_trait</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_vec_swizzle.vcxproj">
+      <Project>{E2E33FFC-AB70-3BAE-A923-1AFB3AD50F82}</Project>
+      <Name>test-gtx_vec_swizzle</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_vector_angle.vcxproj">
+      <Project>{A711C278-1B4D-31BF-9EA6-9F3BDBD5DA42}</Project>
+      <Name>test-gtx_vector_angle</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_vector_query.vcxproj">
+      <Project>{ECD5DC9F-E423-30ED-B7DC-8F777E12914F}</Project>
+      <Name>test-gtx_vector_query</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\gtx\test-gtx_wrap.vcxproj">
+      <Project>{3B117AA6-6204-3CD3-954D-CD033879ED1C}</Project>
+      <Name>test-gtx_wrap</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\perf\test-perf_matrix_div.vcxproj">
+      <Project>{3C1DF087-2F99-3C3C-BEAA-925B18B910FF}</Project>
+      <Name>test-perf_matrix_div</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\perf\test-perf_matrix_inverse.vcxproj">
+      <Project>{42C9F223-4AB4-3291-AA1D-613D9E139F4A}</Project>
+      <Name>test-perf_matrix_inverse</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\perf\test-perf_matrix_mul.vcxproj">
+      <Project>{A6CE9BF4-6526-33C0-A939-AC35E29AA4BA}</Project>
+      <Name>test-perf_matrix_mul</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\perf\test-perf_matrix_mul_vector.vcxproj">
+      <Project>{17698AD0-C679-3106-87A4-9A6AB746E65E}</Project>
+      <Name>test-perf_matrix_mul_vector</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\perf\test-perf_matrix_transpose.vcxproj">
+      <Project>{6D391DA9-720B-3980-A303-EDF79BD1F524}</Project>
+      <Name>test-perf_matrix_transpose</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Tobias\Desktop\Ray\libs\glm\test\perf\test-perf_vector_mul_matrix.vcxproj">
+      <Project>{12733C9B-3678-3FF5-B8DF-24874AFFA31E}</Project>
+      <Name>test-perf_vector_mul_matrix</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
