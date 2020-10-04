@@ -821,49 +821,51 @@ cudaBBMRender(BBMPassInput input) {
 
 	float3 tan =/* make_float3(0, 1, 0);//*/ getTan(direction);
 	float3 biTan = /*make_float3(1, 0, 0);//*/ cross(direction, tan);
+	tan = dot(tan, diachongus) > 0 ? tan : inverse(tan);
+	biTan = dot(biTan, diachongus) > 0 ? biTan : inverse(biTan);
 
 	int adjustedY = (z % (input.bbm.angleResolution * input.bbm.angleResolution)) / input.bbm.angleResolution;
 	int adjustedZ = (z % input.bbm.angleResolution);
 
-	float stepLen = /*PI / 4;//*/ PI / ((input.bbm.angleResolution + 1));
-	int stepsToTakeInYDir = /*(input.bbm.angleResolution - 1) / 2;// */adjustedY - ((input.bbm.angleResolution - 1) / 2);
-	int stepsToTakeInZDir = /*(input.bbm.angleResolution - 1) / 2;// */adjustedZ - ((input.bbm.angleResolution - 1) / 2);
+	float stepLen = PI / MAX(1,input.bbm.angleResolution - 1);
 
-	//float randV1 = rand(make_float2(adjustedY, adjustedZ));
-	//float randV2 = rand(make_float2(adjustedY, randV1));
+	float yRot = -PI * 0.5f + stepLen * adjustedY;
+	float zRot = -PI * 0.5f + stepLen * adjustedZ;
 
-	//float xOffset = (randV1 - 0.5)* stepLen;
-	//float yOffset = (randV2 - 0.5)* stepLen;
+	if (input.bbm.angleResolution == 1) {
+		yRot = 0;
+		zRot = 0;
+	}
+
+	float3 lookDir = rotateAngleAxis(direction, yRot, tan);
+	lookDir = rotateAngleAxis(lookDir, zRot, biTan);
 	
+	float3 dirDistFromBBMin = (direction * diachongus) * (dot(direction, diachongus) > 0 ? 0.001 : 1.001);
 
-	float3 lookDir = rotateAngleAxis(direction, (stepsToTakeInYDir)*stepLen, tan);
-	lookDir = rotateAngleAxis(lookDir, (stepsToTakeInZDir)*stepLen, biTan);
+	float3 stepTan = tan * diachongus / ((float)input.bbm.sideResolution - 1);
+	float3 stepBiTan = biTan * diachongus /((float)input.bbm.sideResolution - 1);
 
-	float3 dirDistFromCenter = (direction * diachongus) *  .501f;
+	float3 offsetTan = stepTan * x;
+	float3 offsetBiTan = stepBiTan * y;
+	// result is how long we should travel in each tan and bitan directions
 
-	float3 stepTan = tan * diachongus * (1.0f/(float)input.bbm.sideResolution);
-	float3 stepBiTan = biTan * diachongus * (1.0f/(float)input.bbm.sideResolution);
 
-	float3 offsetTan = stepTan * ((float)x + 0.5f- (input.bbm.sideResolution / 2) );// - (diachongus * tan * 0.5);//*/tan* (((x - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution))* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
-	float3 offsetBiTan = stepBiTan * ((float)y + 0.5f- (input.bbm.sideResolution / 2));//- (diachongus * biTan * 0.5);//*/  biTan* ((y - input.bbm.sideResolution/2) / (float)input.bbm.sideResolution)* diachongus;// tan* xPos* diachongus;// *((float)(x - (input.bbm.sideResolution / 2)) / (float)input.bbm.sideResolution);
-
-	float3 initialRayDir = lookDir;//*/ normalize(lookDir + tan * xOffset + biTan * yOffset);
-	//float3 initialRayDirModified = lookDir;//*/ normalize(lookDir + tan * xOffset + biTan * yOffset);
-	float3 initialRayPos = (center - dirDistFromCenter) +offsetTan + offsetBiTan;
+	float3 initialRayPos = (input.bbm.bbMin - dirDistFromBBMin) +offsetTan + offsetBiTan;
 
 	BBMRes total;
 	int numberOfHits = 0;
 	// super sample crazy amounts for both angle and point, we only have to do this for setup so doesn't cost any realtime performance
 	int kernelDiameter = 5;
 	float totalSamples = powf(kernelDiameter, 4);
-	float offset = 1.0f / kernelDiameter;
 	int maxIndex = (kernelDiameter  - 1)/2;
+	float offset = 0.5f / MAX(maxIndex, 1);//1.0f / kernelDiameter;
 	for (float i = -maxIndex; i <= maxIndex; i++) {
 		for (float j = -maxIndex; j <= maxIndex; j++) {
 			for (float k = -maxIndex; k <= maxIndex; k++) {
 				for (float l = -maxIndex; l <= maxIndex; l++) {
-				float3 lookDirCurr = rotateAngleAxis(direction, ((float)stepsToTakeInYDir + (i* offset)) * stepLen, tan);
-				lookDirCurr = rotateAngleAxis(lookDirCurr, ((float)stepsToTakeInZDir + (j* offset)) * stepLen, biTan);
+
+				float3 lookDirCurr = rotateAngleAxis(direction, ((float)(i* offset)) * stepLen + yRot, tan);
+				lookDirCurr = rotateAngleAxis(lookDirCurr, ((float)(j* offset)) * stepLen + zRot, biTan);
 				float3 initialPos = initialRayPos + (k * offset * stepTan) + (l* offset *stepBiTan);
 
 				BBMRes curr = cudaBBMTrace(initialPos, lookDirCurr, input.mesh);
@@ -877,14 +879,12 @@ cudaBBMRender(BBMPassInput input) {
 	}
 	float hitRatio = numberOfHits > 0 ? (1.0f / numberOfHits) : 0.0f;
 	toReturn = total* hitRatio;
-	toReturn.hitRatio =  numberOfHits / totalSamples;
+	toReturn.hitRatio = /*1.0f; */numberOfHits / totalSamples;
 	// store our result for later use
-	int index = rectangularCoordsToIndex(initialRayPos, initialRayDir, input.bbm);
+	int index = rectangularCoordsToIndex(initialRayPos, lookDir, input.bbm);
+	//int index = getIndex(directionIndex, x, y, adjustedY, adjustedZ, input.bbm);
 
 	input.bbm.texture[index] = toReturn;
-
-
-
 }
 
 __global__ void

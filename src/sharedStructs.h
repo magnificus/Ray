@@ -42,8 +42,9 @@
 
 
 // BBM stuff
-#define DEFAULT_BBM_SIDE_RES 16
-#define DEFAULT_BBM_ANGLE_RES 15
+#define DEFAULT_BBM_SIDE_RES 32
+// must be odd
+#define DEFAULT_BBM_ANGLE_RES 33
 
 
 #define PI 3.141592654f
@@ -75,6 +76,10 @@ inline __device__ float3 operator*(const float& a, const float3& b) {
 
 inline __device__ float3 operator*(const float3& b, const float& a) {
 	return make_float3(a * b.x, a * b.y, a * b.z);
+}
+
+inline __device__ float3 operator/(const float3& b, const float& a) {
+	return make_float3(b.x / a, b.y / a, b.z / a);
 }
 
 inline __device__ float3 operator-(const float3& a, const float3& b) {
@@ -593,8 +598,9 @@ inline __device__ float3 rectangularCoordsToSpherical(const float3 rect) {
 	return make_float3(r, p, o);
 }
 
-#define MAX(a,b) a < b ? b : a
-#define MIN(a,b) a > b ? b : a
+#define MAX(a,b) ((a) < (b) ? (b) : (a))
+#define MIN(a,b) ((a) > (b) ? (b) : (a))
+
 
 
 inline __device__ float3 getTan(float3 vec) {
@@ -666,6 +672,9 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 	majorDir = /*make_float3(0, 0, 1);//*/ (majorDir * (1 / length(majorDir))); // normalize length
 	float3 tan = /*make_float3(0, 1, 0);//*/ getTan(majorDir);
 	float3 biTan = /*make_float3(1, 0, 0);//*/ cross(majorDir, tan);
+	//tan = dot(tan, bbMinToContact) > 0 ? tan : inverse(tan);
+	//biTan = dot(biTan, bbMinToContact) > 0 ? biTan : inverse(biTan);
+
 	directionIndex = directionToInt(majorDir);
 
 	float distT = dot(tan, bbMinToContact);
@@ -674,24 +683,21 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 	float maxDistT = dot(tan, bbmChongos);
 	float maxDistB = dot(biTan, bbmChongos);
 
-	xPos = (distT / maxDistT)* bbm.sideResolution - 0.5f;
-	yPos = (distB / maxDistB) * bbm.sideResolution - 0.5f;
+	xPos = (distT / maxDistT)* (bbm.sideResolution - 1);
+	yPos = (distB / maxDistB) * (bbm.sideResolution -1);
+
+
 	xPos = MIN(MAX(xPos, 0.0f), (float) bbm.sideResolution - 1);
 	yPos = MIN(MAX(yPos, 0.0f), (float) bbm.sideResolution - 1);
-
 
 	// angle
 	float prelAngleYPos = dot(lookingDir, tan);
 	float prelAngleZPos = dot(lookingDir, biTan);
 
+	float stepLen = PI / (MAX(1,(bbm.angleResolution - 1)));
 
-	float stepLen = /*PI / 2 / bbm.angleResolution + 1;//*/ PI / ((bbm.angleResolution + 1));
-	float lowestP = /*-PI / 4;//*/ -stepLen * ((bbm.angleResolution - 1) / 2);
-
-	angleYPos = (asin(prelAngleYPos) - lowestP)/stepLen;
-	angleZPos = (asin(prelAngleZPos) - lowestP)/stepLen;
-
-
+	angleYPos = asin(prelAngleYPos)/stepLen + ((bbm.angleResolution - 1)/2);
+	angleZPos = asin(prelAngleZPos)/stepLen + ((bbm.angleResolution - 1)/2);
 
 }
 
@@ -703,18 +709,17 @@ inline __device__ int getIndex(int directionIndex, int XIndex, int YIndex, int a
 }
 
 inline __device__ BBMRes rectangularCoordsToLerpedAngleValue(int directionIndex, float xPos, float yPos, float yAnglePos, float zAnglePos, const blackBoxMesh bbm) {
-	int angleStepsY = MAX(0, floor(yAnglePos));
-	int angleStepsZ = MAX(0, floor(zAnglePos));
-	float angleStepsRatY = MIN(MAX(0, yAnglePos - angleStepsY), 1.0f);
-	float angleStepsRatZ = MIN(MAX(0, zAnglePos - angleStepsZ), 1.0f);
+	int angleStepsY = MIN(MAX(0, floor(yAnglePos)), bbm.angleResolution-1);
+	int angleStepsZ = MIN(MAX(0, floor(zAnglePos)), bbm.angleResolution-1);
+	float angleStepsRatY = MIN(MAX(0.0f, yAnglePos - angleStepsY), 1.0f);
+	float angleStepsRatZ = MIN(MAX(0.0f, zAnglePos - angleStepsZ), 1.0f);
 
 
-	int XSteps = MAX(0, MIN(round(xPos), bbm.sideResolution - 1));
-	int YSteps = MAX(0, MIN(round(yPos), bbm.sideResolution - 1));
+	int XSteps = MAX(0.0f, MIN(round(xPos), bbm.sideResolution - 1));
+	int YSteps = MAX(0.0f, MIN(round(yPos), bbm.sideResolution - 1));
 
 	int nextAngleY = MIN(angleStepsY + 1, bbm.angleResolution - 1);
 	int nextAngleZ = MIN(angleStepsZ + 1, bbm.angleResolution - 1);
-
 
 	BBMRes UL = bbm.texture[getIndex(directionIndex, XSteps, YSteps, angleStepsY, angleStepsZ, bbm)];
 	BBMRes UR = bbm.texture[getIndex(directionIndex, XSteps, YSteps, nextAngleY, angleStepsZ, bbm)];
@@ -726,6 +731,7 @@ inline __device__ BBMRes rectangularCoordsToLerpedAngleValue(int directionIndex,
 
 	BBMRes combined = LerpBBM(combinedUpper, combinedDown, angleStepsRatZ);
 	return combined;
+	//return LL;
 }
 
 
@@ -750,15 +756,6 @@ inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, c
 	BBMRes UL = rectangularCoordsToLerpedAngleValue(directionIndex, floorX, floorY +1, yAnglePos, zAnglePos, bbm);
 	BBMRes UR = rectangularCoordsToLerpedAngleValue(directionIndex, floorX +1, floorY +1, yAnglePos, zAnglePos, bbm);
 
-	//if (xPos < 0) {
-	//	LL = BBMRes();
-	//	UL = BBMRes();
-	//}
-	//if (yPos < 0) {
-	//	LL = BBMRes();
-	//	LR = BBMRes();
-	//}
-
 	BBMRes combinedUpper = LerpBBM(UL, UR, xRat);
 	BBMRes combinedDown = LerpBBM(LL, LR, xRat);
 
@@ -771,7 +768,6 @@ inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, c
 
 inline __device__ int rectangularCoordsToIndex(const float3 position, const float3 lookingDir, const blackBoxMesh bbm) {
 
-
 	int directionIndex;
 	float xPos, yPos, yAnglePos, zAnglePos;
 	getXYAndAngleCoordinates(position, lookingDir, bbm, directionIndex, xPos, yPos, yAnglePos, zAnglePos);
@@ -781,15 +777,10 @@ inline __device__ int rectangularCoordsToIndex(const float3 position, const floa
 
 	XIndex = MAX(MIN(XIndex, bbm.sideResolution - 1),0);
 	YIndex = MAX(MIN(YIndex, bbm.sideResolution - 1),0);
-	//int XYIndex = YIndex * bbm.sideResolution + XIndex;
 
-
-	int angleStepsY = /*(bbm.angleResolution - 1) / 2;//*/ MIN(MAX(round(yAnglePos),0),(bbm.angleResolution-1));
-	int angleStepsZ = /*(bbm.angleResolution - 1) / 2;//*/ MIN(MAX(round(zAnglePos), 0), (bbm.angleResolution - 1));
-
-	//int angleIndex =  angleStepsY* bbm.angleResolution + angleStepsZ;
+	int angleStepsY = MIN(MAX(round(yAnglePos),0),(bbm.angleResolution-1));
+	int angleStepsZ =  MIN(MAX(round(zAnglePos), 0), (bbm.angleResolution - 1));
 
 	return getIndex(directionIndex, XIndex, YIndex, angleStepsY, angleStepsZ, bbm);
-	//return directionIndex * (bbm.sideResolution*bbm.sideResolution)* (bbm.angleResolution * bbm.angleResolution) + XYIndex * (bbm.angleResolution * bbm.angleResolution) + angleIndex;
 }
 
