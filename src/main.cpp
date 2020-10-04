@@ -334,9 +334,7 @@ void setupLevel() {
 	dim3 block(8, 8, 1);
 	dim3 grid(BBMInput.bbm.sideResolution / block.x, BBMInput.bbm.sideResolution / block.y, (BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution * 6)/block.z);
 
-	//clock::now
 	launch_cudaBBMRender(grid, block, 0, BBMInput);
-	//std::cout << "bbm rendering took"
 
 	size_t allBBMMeshesSize = sizeof(blackBoxMesh);
 	checkCudaErrors(cudaMalloc(&bbm_buffer, allBBMMeshesSize));

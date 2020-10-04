@@ -42,9 +42,11 @@
 
 
 // BBM stuff
+
+// must be even
 #define DEFAULT_BBM_SIDE_RES 32
 // must be odd
-#define DEFAULT_BBM_ANGLE_RES 33
+#define DEFAULT_BBM_ANGLE_RES 31
 
 
 #define PI 3.141592654f
@@ -672,8 +674,6 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 	majorDir = /*make_float3(0, 0, 1);//*/ (majorDir * (1 / length(majorDir))); // normalize length
 	float3 tan = /*make_float3(0, 1, 0);//*/ getTan(majorDir);
 	float3 biTan = /*make_float3(1, 0, 0);//*/ cross(majorDir, tan);
-	//tan = dot(tan, bbMinToContact) > 0 ? tan : inverse(tan);
-	//biTan = dot(biTan, bbMinToContact) > 0 ? biTan : inverse(biTan);
 
 	directionIndex = directionToInt(majorDir);
 
@@ -691,6 +691,10 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 	yPos = MIN(MAX(yPos, 0.0f), (float) bbm.sideResolution - 1);
 
 	// angle
+	//float3 lookingAtCenter = normalize(center - position);
+	//float3 lookingTan = getTan(lookingAtCenter);
+	//float3 lookingBiTan = cross(lookingAtCenter, lookingTan);
+
 	float prelAngleYPos = dot(lookingDir, tan);
 	float prelAngleZPos = dot(lookingDir, biTan);
 
@@ -698,6 +702,7 @@ inline __device__ void getXYAndAngleCoordinates(const float3 position, const flo
 
 	angleYPos = asin(prelAngleYPos)/stepLen + ((bbm.angleResolution - 1)/2);
 	angleZPos = asin(prelAngleZPos)/stepLen + ((bbm.angleResolution - 1)/2);
+
 
 }
 
@@ -741,8 +746,6 @@ inline __device__ BBMRes rectangularCoordsToLerpedValue(const float3 position, c
 	float xPos, yPos, yAnglePos, zAnglePos;
 
 	getXYAndAngleCoordinates(position, lookingDir, bbm, directionIndex, xPos, yPos, yAnglePos, zAnglePos);
-	//xPos += 0.5f;
-	//yPos += 0.5f;
 
 	int floorX = floor(xPos);
 	int floorY = floor(yPos);

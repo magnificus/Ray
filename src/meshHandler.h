@@ -105,6 +105,10 @@ triangleMesh prepareMeshForCuda(const triangleMesh& myMesh) {
 
 	// acceleration structure
 	float3 center = 0.5 * (max + min);
+	float3 minToCenter = normalize(center - min);
+	min = min - minToCenter * 20;
+	max = max + minToCenter * 20;
+
 	myMeshOnCuda.bbMax = max;
 	myMeshOnCuda.bbMin = min;
 
