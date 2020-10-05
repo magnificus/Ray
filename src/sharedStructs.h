@@ -46,7 +46,7 @@
 // must be even
 #define DEFAULT_BBM_SIDE_RES 32
 // must be odd
-#define DEFAULT_BBM_ANGLE_RES 31
+#define DEFAULT_BBM_ANGLE_RES 61
 
 
 #define PI 3.141592654f

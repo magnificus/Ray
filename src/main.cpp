@@ -23,6 +23,8 @@
 #include "gl_tools.h"
 #include "glfw_tools.h"
 #include "lodepng/lodepng.h"
+#include <stdio.h>
+
 
 #include <iostream>
 #include <chrono>
@@ -245,6 +247,25 @@ void createObjects() {
 	objects[7] = make_objectInfo(sphere, s5, 0.0f, make_float3(0.0, 0.0, 0.1), 1.0, 1.3, 0.0f, 0.0f); // refractive 2
 }
 
+
+bool attemptReadFile(const char* fileName, size_t& fileSize, void* &buffer) {
+	FILE* inputFile;
+	inputFile = fopen(fileName, "rb");
+
+	if (!inputFile)
+		return false;
+
+	fseek(inputFile, 0, SEEK_END);
+	auto lSize = ftell(inputFile);
+	rewind(inputFile);
+	fileSize = sizeof(char) * lSize;
+	buffer = malloc(fileSize);
+	size_t result = fread(buffer, 1, lSize, inputFile);
+	if (result != lSize) { fputs("Reading error", stderr); exit(3); }
+
+	return true;
+}
+
 void setupLevel() {
 	// add objects
 	createObjects();
@@ -318,37 +339,92 @@ void setupLevel() {
 
 	// ALL BELOW HERE IS WIP
 	// just one for now
-	size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SIDE_RES * DEFAULT_BBM_SIDE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES * 6;
+
+
+	std::string bbmFileName = "bunny";
+	std::string binaryEnd = "_binary.bin";
+	std::string metaEnd = "_meta.bin";
+
+	size_t metaSize;
+	void* metaBuffer;
+	bool readMeta = attemptReadFile((bbmFileName + metaEnd).c_str(), metaSize, metaBuffer);
+
+	size_t binarySize;
+	void* binaryBuffer;
+	bool readBinary = attemptReadFile((bbmFileName + binaryEnd).c_str(), binarySize, binaryBuffer);
+
 
 	BBMRes* BBMTexture;
-	checkCudaErrors(cudaMalloc(&BBMTexture, size_bbm_data));
-
-
-	//triangleMesh* meshesOnCuda2 = (triangleMesh*)malloc(sizeof(triangleMesh));
-	importedMeshes[0].rayInfo = infos[0];
-	triangleMesh meshOnCuda = prepareMeshForCuda(importedMeshes[0]);
-
-	blackBoxMesh toExec = blackBoxMesh{ BBMTexture, meshOnCuda.bbMin, meshOnCuda.bbMax, DEFAULT_BBM_SIDE_RES , DEFAULT_BBM_ANGLE_RES };
-	BBMPassInput BBMInput = BBMPassInput{ toExec, meshOnCuda };
-
-	dim3 block(8, 8, 1);
-	dim3 grid(BBMInput.bbm.sideResolution / block.x, BBMInput.bbm.sideResolution / block.y, (BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution * 6)/block.z);
-
-	launch_cudaBBMRender(grid, block, 0, BBMInput);
-
 	size_t allBBMMeshesSize = sizeof(blackBoxMesh);
-	checkCudaErrors(cudaMalloc(&bbm_buffer, allBBMMeshesSize));
-	blackBoxMesh* allBBMMeshes = (blackBoxMesh*) malloc(sizeof(blackBoxMesh));
-	allBBMMeshes[0] = toExec;
-	checkCudaErrors(cudaMemcpy(bbm_buffer, allBBMMeshes, allBBMMeshesSize, cudaMemcpyHostToDevice));
+	blackBoxMesh* allBBMMeshes = (blackBoxMesh*)malloc(sizeof(blackBoxMesh));
+
+
+	if (readMeta && readBinary) {
+		cout << endl << "Using already existing file!" << endl << endl;
+
+		blackBoxMesh *toExec = (blackBoxMesh*) metaBuffer;
+		toExec->texture = (BBMRes*) binaryBuffer;
+
+
+		checkCudaErrors(cudaMalloc(&(toExec->texture), binarySize));
+		checkCudaErrors(cudaMemcpy(toExec->texture, binaryBuffer, binarySize, cudaMemcpyHostToDevice));
+
+		allBBMMeshes[0] = *toExec;
+
+		checkCudaErrors(cudaMalloc(&bbm_buffer, allBBMMeshesSize));
+		checkCudaErrors(cudaMemcpy(bbm_buffer, allBBMMeshes, allBBMMeshesSize, cudaMemcpyHostToDevice));
+
+
+	} else{
+		size_t size_bbm_data = sizeof(BBMRes) * DEFAULT_BBM_SIDE_RES * DEFAULT_BBM_SIDE_RES * DEFAULT_BBM_ANGLE_RES * DEFAULT_BBM_ANGLE_RES * 6;
+		checkCudaErrors(cudaMalloc(&BBMTexture, size_bbm_data));
+
+		importedMeshes[0].rayInfo = infos[0];
+		triangleMesh meshOnCuda = prepareMeshForCuda(importedMeshes[0]);
+
+		blackBoxMesh toExec = blackBoxMesh{ BBMTexture, meshOnCuda.bbMin, meshOnCuda.bbMax, DEFAULT_BBM_SIDE_RES , DEFAULT_BBM_ANGLE_RES };
+		BBMPassInput BBMInput = BBMPassInput{ toExec, meshOnCuda };
+
+		dim3 block(8, 8, 1);
+		dim3 grid(BBMInput.bbm.sideResolution / block.x, BBMInput.bbm.sideResolution / block.y, (BBMInput.bbm.angleResolution* BBMInput.bbm.angleResolution * 6)/block.z);
+		launch_cudaBBMRender(grid, block, 0, BBMInput);
+
+		checkCudaErrors(cudaMalloc(&bbm_buffer, allBBMMeshesSize));
+		allBBMMeshes[0] = toExec;
+
+		checkCudaErrors(cudaMemcpy(bbm_buffer, allBBMMeshes, allBBMMeshesSize, cudaMemcpyHostToDevice));
+
+		// save bbm to file
+		{
+			void* textureRes = malloc(size_bbm_data);
+			checkCudaErrors(cudaMemcpy(textureRes, toExec.texture, size_bbm_data, cudaMemcpyDeviceToHost));
+
+			FILE* pFile;
+
+			pFile = fopen((bbmFileName + metaEnd).c_str(), "w+b");
+			fwrite(&toExec, sizeof(toExec), 1, pFile);
+			fclose(pFile);
+			pFile = fopen((bbmFileName + binaryEnd).c_str(), "w+b");
+			fwrite(textureRes, size_bbm_data, 1, pFile);
+			fclose(pFile);
+			free(textureRes);
+		}
+	}
+	if (readBinary)
+		free(binaryBuffer);
+	if (readMeta)
+		free(metaBuffer);
 	free(allBBMMeshes);
 
-
-
-
-
-
 	cudaDeviceSynchronize();
+
+
+
+
+
+
+
+
 
 
 	//checkCudaErrors(cudaMemcpy(cuda_mesh_buffer, meshesOnCuda, size_meshes_data, cudaMemcpyHostToDevice));

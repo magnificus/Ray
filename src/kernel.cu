@@ -866,8 +866,9 @@ cudaBBMRender(BBMPassInput input) {
 
 	BBMRes total;
 	int numberOfHits = 0;
-	// super sample for both angle and point, we only have to do this for setup so doesn't cost any realtime performance
-	int kernelDiameter = 5;
+	// super sample  for both angle and point, we only have to do this for setup so doesn't cost any realtime performance
+	// must be odd
+	int kernelDiameter = 3;
 	float totalSamples = powf(kernelDiameter, 4);
 	int maxIndex = (kernelDiameter  - 1)/2;
 	float offset = 0.5f / MAX(maxIndex, 1);
@@ -891,7 +892,7 @@ cudaBBMRender(BBMPassInput input) {
 	}
 	float hitRatio = numberOfHits > 0 ? (1.0f / numberOfHits) : 0.0f;
 	toReturn = total* hitRatio;
-	toReturn.hitRatio = /*1.0f; //*/numberOfHits / totalSamples;
+	toReturn.hitRatio = numberOfHits / totalSamples;
 	// store our result for later use
 	int index = rectangularCoordsToIndex(initialRayPos, lookDir, input.bbm);
 	//int index = getIndex(directionIndex, x, y, adjustedY, adjustedZ, input.bbm);
